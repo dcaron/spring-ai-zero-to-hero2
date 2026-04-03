@@ -104,20 +104,19 @@ ollama serve
 
 ```bash
 # Required (core demos)
-ollama pull llama3.2            # Chat model (3B params, ~2GB)
-ollama pull mxbai-embed-large   # Embedding model (1024 dimensions, ~670MB)
+ollama pull mistral             # Chat model (7B, 4.4GB) — default for provider-ollama
+ollama pull nomic-embed-text    # Embedding model (768 dims, 8192 ctx, ~274MB) — default for provider-ollama
 
 # Optional (additional demos)
 ollama pull llava               # Multimodal model — image+text (chat_07 demo)
-ollama pull mistral             # Alternative chat model (7B params)
-ollama pull nomic-embed-text    # Alternative embedding model (768 dimensions)
+ollama pull mxbai-embed-large   # Alternative embedding model (1024 dims, 512 ctx — for short texts only)
 ```
 
 ### Verify
 
 ```bash
 ollama list
-# Should show llama3.2 and mxbai-embed-large
+# Should show mistral and nomic-embed-text
 
 curl http://localhost:11434/api/tags
 # Should return JSON with model list
@@ -127,12 +126,12 @@ curl http://localhost:11434/api/tags
 
 | Model | RAM Required | Disk |
 |-------|-------------|------|
-| llama3.2 (3B) | ~4GB | ~2GB |
+| mistral (7B) | ~8GB | ~4.4GB |
 | mxbai-embed-large | ~2GB | ~670MB |
 | llava (7B) | ~8GB | ~4.7GB |
-| mistral (7B) | ~8GB | ~4.1GB |
+| llama3.2 (3B) | ~4GB | ~2.0GB |
 
-**Minimum**: 8GB RAM for llama3.2 + mxbai-embed-large
+**Minimum**: 8GB RAM for mistral + nomic-embed-text
 **Recommended**: 16GB RAM for running all models
 
 ---
@@ -180,6 +179,16 @@ psql -h localhost -p 15432 -U postgres -d ollama -c "CREATE EXTENSION IF NOT EXI
 ### pgAdmin
 
 Open http://localhost:15433 in your browser. The PostgreSQL server connection is pre-configured via `docker_pgadmin_servers.json`.
+
+### Important: Vector Store Dimension
+
+The Ollama provider uses `nomic-embed-text` which produces **768-dimension** embeddings. The pgvector table must match this dimension. If you previously used a different embedding model (e.g., `mxbai-embed-large` with 1024 dimensions), you must reset the vector store table:
+
+```bash
+docker exec postgres-postgres-1 psql -U postgres -d ollama -c "DROP TABLE IF EXISTS vector_store CASCADE;"
+```
+
+Spring AI will automatically recreate the table with the correct dimension (768) on next startup. Without this reset, vector store load endpoints will fail with a dimension mismatch error.
 
 ---
 
@@ -327,8 +336,8 @@ export AWS_REGION=us-east-1
 [ ] Maven 3.9.14 available (via wrapper or global)
 [ ] Docker running with sufficient resources (8GB+ RAM)
 [ ] Ollama installed and serving
-[ ] ollama pull llama3.2
-[ ] ollama pull mxbai-embed-large
+[ ] ollama pull mistral             # Chat model (7B, 4.4GB) — default for provider-ollama
+[ ] ollama pull nomic-embed-text
 [ ] docker compose -f docker/postgres/docker-compose.yaml up -d
 [ ] docker compose -f docker/observability-stack/docker-compose.yaml up -d
 [ ] Grafana accessible at http://localhost:3000

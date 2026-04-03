@@ -1,5 +1,6 @@
 package com.example.chat_08;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/chat/08")
 public class StreamingChatModelController {

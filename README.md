@@ -3,201 +3,186 @@
 Example applications showing how to use Spring AI to build Generative
 AI projects.
 
+## What's New: Spring Boot 4 + Spring AI 2
+
+This workshop has been upgraded to the latest Spring ecosystem:
+
+| Component | Version |
+|-----------|---------|
+| Spring Boot | **4.0.5** |
+| Spring AI | **2.0.0-M4** |
+| Spring Framework | **7.x** |
+| Java | **25** |
+| Maven | **3.9.14** |
+
+### Key Changes in Spring Boot 4
+
+- **Jackson 3** — `com.fasterxml.jackson.databind` moved to `tools.jackson.databind` (annotations stay `com.fasterxml.jackson.annotation`)
+- **Spring Cloud Gateway 5** — artifact renamed to `spring-cloud-starter-gateway-server-webmvc`
+- **Spring Shell 4** — `@CommandScan` replaced by `@EnableCommand`, package restructured
+- **Flyway** — requires `spring-boot-starter-flyway` instead of `flyway-core`
+- **OpenTelemetry** — native `spring-boot-starter-opentelemetry` replaces Brave/Zipkin
+- **AutoConfiguration packages** moved (jdbc, flyway)
+
+### Key Changes in Spring AI 2.0
+
+- **MCP Streamable HTTP** — SSE transport replaced with Streamable HTTP
+- **MCP annotations** — `com.logaritex.mcp` integrated into `org.springframework.ai.mcp.annotation`
+- **ToolCallAdvisor** — advisor-based tool execution (new pattern)
+- **Native Structured Output** — `AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT`
+- **Google provider** renamed — `vertex-ai-gemini` to `google-genai`
+
+### New: Distributed Tracing Module
+
+Custom AOP-based tracing with OpenTelemetry:
+- `@TracedEndpoint` — controller spans (SpanKind.SERVER)
+- `@TracedService` — service spans (SpanKind.INTERNAL)
+- `@TracedRepository` — repository spans (SpanKind.CLIENT)
+
+### New: LGTM Observability Stack
+
+Single `grafana/otel-lgtm:latest` container replaces 6 separate containers. Includes Grafana, Loki (logs), Tempo (traces), Mimir (metrics), and OTel Collector.
+
+---
+
 ## Software Prerequisites
 
-**You need the following software installed: Java 21+, docker, ollama, httpie,
-and your favourite Java IDE. This is a lot of GBs to download so please make
-sure to have all this stuff installed before the conference workshop, as the
-conference wifi may be slow, so you might not be able to run the samples.**
+**You need: Java 25+, Docker, Ollama, and your favourite Java IDE.**
 
 ### Java development tooling
 
-* Java 21+ you can use [sdkman.io](https://sdkman.io/)
-* [Maven](https://maven.apache.org/index.html)
-* Favourite Java IDE one of
-    * [IntelliJ](https://www.jetbrains.com/idea/download)
-    * [VSCode](https://code.visualstudio.com/)
+* Java 25+ — install via [sdkman.io](https://sdkman.io/): `sdk install java 25-open`
+* [Maven](https://maven.apache.org/index.html) (3.9.14 via included wrapper)
+* Favourite Java IDE:
+    * [IntelliJ](https://www.jetbrains.com/idea/download) (2025.1+)
+    * [VSCode](https://code.visualstudio.com/) with Java Extension Pack
     * [Eclipse Spring Tool Suite](https://spring.io/tools)
-
-### Http Client
-
-* Command line http client  [httpie](https://httpie.io/) is recommended, the instructions use it, if
-  you don't have it please install it. If you are handy with [curl](https://curl.se/) you can use
-  that too.
 
 ### Containerization tools
 
-* [Docker](https://www.docker.com/products/docker-desktop) so we can use test containers & for local
-  dependencies
+* [Docker](https://www.docker.com/products/docker-desktop) for PostgreSQL/pgvector and observability stack
 
 ### Local AI Models
 
-[ollama](https://ollama.com/)  makes running models on your laptop easy and
-very educational. You can run the models locally and learn how they work.
+[Ollama](https://ollama.com/) makes running models on your laptop easy.
 
-* Install ollama by following the instructions on the [ollama website](https://ollama.com/)
-  this [YouTube video](https://www.youtube.com/watch?v=3Q6J6J7Q1Zo) shows the ollama install
-  process.
-
-## Save the conference Wi-Fi
-
-Please make sure that the software list above is installed on your laptop
-before the workshop starts. After install:
-
-1. Clone this repo to your laptop
-2. Run the `./download-deps.sh` script pull local AI models, and container
-   images.
-2. Run the `check-deps.sh` script to check that the all the required
-   software is installed, the output of the script on my machine looks like.
-
-```text
-./check-deps.sh 
-============================
-Checking Java installation:
-============================
-✅ Java is installed. Version details:
-openjdk version "25" 2025-09-16 LTS
-OpenJDK Runtime Environment Temurin-25+36 (build 25+36-LTS)
-OpenJDK 64-Bit Server VM Temurin-25+36 (build 25+36-LTS, mixed mode, sharing)
-
-===============================
-Checking Ollama installation:
-===============================
-✅ Ollama is installed. Version details:
-ollama version is 0.12.0
-
-========================================
-Checking if llama3.2 model is pulled:
-========================================
-✅ llama3.2 model is pulled and available.
-
-========================================
-Checking if mxbai-embed-large model is pulled:
-========================================
-✅ mxbai-embed-large model is pulled and available.
-
-========================================
-Checking if llava model is pulled:
-========================================
-✅ llava model is pulled and available.
-
-==============================
-Checking Docker installation:
-==============================
-✅ Docker is installed. Version details:
-Docker version 28.1.1, build 4eba377
-
-Checking Docker image: pgvector/pgvector:pg17
-✅ Docker image pgvector/pgvector:pg17 is pulled.
-
-Checking Docker image: dpage/pgadmin4:9.8.0
-✅ Docker image dpage/pgadmin4:9.8.0 is pulled.
-
-===============================
-Checking HTTPie installation:
-===============================
-✅ HTTPie is installed. Version details:
-3.2.4
+```bash
+# Install Ollama, then pull required models:
+ollama pull mistral             # Chat model (7B, default)
+ollama pull nomic-embed-text    # Embedding model (768 dims)
+ollama pull llava               # Multimodal model (image+text)
 ```
 
-If you run into issues try running the commands in the `check-deps.sh`
-script one at a time.
+**16 GB macOS:** mistral + nomic-embed-text = ~9 GB active RAM. llava loads on-demand for multimodal demos only.
+
+### Infrastructure
+
+```bash
+# Start PostgreSQL + pgvector
+docker compose -f docker/postgres/docker-compose.yaml up -d
+
+# Start observability stack (Grafana LGTM)
+docker compose -f docker/observability-stack/docker-compose.yaml up -d
+```
+
+---
+
+## Quick Start
+
+```bash
+# Build everything
+./mvnw clean compile
+
+# Run with Ollama (local, no API keys needed)
+./mvnw spring-boot:run -pl applications/provider-ollama \
+  -Dspring-boot.run.profiles=pgvector,observation
+
+# Test it
+curl "http://localhost:8080/chat/01/joke?topic=spring"
+curl "http://localhost:8080/rag/01/load"
+curl "http://localhost:8080/rag/01/query?topic=mountain+bike"
+
+# View traces in Grafana
+open http://localhost:3000
+```
+
+---
 
 ## API Keys
 
-You will be provided with API keys for online AI services during the
-workshop, these keys will only be valid during the workshop. Highly
-recommend you get your own keys to continue experimenting after
-the workshop.
+For cloud AI providers, create `src/main/resources/creds.yaml` in the provider app (gitignored):
 
 ### OpenAI
 
-* You need an OpenAI API key to run the examples with OpenAI.
-* Refer
-  to [this page](https://help.openai.com/en/articles/4936850-where-do-i-find-my-openai-api-key) to
-  get an API key.
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: sk-...your-key...
+```
 
-# Outline
+Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
-Generative AI is a transformational technology impacting our world in profound ways and creating
-unprecedented opportunities. This workshop is designed for Spring developers looking to add
-generative AI to existing applications or to implement brand new AI apps using the Spring AI
-project.
+---
 
-We assume no previous AI experience. The workshop will teach you key AI concepts and how to apply
-them in your applications, using the Spring AI project.
+## Outline
 
-The workshop is hands-on. Bring your laptop and a willingness to learn. We will provide Spring AI
-based sample code and the API keys for the AI services. By the end of the day you will know how to
-add generative AI features to your Spring apps.
+Generative AI is a transformational technology. This workshop is designed for Spring developers looking to add generative AI to existing applications or to implement new AI apps using Spring AI.
 
-### Key Concepts covered:
+We assume no previous AI experience. The workshop teaches key AI concepts and how to apply them using the Spring AI project.
 
-- A Concise History of AI/ML
-- Introduction to Generative AI Models
-- Prompt Engineering Techniques & Best Practices
-- Vector Databases
-- RAG: Retrieval Augmented Generation
-- Extending LLMs with Function Calling
-- Evaluation: How to tell if the AI is doing what you think it should be doing
-- Architecture of AI powered applications
-- How to integrate AI into existing applications
-- The landscape of tools and libraries of building AI powered applications
+### Workshop Stages (Learning Path):
 
-### Hands on Code Exercises with Spring AI:
+1. **Chat Fundamentals** — ChatModel, ChatClient, prompt templates, structured output, tool calling, streaming
+2. **Embeddings** — vector generation, similarity, chunking, document readers (JSON, Text, PDF)
+3. **Vector Stores** — pgvector, similarity search, in-memory vs persistent
+4. **AI Patterns** — stuff-the-prompt, RAG (manual + advisor), chat memory
+5. **Advanced Agents** — chain-of-thought, self-reflection (writer + critic)
+6. **MCP** — Model Context Protocol (stdio, HTTP, dynamic tools, resources, prompts)
+7. **Agentic Systems** — inner monologue, model-directed loop, Spring Shell CLIs
+8. **Observability** — distributed tracing, metrics, logs with OpenTelemetry + Grafana LGTM
 
-- Quickstart: Creating a “Hello World” application for Generative AI in just minutes
-- Prompt Engineering Techniques using Prompt Templating and Roles
-- Mapping AI output to POJOs
-- Implementing RAG (Retrieval Augmented Generation)
-- Exploring Function calling: Enable the AI to access APIs on demand
-- Evaluation Driven Development
-- Using Spring AI with GraalVM
+See [migration/flow.md](migration/flow.md) for the detailed demo flow with all endpoints.
+
+---
 
 ## Repo Organization
 
-Spring AI provides a consistent API to work with many different types of AI
-providers. For example, the same code wil work with OpenAI, Google Vertex AI,
-Azure OpenAI, and local AI models. The major directories in this repo are:
+Spring AI provides a consistent API across many AI providers. The same code works with OpenAI, Google, Azure, Anthropic, AWS Bedrock, and local Ollama models.
 
-- **/components/data/** this directory contains various types of example data sets used
-    by the examples in the repo.
-- **/components/api/** this directory contains the code that interacts with the AI
-  providers. The code in this directory is the same for all the AI providers.
-  Each project in this directory focuses on a different aspect of the Spring
-  AI API, within a project you will see that the package names end with
-  numbers indicating the order in which the code in each project should be
-  studied.
-- **/components/patterns/** this directory contains the code that demonstrates how to
-  use the Spring AI API to implement common AI application patterns such as
-  retrieval augmented generation. The code in this directory is the same for
-  all the AI providers.
-- **/applications/** this directory contains the spring boot applications  
-  that interact with the specific AI providers. The configuration of each
-  project in this directory is different, for example, setting API keys and
-  configuring the AI service with the correct endpoint. To try out the samples
-  in this repo you will be launching the apps in this directory. Each
-  subdirectory contains a readme.md file with instructions on how to run the
-  application.
-  -**/pgvector/** this directory contains a docker compose file to launch
-  postgres with the pgvector extension. This is used to demonstrate how to
-  use vector databases with Spring AI.
+- **`/components/data/`** — shared datasets (bikes, customers, products, orders)
+- **`/components/apis/`** — provider-independent API demos (chat, embedding, vector-store, audio, image)
+- **`/components/patterns/`** — AI patterns (RAG, chat memory, stuff-prompt, chain-of-thought, self-reflection, distributed tracing)
+- **`/components/config-pgvector/`** — PgVector auto-configuration (profile-based)
+- **`/applications/`** — provider-specific Spring Boot apps (ollama, openai, anthropic, azure, google, aws, gateway)
+- **`/mcp/`** — Model Context Protocol demos (stdio, HTTP, client, dynamic tools, capabilities)
+- **`/agentic-system/`** — agentic AI patterns (inner monologue, model-directed loop)
+- **`/docker/`** — infrastructure (PostgreSQL/pgvector, Grafana LGTM observability stack)
+- **`/migration/`** — upgrade documentation, test results, model mapping
 
-- **docs/** this directory contains the documentation for the repo.
+## AI Provider Options
 
-## Recommendations to get the most out of the repo
+| Provider | Chat | Embedding | Multimodal | Tool Calling | Local | Test Status |
+|----------|------|-----------|------------|--------------|-------|-------------|
+| **Ollama** | mistral (7B) | nomic-embed-text | llava (auto) | Yes | Yes | 44/44 PASS |
+| **OpenAI** | gpt-4o-mini | text-embedding-3 | gpt-4o | Yes | No | 44/44 PASS |
+| **Anthropic** | Claude (direct API) | - | Claude 3+ | Yes | No | 14/14 PASS |
+| **Azure OpenAI** | gpt-4.1-mini | text-embedding-3 | gpt-4o | Yes | No | 8/8 PASS |
+| **Google** | Gemini 2.5 Flash | text-embedding-004 | Gemini | Yes | No | 13/13 PASS |
+| **AWS Bedrock** | Amazon Nova Lite | - | - | Yes | No | 8/8 PASS |
 
-1. Run the samples with the different AI providers to see how the same code
-   works with different providers.
-2. Run the gateway application and inspect the API requests/responses to see
-   what interaction with the AI projects looks like on the wire.
-3. Make sure to run ollama and download the llama3 model to see how easy it
-   is to run local AI models.
-4. The code in this repo is designed to be read in order, so start with the
-   code in the api directory and work your way through the projects. Once
-   you have looked at the code in the api directory move on to the code in
-   the patterns' directory.
-5. Spring AI project is evolving quickly, it is possible that the code in
-   this repo will be using a snapshot release of the Spring AI project, or
-   that it falls behind the latest version. If you run into problem with
-   this repo, send a pull request or open an issue. 
+## Spring Profiles
+
+| Profile | Purpose |
+|---------|---------|
+| `pgvector` | PostgreSQL vector store (instead of in-memory) |
+| `spy` | Route traffic through gateway for inspection |
+| `observation` | Full observability (traces + metrics + logs to LGTM) |
+
+## Recommendations
+
+1. Start with **Ollama** — no API keys needed, all core demos work locally
+2. Follow the stages in order (chat -> embeddings -> vectors -> patterns -> agents)
+3. Run with `observation` profile and explore traces in Grafana
+4. Try the same demos with different providers to see Spring AI's portability
+5. See [migration/model_mapping.md](migration/model_mapping.md) for the full provider compatibility matrix

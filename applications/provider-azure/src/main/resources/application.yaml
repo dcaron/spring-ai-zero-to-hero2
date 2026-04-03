@@ -5,16 +5,12 @@ spring:
   profiles:
     active: #pgvector
   ai:
-    vectorstore:
-      azure:
-        initialize-schema: true
-        index-name: spring-ai-document-index
     azure:
       openai:
         chat:
           options:
-            functions:
-              - weatherFunction
+
+
             temperature: 0.7
 management:
   tracing:
@@ -43,8 +39,3 @@ spring:
     username: postgres
     password: password
   ai:
-    vectorstore:
-      pgvector:
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
-        dimension: 1536

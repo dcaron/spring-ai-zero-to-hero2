@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active:  spy
+    active:  # spy
   config:
     import: "optional:classpath:/creds.yaml"
   ai:

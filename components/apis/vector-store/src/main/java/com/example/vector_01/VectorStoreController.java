@@ -1,6 +1,7 @@
 package com.example.vector_01;
 
 import com.example.data.DataFiles;
+import com.example.tracing.TracedEndpoint;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.JsonReader;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/vector/01")
 public class VectorStoreController {
@@ -37,8 +40,13 @@ public class VectorStoreController {
             this.dataFiles.getBikesResource(), "name", "price", "shortDescription", "description");
     List<Document> documents = reader.get();
 
-    // add the documents to the vector store
-    this.vectorStore.add(documents);
+    // chunk documents to fit embedding model context window (e.g., Ollama nomic-embed-text)
+    TokenTextSplitter splitter = new TokenTextSplitter();
+    List<Document> chunks = splitter.apply(documents);
+    logger.info("Split {} documents into {} chunks", documents.size(), chunks.size());
+
+    // add the chunked documents to the vector store
+    this.vectorStore.add(chunks);
 
     var fileLocationMessage = "";
     if (vectorStore instanceof SimpleVectorStore) {

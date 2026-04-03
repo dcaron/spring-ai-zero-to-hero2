@@ -2,18 +2,21 @@ package com.example.rag_01;
 
 import com.example.JsonReader2;
 import com.example.data.DataFiles;
+import com.example.tracing.TracedEndpoint;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentReader;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/rag/01")
 public class RagController {
@@ -36,9 +39,14 @@ public class RagController {
             this.dataFiles.getBikesResource(), "name", "price", "shortDescription", "description");
     List<Document> documents = reader.get();
 
-    // add the documents to the vector store
-    this.vectorStore.add(documents);
-    return "vector store loaded with %s documents".formatted(documents.size());
+    // chunk documents to fit embedding model context window
+    TokenTextSplitter splitter = new TokenTextSplitter();
+    List<Document> chunks = splitter.apply(documents);
+
+    // add the chunked documents to the vector store
+    this.vectorStore.add(chunks);
+    return "vector store loaded with %s chunks from %s documents"
+        .formatted(chunks.size(), documents.size());
   }
 
   @GetMapping("query")

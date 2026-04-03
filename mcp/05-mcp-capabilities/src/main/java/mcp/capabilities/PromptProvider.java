@@ -15,8 +15,6 @@
  */
 package mcp.capabilities;
 
-import com.logaritex.mcp.annotation.McpArg;
-import com.logaritex.mcp.annotation.McpPrompt;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema.GetPromptRequest;
 import io.modelcontextprotocol.spec.McpSchema.GetPromptResult;
@@ -27,6 +25,8 @@ import io.modelcontextprotocol.spec.McpSchema.Role;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import java.util.List;
 import java.util.Map;
+import org.springframework.ai.mcp.annotation.McpArg;
+import org.springframework.ai.mcp.annotation.McpPrompt;
 import org.springframework.stereotype.Service;
 
 /**

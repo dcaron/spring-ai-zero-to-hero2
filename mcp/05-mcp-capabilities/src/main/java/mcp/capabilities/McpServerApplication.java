@@ -15,11 +15,11 @@
  */
 package mcp.capabilities;
 
-import com.logaritex.mcp.spring.SpringAiMcpAnnotationProvider;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncCompletionSpecification;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncPromptSpecification;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncResourceSpecification;
 import java.util.List;
+import org.springframework.ai.mcp.annotation.spring.SyncMcpAnnotationProviders;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.SpringApplication;
@@ -38,22 +38,20 @@ public class McpServerApplication {
     return MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
   }
 
-  @Bean
+  @Bean("customResourceSpecs")
   public List<SyncResourceSpecification> resourceSpecs(
       UserProfileResourceProvider userProfileResourceProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncResourceSpecifications(
-        List.of(userProfileResourceProvider));
+    return SyncMcpAnnotationProviders.resourceSpecifications(List.of(userProfileResourceProvider));
   }
 
-  @Bean
+  @Bean("customPromptSpecs")
   public List<SyncPromptSpecification> promptSpecs(PromptProvider promptProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncPromptSpecifications(List.of(promptProvider));
+    return SyncMcpAnnotationProviders.promptSpecifications(List.of(promptProvider));
   }
 
-  @Bean
+  @Bean("customCompletionSpecs")
   public List<SyncCompletionSpecification> completionSpecs(
       AutocompleteProvider autocompleteProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncCompleteSpecifications(
-        List.of(autocompleteProvider));
+    return SyncMcpAnnotationProviders.completeSpecifications(List.of(autocompleteProvider));
   }
 }

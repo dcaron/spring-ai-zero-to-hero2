@@ -6,7 +6,7 @@ For more information, see the [MCP Server Boot Starter](https://docs.spring.io/s
 
 ## Prerequisites
 
-- Java 17 or later
+- Java 25 or later
 - Maven 3.6 or later
 - Understanding of Spring Boot and Spring AI concepts
 - (Optional) Claude Desktop for AI assistant integration

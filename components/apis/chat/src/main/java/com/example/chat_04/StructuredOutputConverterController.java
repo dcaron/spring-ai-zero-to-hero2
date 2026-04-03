@@ -1,5 +1,6 @@
 package com.example.chat_04;
 
+import com.example.tracing.TracedEndpoint;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController()
 @RequestMapping("/chat/04")
 public class StructuredOutputConverterController {
@@ -69,8 +71,11 @@ public class StructuredOutputConverterController {
             u ->
                 u.text(
                         """
-                Provide a list of the plays written by {author}.
-                Provide only the list no other commentary.
+                Provide a JSON object about the playwright {author} with the following keys:
+                - "author": the author's full name
+                - "birthYear": year of birth as a number
+                - "plays": an array of play titles (strings)
+                Return ONLY valid JSON, no other text or commentary.
                 """)
                     .param("author", topic))
         .call()

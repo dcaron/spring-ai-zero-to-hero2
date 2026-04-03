@@ -18,10 +18,12 @@ package com.example;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
 import java.util.Map;
+import tools.jackson.databind.json.JsonMapper;
 
 /** With stdio transport, the MCP server is automatically started by the client. */
 public class ClientStdio {
@@ -38,7 +40,11 @@ public class ClientStdio {
                 "mcp/01-basic-stdio-mcp-server/target/01-basic-stdio-mcp-server-0.0.1-SNAPSHOT.jar")
             .build();
 
-    var client = McpClient.sync(new StdioClientTransport(stdioParams)).build();
+    var client =
+        McpClient.sync(
+                new StdioClientTransport(
+                    stdioParams, new JacksonMcpJsonMapper(JsonMapper.builder().build())))
+            .build();
 
     client.initialize();
 

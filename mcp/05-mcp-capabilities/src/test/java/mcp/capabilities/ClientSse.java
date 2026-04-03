@@ -16,7 +16,7 @@
 package mcp.capabilities;
 
 import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.CompleteRequest;
@@ -37,7 +37,7 @@ public class ClientSse {
 
   public static void main(String[] args) {
 
-    var transport = HttpClientSseClientTransport.builder("http://localhost:8080").build();
+    var transport = HttpClientStreamableHttpTransport.builder("http://localhost:8080").build();
 
     var client =
         McpClient.sync(transport)

@@ -15,13 +15,13 @@
  */
 package mcp.capabilities;
 
-import com.logaritex.mcp.annotation.McpComplete;
 import io.modelcontextprotocol.spec.McpSchema.CompleteRequest;
 import io.modelcontextprotocol.spec.McpSchema.CompleteResult;
 import io.modelcontextprotocol.spec.McpSchema.CompleteResult.CompleteCompletion;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.ai.mcp.annotation.McpComplete;
 import org.springframework.stereotype.Service;
 
 /**

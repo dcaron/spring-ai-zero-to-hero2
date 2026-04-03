@@ -3,11 +3,11 @@ package com.example.data;
 import com.example.model.Customer;
 import com.example.model.Order;
 import com.example.model.Product;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class DataFiles {

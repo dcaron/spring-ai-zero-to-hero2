@@ -1,6 +1,7 @@
 package com.example;
 
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.stripPrefix;
+import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
 import static org.springframework.cloud.gateway.server.mvc.filter.BodyFilterFunctions.adaptCachedBody;
 import static org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions.route;
 import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions.http;
@@ -38,10 +39,14 @@ public class RouteConfig {
   public RouterFunction<ServerResponse> readBodyRoute(
       HttpServletRequest httpServletRequest, OpenAiAuditor openAiAuditor) {
     return route("openai")
-        .route(path("/letta/**"), http("https://api.openai.com/v1"))
-        .route(path("/openai/**"), http("https://api.openai.com/v1/chat/completions"))
-        .route(path("/anthropic/**"), http("https://api.anthropic.com"))
-        .route(path("/ollama/**"), http("http://localhost:11434/"))
+        .route(path("/letta/**"), http())
+        .before(uri("https://api.openai.com/v1"))
+        .route(path("/openai/**"), http())
+        .before(uri("https://api.openai.com/v1/chat/completions"))
+        .route(path("/anthropic/**"), http())
+        .before(uri("https://api.anthropic.com"))
+        .route(path("/ollama/**"), http())
+        .before(uri("http://localhost:11434/"))
         .before(stripPrefix(1))
         .before(
             request -> {

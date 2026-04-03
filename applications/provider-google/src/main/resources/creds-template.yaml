@@ -1,16 +1,24 @@
+# Copy this file to creds.yaml and fill in your credentials.
 #
-#  You need to run these commands to make sure that google libraries can find
-# the credentials to access the Google cloud services:
+# Option 1: Gemini API Key (simplest)
+#   Get a key at: https://aistudio.google.com/apikey
 #
-# gcloud config set project PROJECT_ID &&
-# gcloud auth application-default set-quota-project POJECT_ID
-# gcloud auth application-default login ACCOUNT
-#
-#
+# Option 2: Vertex AI (GCP project)
+#   gcloud config set project PROJECT_ID
+#   gcloud auth application-default set-quota-project PROJECT_ID
+#   gcloud auth application-default login
 spring:
   ai:
-    vertex:
-      ai:
-        gemini:
-          project-id:
-          location:
+    google:
+      genai:
+        api-key: ...your-api-key-here...
+        project-id: your-project-id
+        chat:
+          options:
+            model: gemini-2.5-flash
+        embedding:
+          api-key: ...your-api-key-here...
+          project-id: your-project-id
+          text:
+            options:
+              model: text-embedding-004

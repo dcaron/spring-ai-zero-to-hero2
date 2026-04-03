@@ -15,9 +15,6 @@
  */
 package com.example;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +27,9 @@ import org.springframework.ai.document.DocumentReader;
 import org.springframework.ai.reader.EmptyJsonMetadataGenerator;
 import org.springframework.ai.reader.JsonMetadataGenerator;
 import org.springframework.core.io.Resource;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Temporal replacement of a bogus JsonReader in 1.0.0-M2.

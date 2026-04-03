@@ -5,16 +5,12 @@ spring:
     active: #pgvector
   ai:
     bedrock:
-#      titan:
-#        chat:
-#          enabled: true
-#        embedding:
-#          enabled: true
-      cohere:
+      aws:
+        region: eu-central-1
+      converse:
         chat:
-          enabled: true
-        embedding:
-          enabled: true
+          options:
+            model: eu.amazon.nova-lite-v1:0
 management:
   endpoint:
     health:

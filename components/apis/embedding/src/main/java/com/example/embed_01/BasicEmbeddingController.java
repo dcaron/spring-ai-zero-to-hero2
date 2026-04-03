@@ -1,9 +1,11 @@
 package com.example.embed_01;
 
+import com.example.tracing.TracedEndpoint;
 import java.util.Map;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.web.bind.annotation.*;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/embed/01")
 public class BasicEmbeddingController {

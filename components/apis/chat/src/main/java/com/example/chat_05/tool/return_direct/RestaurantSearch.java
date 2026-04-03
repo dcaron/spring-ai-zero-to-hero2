@@ -1,7 +1,5 @@
 package com.example.chat_05.tool.return_direct;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.ai.tool.annotation.Tool;
@@ -32,9 +30,9 @@ public class RestaurantSearch {
       returnDirect = true)
   public List<Restaurant> searchForRestaurantsIn(
       @ToolParam(description = "The date for the desired restaurant reservation in ISO format")
-          LocalDate date,
+          String date,
       @ToolParam(description = "The time of day that the reservation is needed for in ISO format")
-          LocalTime time,
+          String time,
       @ToolParam(description = "The type of cuisine served by the restaurant") String cuisine,
       @ToolParam(description = "The number of people that the reservation must accommodate")
           Integer partySize,

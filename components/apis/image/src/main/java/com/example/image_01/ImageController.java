@@ -1,5 +1,6 @@
 package com.example.image_01;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImageOptionsBuilder;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/image/01")
 public class ImageController {

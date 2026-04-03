@@ -1,8 +1,7 @@
 package com.example.rag.bikes;
 
 import com.example.data.DataFiles;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.tracing.TracedEndpoint;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -15,7 +14,10 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/vector/")
 public class BikesController {

@@ -1,10 +1,13 @@
+# Copy this file to creds.yaml and fill in your Azure OpenAI credentials.
+# Create resource: az cognitiveservices account create --name NAME --resource-group RG --location eastus --kind OpenAI --sku S0
+# Deploy model: az cognitiveservices account deployment create --name NAME --resource-group RG --deployment-name gpt-41-mini --model-name gpt-4.1-mini --model-version "2025-04-14" --model-format OpenAI --sku-capacity 1 --sku-name Standard
+# Get key: az cognitiveservices account keys list --name NAME --resource-group RG
 spring:
   ai:
     azure:
       openai:
-        api-key: INSERT_KEY_HERE
-        endpoint: INSERT_ENDPOINT_HERE # e.g. https://ENDPOINT_NAME.openai.azure.com
+        api-key: ...your-key-here...
+        endpoint: https://your-resource.openai.azure.com/
         chat:
           options:
-            deployment-name: "gpt-4o"
-            #deployment-name: "gpt-35-turbo-16k"
+            deployment-name: gpt-41-mini

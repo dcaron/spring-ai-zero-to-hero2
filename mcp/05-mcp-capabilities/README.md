@@ -1,7 +1,7 @@
 # Spring AI MCP Capabilities Sample
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java Version](https://img.shields.io/badge/Java-17%2B-orange)](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)
+[![Java Version](https://img.shields.io/badge/Java-25%2B-orange)](https://www.oracle.com/java/technologies/downloads/)
 
 This sample project demonstrates how to create an MCP server using Spring AI's MCP annotations. It showcases a comprehensive implementation of MCP server capabilities including tools, resources, prompts, and completions using a clean, declarative approach with Java annotations.
 
@@ -29,7 +29,7 @@ For more information, see the [Spring AI Documentation](https://docs.spring.io/s
 
 The sample showcases a comprehensive MCP server implementation with:
 - Integration with `spring-ai-mcp-server-webmvc-spring-boot-starter`
-- Support for both SSE (Server-Sent Events) and STDIO transports
+- Support for both Streamable HTTP and STDIO transports
 - Automatic registration of MCP capabilities using annotations:
   - `@Tool` for tool registration
   - `@McpResource` for resource registration
@@ -52,9 +52,8 @@ The project requires the Spring AI MCP Server WebMVC Boot Starter and MCP Annota
 
 ```xml
 <dependency>
-    <groupId>com.logaritex.mcp</groupId>
+    <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-mcp-annotations</artifactId>
-    <version>0.1.0</version>
 </dependency>
 <dependency>
     <groupId>org.springframework.ai</groupId>
@@ -62,9 +61,11 @@ The project requires the Spring AI MCP Server WebMVC Boot Starter and MCP Annota
 </dependency>
 ```
 
+The `spring-ai-mcp-annotations` version is managed by the Spring AI BOM.
+
 These dependencies provide:
 - HTTP-based transport using Spring MVC (`WebMvcSseServerTransport`)
-- Auto-configured SSE endpoints
+- Auto-configured Streamable HTTP endpoints
 - Optional STDIO transport
 - Annotation-based method handling for MCP operations
 
@@ -79,7 +80,7 @@ Build the project using Maven:
 
 The server supports two transport modes:
 
-### WebMVC SSE Mode (Default)
+### WebMVC Streamable HTTP Mode (Default)
 ```bash
 java -jar target/05-mcp-capabilities-0.0.1-SNAPSHOT.jar
 ```
@@ -120,19 +121,19 @@ public class McpServerApplication {
   @Bean
   public List<SyncResourceSpecification> resourceSpecs(
       UserProfileResourceProvider userProfileResourceProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncResourceSpecifications(
+    return SyncMcpAnnotationProviders.createSyncResourceSpecifications(
         List.of(userProfileResourceProvider));
   }
 
   @Bean
   public List<SyncPromptSpecification> promptSpecs(PromptProvider promptProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncPromptSpecifications(List.of(promptProvider));
+    return SyncMcpAnnotationProviders.createSyncPromptSpecifications(List.of(promptProvider));
   }
 
   @Bean
   public List<SyncCompletionSpecification> completionSpecs(
       AutocompleteProvider autocompleteProvider) {
-    return SpringAiMcpAnnotationProvider.createSyncCompleteSpecifications(
+    return SyncMcpAnnotationProviders.createSyncCompleteSpecifications(
         List.of(autocompleteProvider));
   }
 }
@@ -315,16 +316,16 @@ public class AutocompleteProvider {
 
 ## MCP Clients 
 
-You can connect to the server using either STDIO or SSE transport:
+You can connect to the server using either STDIO or Streamable HTTP transport:
 
 ### Manual Clients
 
-#### WebMVC SSE Client
+#### WebMVC Streamable HTTP Client
 
-For servers using SSE transport:
+For servers using Streamable HTTP transport:
 
 ```java
-var transport = HttpClientSseClientTransport.builder("http://localhost:8080").build();
+var transport = HttpClientStreamableHttpTransport.builder("http://localhost:8080").build();
 var client = McpClient.sync(transport)
     .loggingConsumer(message -> {
         System.out.println(">> Client Logging: " + message);
@@ -353,11 +354,11 @@ var client = McpClient.sync(transport).build();
 ```
 
 The sample project includes an example client implementation:
-- [ClientSse.java](src/test/java/mcp/capabilities/ClientSse.java): SSE transport connection example
+- [ClientSse.java](src/test/java/mcp/capabilities/ClientSse.java): Streamable HTTP transport connection example
 
 ### Boot Starter Clients
 
-For a better development experience, consider using the [MCP Client Boot Starters](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-client-boot-starter-docs.html). These starters enable auto-configuration of multiple STDIO and/or SSE connections to MCP servers.
+For a better development experience, consider using the [MCP Client Boot Starters](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-client-boot-starter-docs.html). These starters enable auto-configuration of multiple STDIO and/or HTTP connections to MCP servers.
 
 #### STDIO Transport
 
@@ -389,7 +390,7 @@ java -Dspring.ai.mcp.client.stdio.servers-configuration=file:mcp-servers-config.
  -jar mcp-starter-default-client-0.0.1-SNAPSHOT.jar
 ```
 
-#### SSE (WebMVC) Transport
+#### Streamable HTTP (WebMVC) Transport
 
 1. Start the MCP capabilities server:
 
@@ -397,10 +398,10 @@ java -Dspring.ai.mcp.client.stdio.servers-configuration=file:mcp-servers-config.
 java -jar target/05-mcp-capabilities-0.0.1-SNAPSHOT.jar
 ```
 
-2. In another console, start the client configured with SSE transport:
+2. In another console, start the client configured with Streamable HTTP transport:
 
 ```bash
-java -Dspring.ai.mcp.client.sse.connections.capabilities-server.url=http://localhost:8080 \
+java -Dspring.ai.mcp.client.http.connections.capabilities-server.url=http://localhost:8080 \
  -Dlogging.pattern.console= \
  -Dai.user.input='What is the weather in NY?' \
  -jar mcp-starter-default-client-0.0.1-SNAPSHOT.jar
@@ -412,7 +413,7 @@ The following example demonstrates how to use the client to interact with the se
 
 ```java
 // Initialize the client
-var transport = HttpClientSseClientTransport.builder("http://localhost:8080").build();
+var transport = HttpClientStreamableHttpTransport.builder("http://localhost:8080").build();
 var client = McpClient.sync(transport)
     .loggingConsumer(message -> {
         System.out.println(">> Client Logging: " + message);

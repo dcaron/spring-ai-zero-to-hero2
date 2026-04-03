@@ -3,11 +3,9 @@ package com.example.command.agent;
 import com.example.JsonUtils;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import org.jline.terminal.Terminal;
-import org.springframework.shell.command.annotation.Command;
-import org.springframework.shell.command.annotation.Option;
+import org.springframework.shell.core.command.annotation.Command;
+import org.springframework.shell.core.command.annotation.Option;
 
-@Command(group = "Agent Commands")
 public class AgentCommands {
 
   private static final List<String> MATRIX_AGENT_NAMES =
@@ -24,17 +22,15 @@ public class AgentCommands {
           "dozer");
 
   private final AgentContext agentContext;
-  private final Terminal terminal;
   private final JsonUtils jsonUtils;
 
-  public AgentCommands(AgentContext agentContext, Terminal terminal, JsonUtils jsonUtils) {
+  public AgentCommands(AgentContext agentContext, JsonUtils jsonUtils) {
     this.agentContext = agentContext;
-    this.terminal = terminal;
     this.jsonUtils = jsonUtils;
   }
 
-  @Command(command = "create", description = "Create a new agent")
-  public void create(@Option(longNames = "id", required = false) String id) {
+  @Command(name = "create", description = "Create a new agent")
+  public void create(@Option(longName = "id", required = false) String id) {
     if (id == null || id.isBlank()) {
       id = generateUniqueAgentId();
     }
@@ -67,8 +63,8 @@ public class AgentCommands {
     }
   }
 
-  @Command(command = "target", description = "set the agent to send messages to")
-  public void targetAgent(@Option(longNames = "id", required = true) String id) {
+  @Command(name = "target", description = "set the agent to send messages to")
+  public void targetAgent(@Option(longName = "id", required = true) String id) {
     List<String> ids = agentContext.listAgents();
     if (!ids.contains(id)) {
       System.out.println("[ERROR] No agent with ID: " + id + " on server.");
@@ -81,7 +77,7 @@ public class AgentCommands {
     refreshPrompt();
   }
 
-  @Command(command = "send", description = "Send a message to the current agent")
+  @Command(name = "send", description = "Send a message to the current agent")
   public void send(String text) {
     String agentId = agentContext.getCurrentAgentId();
     if (agentId == null) {
@@ -102,7 +98,7 @@ public class AgentCommands {
     printChat();
   }
 
-  @Command(command = "log", description = "Show the current chat log")
+  @Command(name = "log", description = "Show the current chat log")
   public void log() {
     if (agentContext.getCurrentAgentId() == null) {
       System.out.println("[ERROR] No active agent. Use `agent create` or `agent switch` first.");
@@ -111,7 +107,7 @@ public class AgentCommands {
     printChat();
   }
 
-  @Command(command = "status", description = "Show the currently active agent")
+  @Command(name = "status", description = "Show the currently active agent")
   public void status() {
     String agentId = agentContext.getCurrentAgentId();
     if (agentId == null) {
@@ -124,7 +120,7 @@ public class AgentCommands {
     System.out.println(json);
   }
 
-  @Command(command = "list", description = "List all created agents")
+  @Command(name = "list", description = "List all created agents")
   public void list() {
     List<String> ids = agentContext.listAgents();
 
@@ -148,7 +144,6 @@ public class AgentCommands {
   }
 
   private void refreshPrompt() {
-    this.terminal.writer().println(); // moves cursor to new line if needed
-    terminal.flush(); // force update
+    System.out.println(); // move cursor to next line
   }
 }

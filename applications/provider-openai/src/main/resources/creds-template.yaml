@@ -1,5 +1,6 @@
-# copy this file to creds.yaml and fill in the api-key
+# Copy this file to creds.yaml and fill in your API key.
+# Get a key at: https://platform.openai.com/api-keys
 spring:
   ai:
     openai:
-      api-key: INSERT_KEY_HERE
+      api-key: sk-...your-key-here...

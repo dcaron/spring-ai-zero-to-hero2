@@ -182,8 +182,8 @@ The MCP client supports multiple transport types:
    - Servers are started as child processes by the client
    - Configuration is provided in the mcp-servers-config.json file
 
-2. **SSE Transport** (commented out in application.yaml)
-   - Communicates with MCP servers using Server-Sent Events over HTTP
+2. **HTTP Transport** (commented out in application.yaml)
+   - Communicates with MCP servers using Streamable HTTP
    - Servers must be running separately from the client
    - Configuration is provided in the application.yaml file
 

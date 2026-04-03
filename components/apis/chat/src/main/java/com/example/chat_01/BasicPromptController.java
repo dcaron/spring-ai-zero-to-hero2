@@ -1,8 +1,10 @@
 package com.example.chat_01;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.web.bind.annotation.*;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/chat/01")
 public class BasicPromptController {

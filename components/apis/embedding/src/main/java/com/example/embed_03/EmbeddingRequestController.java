@@ -1,6 +1,7 @@
 package com.example.embed_03;
 
 import com.example.data.DataFiles;
+import com.example.tracing.TracedEndpoint;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/embed/03")
 public class EmbeddingRequestController {

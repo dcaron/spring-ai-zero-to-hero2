@@ -1,25 +1,38 @@
-# Anthropic 
+# Anthropic
 
-To run the sample application you will need an Anthropic API key. The key
-needs to be stored `src/main/resources/creds.yaml` file. 
+**Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | spring-ai-starter-model-anthropic**
 
-If you have your own api key, copy the `src/main/resources/creds-template.
-yaml` to `src/main/resources/creds.yaml` and add your key.
+To run the sample application you will need an Anthropic API key.
 
-If you don't have your own key the instructor will provide you with `creds.yaml`
-file you will need to put this file in `src/main/resources/creds.yaml`.
+## Setup
 
-Run the application, it is better to run the app from the IDE so that you can 
-put breakpoints.
+Copy `src/main/resources/creds-template.yaml` to `src/main/resources/creds.yaml` and add your key:
 
-## Anthorpic Does not Offer Embeddig Models
+```yaml
+spring:
+  ai:
+    anthropic:
+      api-key: sk-ant-...your-key...
+```
 
-From the docs https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic
+## Run
 
-> How to get embeddings with Anthropic
->
-> Anthropic does not offer its own embedding model. One embeddings provider that has a wide variety of options and capabilities encompassing all of the above considerations is Voyage AI.
->
-> Voyage AI makes state-of-the-art embedding models and offers customized models for specific industry domains such as finance and healthcare, or bespoke fine-tuned models for individual customers.
->
-> The rest of this guide is for Voyage AI, but we encourage you to assess a variety of embeddings vendors to find the best fit for your specific use case.
+```bash
+./mvnw spring-boot:run -pl applications/provider-anthropic
+```
+
+Or run from the IDE for breakpoints.
+
+## Models
+
+- **Chat:** Claude 3.5 Sonnet / Claude 4 (depending on your plan)
+- **Tool calling:** Yes (Claude 3+)
+- **Multimodal:** Yes (Claude 3+, image input)
+
+## Anthropic Does Not Offer Embedding Models
+
+From the [docs](https://docs.anthropic.com/en/docs/build-with-claude/embeddings):
+
+> Anthropic does not offer its own embedding model. One embeddings provider that has a wide variety of options and capabilities is Voyage AI.
+
+Embedding-dependent demos (vector stores, RAG) require a separate embedding provider or won't work with Anthropic alone.

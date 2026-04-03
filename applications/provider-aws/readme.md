@@ -1,14 +1,35 @@
-# AWS
+# AWS Bedrock
 
-To run the sample application you will need an Anthropic API key. The key
-needs to be stored `src/main/resources/creds.yaml` file.
+**Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | spring-ai-starter-model-bedrock-converse**
 
-If you have your own api key, copy the `src/main/resources/creds-template.
-yaml` to `src/main/resources/creds.yaml` and add your key.
+To run the sample application you will need AWS credentials configured.
+AWS Bedrock uses your AWS IAM credentials, not a separate API key.
 
-If you don't have your own key the instructor will provide you with `creds.yaml`
-file you will need to put this file in `src/main/resources/creds.yaml`.
+## Setup
 
-Run the application, it is better to run the app from the IDE so that you can
-put breakpoints.
+Configure AWS CLI credentials:
 
+```bash
+aws configure
+# Or set environment variables:
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_REGION=us-east-1
+```
+
+Copy `src/main/resources/creds-template.yaml` to `src/main/resources/creds.yaml`
+and configure the region and any model overrides.
+
+## Run
+
+```bash
+./mvnw spring-boot:run -pl applications/provider-aws
+```
+
+Or run from the IDE for breakpoints.
+
+## Models
+
+- **Chat:** Claude (via Bedrock) or Amazon Titan
+- **Embeddings:** Amazon Titan Embeddings
+- **Note:** Not all Spring AI demos may be available (no image/audio generation)

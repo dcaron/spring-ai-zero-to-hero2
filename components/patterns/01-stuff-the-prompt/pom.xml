@@ -20,5 +20,10 @@
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-client-chat</artifactId>
 		</dependency>
+			<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>04-distributed-tracing</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 	</dependencies>
 </project>

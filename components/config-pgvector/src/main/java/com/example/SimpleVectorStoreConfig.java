@@ -3,10 +3,7 @@ package com.example;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -14,10 +11,10 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @Profile("!pgvector")
 @EnableAutoConfiguration(
-    exclude = {
-      PgVectorStoreAutoConfiguration.class,
-      DataSourceAutoConfiguration.class,
-      FlywayAutoConfiguration.class
+    excludeName = {
+      "org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration",
+      "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration",
+      "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration"
     })
 public class SimpleVectorStoreConfig {
   @Bean

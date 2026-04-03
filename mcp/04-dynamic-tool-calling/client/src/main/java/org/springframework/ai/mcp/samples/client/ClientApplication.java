@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.mcp.customizer.McpSyncClientCustomizer;
+import org.springframework.ai.mcp.customizer.McpClientCustomizer;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -95,13 +95,10 @@ public class ClientApplication {
   }
 
   @Bean
-  McpSyncClientCustomizer customizeMcpClient() {
+  McpClientCustomizer<?> customizeMcpClient() {
     return (name, mcpClientSpec) -> {
-      mcpClientSpec.toolsChangeConsumer(
-          tv -> {
-            logger.info("\nMCP TOOLS CHANGE: " + tv);
-            latch.countDown();
-          });
+      logger.info("\nMCP Client customized: " + name);
+      latch.countDown();
     };
   }
 }

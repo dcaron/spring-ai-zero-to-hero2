@@ -1,5 +1,6 @@
 package com.example.audio_01;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/audio/01")
 public class TranscribeController {

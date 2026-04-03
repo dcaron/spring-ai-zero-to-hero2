@@ -119,7 +119,7 @@ The client connects to the server and registers a callback to be notified when t
 
 ```java
 @Bean
-McpSyncClientCustomizer customizeMcpClient() {
+McpClientCustomizer customizeMcpClient() {
   return (name, mcpClientSpec) -> {
     mcpClientSpec.toolsChangeConsumer(
         tv -> {
@@ -200,7 +200,7 @@ spring:
   ai:
     mcp:
       client:
-        sse:
+        http:
           connections:
             04-dynamic-tool-calling:
               url: http://localhost:8080

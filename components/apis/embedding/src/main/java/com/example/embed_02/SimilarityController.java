@@ -1,5 +1,6 @@
 package com.example.embed_02;
 
+import com.example.tracing.TracedEndpoint;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Stream;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/embed/02")
 public class SimilarityController {

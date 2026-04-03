@@ -1,22 +1,22 @@
 # Spring AI MCP Basic HTTP Server
 
-A Spring Boot starter project demonstrating how to build a Model Context Protocol (MCP) server that provides weather-related tools using the Open-Meteo API. This project showcases the Spring AI MCP Server Boot Starter capabilities with HTTP/SSE transport implementation.
+A Spring Boot starter project demonstrating how to build a Model Context Protocol (MCP) server that provides weather-related tools using the Open-Meteo API. This project showcases the Spring AI MCP Server Boot Starter capabilities with Streamable HTTP transport implementation.
 
 For more information, see the [MCP Server Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html) reference documentation.
 
 ## Prerequisites
 
-- Java 17 or later
+- Java 25 or later
 - Maven 3.6 or later
-- Understanding of Spring Boot, Spring WebFlux, and Spring AI concepts
+- Understanding of Spring Boot, Spring WebMVC, and Spring AI concepts
 - (Optional) Claude Desktop for AI assistant integration
 
-## About Spring AI MCP Server Boot Starter with WebFlux
+## About Spring AI MCP Server Boot Starter with WebMVC
 
-The `spring-ai-starter-mcp-server-webflux` provides:
+The `spring-ai-starter-mcp-server-webmvc` provides:
 - Automatic configuration of MCP server components
 - Support for both synchronous and asynchronous operation modes
-- HTTP/SSE transport layer implementation using Spring WebFlux
+- Streamable HTTP transport layer implementation using Spring WebMVC
 - Flexible tool registration through Spring beans
 - Change notification capabilities
 
@@ -39,7 +39,7 @@ src/
 
 ## Building and Running
 
-The server uses HTTP/SSE transport mode and needs to be started separately from the client. To build and run the server:
+The server uses Streamable HTTP transport mode and needs to be started separately from the client. To build and run the server:
 
 ```bash
 # Build the server jar
@@ -89,7 +89,7 @@ The project includes a test client implementation in `ClientHttp.java` that demo
 ```java
 var client =
     McpClient.sync(
-            new WebFluxSseClientTransport(WebClient.builder().baseUrl("http://localhost:8080")))
+            HttpClientStreamableHttpTransport.builder("http://localhost:8080").build())
         .build();
 
 client.initialize();
@@ -128,7 +128,7 @@ The MCP server can be integrated with CLINE, allowing the AI assistant to access
 3. Select the "Remote Servers" tab
 4. Enter the following information:
    - Server Name: `02-basic-http-mcp-server`
-   - Server URL: `http://localhost:8080/sse`
+   - Server URL: `http://localhost:8080/mcp`
 5. Click "Add Server"
 
 <img src="images/mcp-cline-1.png" alt="Adding MCP Server to CLINE" width="300" />
@@ -187,8 +187,8 @@ spring:
    - `ASYNC`: Uses `McpAsyncServer` for non-blocking operations with Project Reactor support
 
 2. **Transport Configuration**
-   - The WebFlux starter automatically configures the HTTP/SSE transport
-   - Default endpoint is `/mcp/message` for SSE communication
+   - The WebMVC starter automatically configures the Streamable HTTP transport
+   - Default endpoint is `/mcp` for Streamable HTTP communication
 
 ## Implementation Details
 
@@ -225,15 +225,15 @@ WeatherResponse response =
 The main differences between this HTTP server and the STDIO server (01-basic-stdio-mcp-server) are:
 
 1. **Transport Layer**:
-   - This server uses HTTP/SSE transport via Spring WebFlux
+   - This server uses Streamable HTTP transport via Spring WebMVC
    - The STDIO server uses standard input/output streams
 
 2. **Dependency**:
-   - This server uses `spring-ai-starter-mcp-server-webflux`
+   - This server uses `spring-ai-starter-mcp-server-webmvc`
    - The STDIO server uses the base `spring-ai-starter-mcp-server`
 
 3. **Client Connection**:
-   - This server requires clients to connect via HTTP/SSE
+   - This server requires clients to connect via Streamable HTTP
    - The STDIO server is typically started by the client
 
 4. **Configuration**:
@@ -247,5 +247,5 @@ The main differences between this HTTP server and the STDIO server (01-basic-std
 - [MCP Client Boot Starter](https://docs.spring.io/spring-ai/reference/api/mcp/mcp-client-boot-starter-docs.html)
 - [Model Context Protocol Specification](https://modelcontextprotocol.github.io/specification/)
 - [Spring Boot Auto-configuration](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.developing-auto-configuration)
-- [Spring WebFlux Documentation](https://docs.spring.io/spring-framework/reference/web/webflux.html)
+- [Spring WebMVC Documentation](https://docs.spring.io/spring-framework/reference/web/webmvc.html)
 - [Open-Meteo API Documentation](https://open-meteo.com/en/docs)

@@ -1,5 +1,6 @@
 package com.example.stuff_01;
 
+import com.example.tracing.TracedEndpoint;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.ai.chat.model.ChatModel;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/stuffit/01")
 public class StuffController {

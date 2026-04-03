@@ -729,7 +729,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "irate(hikaricp_connections_usage_seconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_usage_seconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
+                    "expr": "irate(hikaricp_connections_usage_milliseconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_usage_milliseconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "Usage time",
@@ -740,7 +740,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "irate(hikaricp_connections_creation_seconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_creation_seconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
+                    "expr": "irate(hikaricp_connections_creation_milliseconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_creation_milliseconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "Creation time",
@@ -751,7 +751,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "irate(hikaricp_connections_acquire_seconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_acquire_seconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
+                    "expr": "irate(hikaricp_connections_acquire_milliseconds_sum{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m]) / irate(hikaricp_connections_acquire_milliseconds_count{application=\"$application\", region=~\"$region\", instance=~\"$instance\", pool=~\"$hikaricp_pool_name\"}[5m])",
                     "format": "time_series",
                     "intervalFactor": 1,
                     "legendFormat": "Acquire time",

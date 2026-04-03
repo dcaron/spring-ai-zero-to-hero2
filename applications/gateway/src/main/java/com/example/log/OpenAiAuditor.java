@@ -1,11 +1,10 @@
 package com.example.log;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
 
 @Service
 public class OpenAiAuditor implements Auditor {
@@ -43,7 +42,7 @@ public class OpenAiAuditor implements Auditor {
       var body = objectMapper.readValue(request.getBody(), Object.class);
       var pretty = this.objectWriter.writeValueAsString(body);
       message.append(pretty).append("\n");
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
 
@@ -59,7 +58,7 @@ public class OpenAiAuditor implements Auditor {
       var body = objectMapper.readValue(response.getBody(), Object.class);
       var pretty = this.objectWriter.writeValueAsString(body);
       message.append("\nResponse Body\n\n").append(pretty).append("\n");
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
 

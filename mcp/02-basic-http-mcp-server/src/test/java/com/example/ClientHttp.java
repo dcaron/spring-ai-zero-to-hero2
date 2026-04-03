@@ -16,22 +16,20 @@
 package com.example;
 
 import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.transport.WebFluxSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
 import java.util.Map;
-import org.springframework.web.reactive.function.client.WebClient;
 
-/** With stdio transport, the MCP server is automatically started by the client. */
+/** With Streamable HTTP transport, the MCP server communicates over HTTP. */
 public class ClientHttp {
 
   public static void main(String[] args) {
 
-    var client =
-        McpClient.sync(
-                new WebFluxSseClientTransport(WebClient.builder().baseUrl("http://localhost:8080")))
-            .build();
+    var transport = HttpClientStreamableHttpTransport.builder("http://localhost:8080").build();
+
+    var client = McpClient.sync(transport).build();
 
     client.initialize();
 

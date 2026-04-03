@@ -6,11 +6,12 @@ spring:
   ai:
     ollama:
       base-url: "http://localhost:11434/"
-      embedding:        
-        model: mxbai-embed-large
+      embedding:
+        model: nomic-embed-text
       chat:
-        model: llama3.2
-        # model: llava
+        model: mistral
+        # model: llama3.2  # 3B — fast but limited structured output / tool calling
+        # model: llava     # 7B — multimodal (image+text)
   threads:
     virtual:
       enabled: true
@@ -38,7 +39,7 @@ spring:
         initialize-schema: true
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimension: 1024
+        dimension: 768
 ---
 spring:
   config:
@@ -56,24 +57,40 @@ spring:
         observations:
           include-query-response: true
 management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  opentelemetry:
+    resource-attributes:
+      "service.name": ${spring.application.name}
+      "service.version": 1.0.0
+      "deployment.environment": development
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/logs
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+        step: 10s
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, prometheus
-  metrics:
-    distribution.percentiles-histogram.http.server.requests: true
-  observations:
-    key-values:
-      application: ollama-provider
-  tracing:
-    sampling:
-      probability: 1.0
-  zipkin:
-    tracing:
-      endpoint: http://localhost:9411/api/v2/spans
-
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: postgres
-    password: password
+        include: health,info,metrics,prometheus
+logging:
+  level:
+    com.example.tracing: DEBUG

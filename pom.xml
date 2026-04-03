@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.6</version>
+    <version>4.0.5</version>
     <relativePath/> <!-- lookup parent from repository -->
   </parent>
   <groupId>com.example</groupId>
@@ -16,13 +16,12 @@
   <name>spring-ai-zero-to-hero</name>
   <description>spring-ai-zero-to-hero</description>
   <properties>
-    <java.version>21</java.version>
-    <spring-ai.version>1.0.3</spring-ai.version>
-    <spring-cloud.version>2025.0.0</spring-cloud.version>
-    <spring-cloud-azure.version>6.0.0</spring-cloud-azure.version>
+    <java.version>25</java.version>
+    <spring-ai.version>2.0.0-M4</spring-ai.version>
+    <spring-cloud.version>2025.1.1</spring-cloud.version>
+    <spring-cloud-azure.version>7.1.0</spring-cloud-azure.version>
     <spotless.version>2.46.1</spotless.version>
-    <loki-logback-appender.version>1.6.0</loki-logback-appender.version>
-    <spring-shell.version>3.4.1</spring-shell.version>
+    <spring-shell.version>4.0.1</spring-shell.version>
   </properties>
 
   <modules>
@@ -33,11 +32,6 @@
   </modules>
   <dependencyManagement>
     <dependencies>
-      <dependency>
-        <groupId>com.github.loki4j</groupId>
-        <artifactId>loki-logback-appender</artifactId>
-        <version>${loki-logback-appender.version}</version>
-      </dependency>
       <dependency>
         <groupId>org.springframework.ai</groupId>
         <artifactId>spring-ai-bom</artifactId>

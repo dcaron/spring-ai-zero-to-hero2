@@ -1,10 +1,12 @@
 package com.example.chat_06;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController
 @RequestMapping("/chat/06")
 public class RoleController {

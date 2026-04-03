@@ -79,7 +79,7 @@ distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-mav
 
 **Priority: CRITICAL — Spring Boot 4 will not auto-configure Flyway without the starter**
 
-Reference: Confirmed working in profi-ota with Spring Boot 4.0.5.
+Reference: Confirmed working with Spring Boot 4.0.5.
 
 ### 2.1 `applications/provider-openai/pom.xml`
 
@@ -235,7 +235,7 @@ spring.ai.vertex.ai.gemini.chat.options.model: gemini-pro
 # NEW
 spring.ai.google.genai.project-id: my-project
 spring.ai.google.genai.location: us-central1
-spring.ai.google.genai.chat.options.model: gemini-2.0-flash
+spring.ai.google.genai.chat.options.model: gemini-2.5-flash
 # Or use API key mode (new!):
 spring.ai.google.genai.api-key: your-api-key
 ```
@@ -575,7 +575,7 @@ open http://localhost:3000
 
 ## Phase 7: Distributed Tracing Pattern (New Module)
 
-Add the vplan-style distributed tracing pattern as a new workshop module.
+Add a distributed tracing pattern as a new workshop module.
 
 ### 7.1 Create Module: `components/patterns/04-distributed-tracing/`
 

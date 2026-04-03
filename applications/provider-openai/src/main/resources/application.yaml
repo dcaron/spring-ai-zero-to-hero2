@@ -9,9 +9,6 @@ spring:
     openai:
       chat:
         options:
-          functions:
-            - weatherFunction
-          n: 1
           model: "gpt-4o-mini"
 management:
   tracing:
@@ -20,39 +17,50 @@ management:
 spring:
   config:
     activate:
-      on-profile: observe
+      on-profile: observation
   ai:
     chat:
+      client:
+        observation:
+          include-input: true
       observations:
-        log-prompt: true
-        log-completion: true
-logging:
-  level:
-    org:
-      springframework:
-        ai:
-          chat:
-            observation: DEBUG
-            client:
-              observation: DEBUG
+        include-error-logging: true
+    vector:
+      store:
+        observations:
+          include-query-response: true
 management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    health:
-      show-details: always
   tracing:
     enabled: true
     sampling:
-      probability: 1
-  zipkin:
+      probability: 1.0
+    propagation:
+      type: w3c
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  opentelemetry:
+    resource-attributes:
+      "service.name": ${spring.application.name}
+      "service.version": 1.0.0
+      "deployment.environment": development
     tracing:
-      endpoint: http://localhost:9411/api/v2/spans
-      encoding: json
       export:
-        enabled: true
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/logs
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+        step: 10s
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
 
 ---
 spring:

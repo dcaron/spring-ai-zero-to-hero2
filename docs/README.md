@@ -16,7 +16,7 @@ at deeplearning.ai.
 ## Software Prerequisites
 
 ### Java development tooling
-* Java 21 you can use [sdkman.io](https://sdkman.io/)
+* Java 25 you can use [sdkman.io](https://sdkman.io/)
 * [Maven](https://maven.apache.org/index.html)
 * Favourite Java IDE one of
     * [IntelliJ](https://www.jetbrains.com/idea/download)
@@ -48,7 +48,7 @@ very educational. You can run the models locally and learn how they work.
 * Install ollama by following the instructions on the [ollama website]
   (https://ollama.com/) this [YouTube video](https://www.youtube.com/watch?
   v=3Q6J6J7Q1Zo) shows the ollama install process.
-* Download the `llama3.1`, `mxbai-embed-large` and `llava` models with `ollama pull llama3.1` , `ollama pull mxbai-embed-large` and `ollama pull llava`.
+* Download the `mistral`, `nomic-embed-text` and `llava` models with `ollama pull mistral` , `ollama pull nomic-embed-text` and `ollama pull llava`.
 
 
 ## Save the conference wifi

@@ -1,0 +1,9 @@
+# ==============================================================================
+# Empty provisioning config to disable default LGTM dashboards
+# ==============================================================================
+# This file overrides the default LGTM dashboard provisioning config
+# and prevents loading the pre-installed dashboards (JVM, RED Metrics).
+# ==============================================================================
+apiVersion: 1
+
+providers: []

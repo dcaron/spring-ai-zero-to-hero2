@@ -1,5 +1,6 @@
-# copy this file to creds.yaml and fill in the api-key
+# Copy this file to creds.yaml and fill in your API key.
+# Get a key at: https://console.anthropic.com/settings/keys
 spring:
   ai:
     anthropic:
-      api-key:
+      api-key: sk-ant-...your-key-here...

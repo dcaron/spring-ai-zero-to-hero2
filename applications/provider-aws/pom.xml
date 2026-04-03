@@ -17,11 +17,15 @@
 			<artifactId>chat</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<!-- Embedding excluded: Bedrock Converse starter is chat-only,
+		     no EmbeddingModel auto-configuration -->
+		<!--
 		<dependency>
 			<groupId>com.example</groupId>
 			<artifactId>embedding</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>com.example</groupId>
 			<artifactId>01-stuff-the-prompt</artifactId>

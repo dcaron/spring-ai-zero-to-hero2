@@ -15,7 +15,6 @@
  */
 package mcp.capabilities;
 
-import com.logaritex.mcp.annotation.McpResource;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema.ReadResourceRequest;
 import io.modelcontextprotocol.spec.McpSchema.ReadResourceResult;
@@ -24,6 +23,7 @@ import io.modelcontextprotocol.spec.McpSchema.TextResourceContents;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.ai.mcp.annotation.McpResource;
 import org.springframework.stereotype.Service;
 
 /**

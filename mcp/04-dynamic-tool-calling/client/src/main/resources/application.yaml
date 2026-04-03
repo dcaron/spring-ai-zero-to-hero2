@@ -5,7 +5,7 @@ spring:
   ai:
     mcp:
       client:
-        sse:
+        http:
           connections:
             04-dynamic-tool-calling:
               url: http://localhost:8080

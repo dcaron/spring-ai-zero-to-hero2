@@ -17,6 +17,9 @@
 			<artifactId>chat</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<!-- Embedding/vector-store excluded: Gemini API key mode
+		     doesn't auto-configure EmbeddingModel in Spring AI 2.0.0-M4 -->
+		<!--
 		<dependency>
 			<groupId>com.example</groupId>
 			<artifactId>embedding</artifactId>
@@ -27,6 +30,7 @@
 			<artifactId>vector-store</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>com.example</groupId>
 			<artifactId>01-stuff-the-prompt</artifactId>
@@ -42,7 +46,36 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-starter-model-vertex-ai-gemini</artifactId>
+			<artifactId>spring-ai-starter-model-google-genai</artifactId>
+			<exclusions>
+				<!-- Exclude old okhttp 4.x that conflicts with Boot 4's okhttp 5.x -->
+				<exclusion>
+					<groupId>com.squareup.okhttp3</groupId>
+					<artifactId>okhttp</artifactId>
+				</exclusion>
+				<!-- Exclude old okio 3.6 pulled by okhttp 4 -->
+				<exclusion>
+					<groupId>com.squareup.okio</groupId>
+					<artifactId>okio</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!-- Force okhttp 5.x + okio 3.16 to match Boot 4 -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp-jvm</artifactId>
+			<version>5.2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okio</groupId>
+			<artifactId>okio-jvm</artifactId>
+			<version>3.16.1</version>
+		</dependency>
+		<!-- Override protobuf to 4.x for compatibility with Spring Boot 4 -->
+		<dependency>
+			<groupId>com.google.protobuf</groupId>
+			<artifactId>protobuf-java</artifactId>
+			<version>4.32.0</version>
 		</dependency>
 	</dependencies>
 	<build>

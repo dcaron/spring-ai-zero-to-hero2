@@ -1,14 +1,25 @@
+# AWS Bedrock uses credentials from AWS CLI profile (~/.aws/credentials).
+# No API key needed in this file — just configure region and model.
 #
-# put your keys here
+# Setup:
+#   1. Install AWS CLI: brew install awscli
+#   2. Configure credentials: aws configure
+#      - AWS Access Key ID
+#      - AWS Secret Access Key
+#      - Default region: eu-central-1 (or us-east-1)
+#   3. Verify: aws sts get-caller-identity
 #
+# Amazon Nova models work instantly.
+# Anthropic models on Bedrock require use case form submission first.
+#
+# No need to copy this file — region/model config is in application.yaml.
+# Only copy to creds.yaml if you need to override the defaults below.
 spring:
   ai:
     bedrock:
       aws:
-        region: "us-east-1"
-        access-key:
-        secret-key:
-        session-token:
-        timeout: 10m
-
-
+        region: eu-central-1
+      converse:
+        chat:
+          options:
+            model: eu.amazon.nova-lite-v1:0

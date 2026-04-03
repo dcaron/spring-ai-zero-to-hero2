@@ -1,5 +1,6 @@
 package com.example.chat_03;
 
+import com.example.tracing.TracedEndpoint;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@TracedEndpoint
 @RestController()
 @RequestMapping("/chat/03")
 public class PromptTemplateController {

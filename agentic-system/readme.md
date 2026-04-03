@@ -1,7 +1,11 @@
 # agentic-system
 
+**Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | Spring Shell 4.0.1**
+
 Welcome to the **Agentic System** — a progressive series of hands-on examples that teach you how to
 design and build intelligent, tool-using AI agents powered by modern LLMs.
+
+**Note:** Agent apps currently use `OpenAiChatOptions` and require the OpenAI provider. CLI modules use Spring Shell 4 and work independently.
 
 This project focuses on building up a[MemGPT-style agent](https://arxiv.org/abs/2310.08560) from 
 first principles. You'll learn how to combine tool calling, inner monologue, memory, and 
