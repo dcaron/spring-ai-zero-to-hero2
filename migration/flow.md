@@ -275,14 +275,14 @@ Run with `observation` profile and open Grafana at http://localhost:3000.
 
 ### Provider Matrix
 
-| Provider | Chat | Embedding | Image Gen | Audio | Multimodal | Tool Calling | Local | Cost |
-|----------|------|-----------|-----------|-------|------------|--------------|-------|------|
-| **Ollama** | mistral (7B) | nomic-embed-text | - | - | llava (auto) | Yes | Yes | Free |
-| **OpenAI** | gpt-4o-mini | text-embedding-3-small/large | DALL-E 3 | Whisper | gpt-4o | Yes | No | Pay-per-use |
-| **Anthropic** | Claude 3.5/4 | - | - | - | Claude 3+ | Yes | No | Pay-per-use |
-| **Azure OpenAI** | gpt-4.1-mini | text-embedding-3-* | DALL-E 3 | - | gpt-4o | Yes | No | Enterprise |
-| **Google** | Gemini 2.5 Flash | text-embedding-004 | Imagen | - | Gemini | Yes | No | Pay-per-use |
-| **AWS Bedrock** | Claude/Titan | Titan Embeddings | - | - | Claude 3+ | Yes | No | Enterprise |
+| Provider | Chat | Embedding | Multimodal | Tool Calling | Local | Cost | Tested |
+|----------|------|-----------|------------|--------------|-------|------|:------:|
+| **Ollama** | mistral (7B) | nomic-embed-text | llava (auto) | Yes | Yes | Free | 44/44 |
+| **OpenAI** | gpt-4o-mini | text-embedding-3 | gpt-4o | Yes | No | Pay-per-use | 44/44 |
+| **Anthropic** | Claude | - | Claude 3+ | Yes | No | Pay-per-use | 14/14 |
+| **Azure OpenAI** | gpt-4.1-mini | text-embedding-3 | gpt-4o | Yes | No | Enterprise | 8/8 |
+| **Google** | Gemini 2.5 Flash | text-embedding-004 | Gemini | Yes | No | Pay-per-use | 13/13 |
+| **AWS Bedrock** | Amazon Nova Lite | - | - | Yes | No | Enterprise | 8/8 |
 
 ### Choosing a Provider
 
