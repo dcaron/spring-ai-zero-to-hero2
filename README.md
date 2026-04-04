@@ -1,137 +1,72 @@
-# spring-ai-zero-to-hero
+# Spring AI Zero-to-Hero Workshop
 
-Example applications showing how to use Spring AI to build Generative
-AI projects.
+**Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | Java 25**
 
-## What's New: Spring Boot 4 + Spring AI 2
+A hands-on workshop for building AI-powered applications with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
 
-This workshop has been upgraded to the latest Spring ecosystem:
+<table>
+<tr>
+<td><img src="docs/assets/dasboard1.png" alt="Workshop Dashboard" width="100%"></td>
+<td><img src="docs/assets/dashboard2.png" alt="Stage Detail View" width="100%"></td>
+</tr>
+<tr>
+<td align="center"><em>Dashboard — overview of all 5 stages with endpoint counts</em></td>
+<td align="center"><em>Stage 1 — try endpoints interactively with "Try it" buttons</em></td>
+</tr>
+<tr>
+<td><img src="docs/assets/grafana1.png" alt="Grafana Spring Boot Statistics" width="100%"></td>
+<td><img src="docs/assets/grafana2.png" alt="Grafana Trace and Span View" width="100%"></td>
+</tr>
+<tr>
+<td align="center"><em>Grafana — Spring Boot application metrics and statistics</em></td>
+<td align="center"><em>Grafana — distributed trace with spans and log correlation</em></td>
+</tr>
+</table>
 
-| Component | Version |
-|-----------|---------|
-| Spring Boot | **4.0.5** |
-| Spring AI | **2.0.0-M4** |
-| Spring Framework | **7.x** |
-| Java | **25** |
-| Maven | **3.9.14** |
+## Getting Started
 
-### Key Changes in Spring Boot 4
+| Audience | Guide |
+|----------|-------|
+| **Workshop attendee** (live session) | [Quickstart](docs/quickstart.md) — 5 minutes to your first AI call |
+| **Self-paced learner** | [Full Guide](docs/guide.md) — complete walkthrough of all 8 stages |
 
-- **Jackson 3** — `com.fasterxml.jackson.databind` moved to `tools.jackson.databind` (annotations stay `com.fasterxml.jackson.annotation`)
-- **Spring Cloud Gateway 5** — artifact renamed to `spring-cloud-starter-gateway-server-webmvc`
-- **Spring Shell 4** — `@CommandScan` replaced by `@EnableCommand`, package restructured
-- **Flyway** — requires `spring-boot-starter-flyway` instead of `flyway-core`
-- **OpenTelemetry** — native `spring-boot-starter-opentelemetry` replaces Brave/Zipkin
-- **AutoConfiguration packages** moved (jdbc, flyway)
-
-### Key Changes in Spring AI 2.0
-
-- **MCP Streamable HTTP** — SSE transport replaced with Streamable HTTP
-- **MCP annotations** — `com.logaritex.mcp` integrated into `org.springframework.ai.mcp.annotation`
-- **ToolCallAdvisor** — advisor-based tool execution (new pattern)
-- **Native Structured Output** — `AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT`
-- **Google provider** renamed — `vertex-ai-gemini` to `google-genai`
-
-### New: Distributed Tracing Module
-
-Custom AOP-based tracing with OpenTelemetry:
-- `@TracedEndpoint` — controller spans (SpanKind.SERVER)
-- `@TracedService` — service spans (SpanKind.INTERNAL)
-- `@TracedRepository` — repository spans (SpanKind.CLIENT)
-
-### New: LGTM Observability Stack
-
-Single `grafana/otel-lgtm:latest` container replaces 6 separate containers. Includes Grafana, Loki (logs), Tempo (traces), Mimir (metrics), and OTel Collector.
-
----
-
-## Software Prerequisites
-
-**You need: Java 25+, Docker, Ollama, and your favourite Java IDE.**
-
-### Java development tooling
-
-* Java 25+ — install via [sdkman.io](https://sdkman.io/): `sdk install java 25-open`
-* [Maven](https://maven.apache.org/index.html) (3.9.14 via included wrapper)
-* Favourite Java IDE:
-    * [IntelliJ](https://www.jetbrains.com/idea/download) (2025.1+)
-    * [VSCode](https://code.visualstudio.com/) with Java Extension Pack
-    * [Eclipse Spring Tool Suite](https://spring.io/tools)
-
-### Containerization tools
-
-* [Docker](https://www.docker.com/products/docker-desktop) for PostgreSQL/pgvector and observability stack
-
-### Local AI Models
-
-[Ollama](https://ollama.com/) makes running models on your laptop easy.
+### Fastest Path
 
 ```bash
-# Install Ollama, then pull required models:
-ollama pull mistral             # Chat model (7B, default)
-ollama pull nomic-embed-text    # Embedding model (768 dims)
-ollama pull llava               # Multimodal model (image+text)
+./workshop.sh check                                    # Verify prerequisites
+./workshop.sh setup                                    # Pull models, images, build
+./workshop.sh start ollama --profiles pgvector,observation,ui  # Start everything
 ```
 
-**16 GB macOS:** mistral + nomic-embed-text = ~9 GB active RAM. llava loads on-demand for multimodal demos only.
+Then open:
+- **Workshop Dashboard** — http://localhost:8080/dashboard
+- **Swagger UI** — http://localhost:8080/swagger-ui.html
+- **Grafana** — http://localhost:3000
 
-### Infrastructure
+> **Tip:** Use both the **Dashboard UI** and **curl/httpie on the command line** to explore endpoints. The dashboard formats responses for readability (JSON pretty-printing, chat bubbles, similarity charts), while curl shows you the raw API responses — seeing both gives you a clearer picture of what Spring AI actually returns.
+>
+> ```bash
+> # Try the same endpoint in both:
+> http localhost:8080/chat/01/joke topic==spring        # raw response
+> # ... and click "Try it" in the Dashboard UI          # formatted view
+> ```
 
-```bash
-# Start PostgreSQL + pgvector
-docker compose -f docker/postgres/docker-compose.yaml up -d
+## Resources
 
-# Start observability stack (Grafana LGTM)
-docker compose -f docker/observability-stack/docker-compose.yaml up -d
-```
+- [Provider Setup](docs/providers.md) — comparison matrix, API keys, model requirements
+- [Troubleshooting](docs/troubleshooting.md) — common issues and solutions
+- [Chat Examples](docs/examples_chat.md) — all chat endpoint examples
+- [Embedding Examples](docs/examples_embedding.md) — all embedding endpoint examples
 
----
+## Prerequisites
 
-## Quick Start
+- **Java 25+** — `sdk install java 25-open`
+- **Docker** — for PostgreSQL/pgvector and Grafana LGTM
+- **Ollama** — `ollama pull mistral && ollama pull nomic-embed-text && ollama pull llava`
 
-```bash
-# Build everything
-./mvnw clean compile
+16 GB macOS: mistral + nomic-embed-text = ~9 GB active RAM. llava loads on-demand.
 
-# Run with Ollama (local, no API keys needed)
-./mvnw spring-boot:run -pl applications/provider-ollama \
-  -Dspring-boot.run.profiles=pgvector,observation
-
-# Test it
-curl "http://localhost:8080/chat/01/joke?topic=spring"
-curl "http://localhost:8080/rag/01/load"
-curl "http://localhost:8080/rag/01/query?topic=mountain+bike"
-
-# View traces in Grafana
-open http://localhost:3000
-```
-
----
-
-## API Keys
-
-For cloud AI providers, create `src/main/resources/creds.yaml` in the provider app (gitignored):
-
-### OpenAI
-
-```yaml
-spring:
-  ai:
-    openai:
-      api-key: sk-...your-key...
-```
-
-Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-
----
-
-## Outline
-
-Generative AI is a transformational technology. This workshop is designed for Spring developers looking to add generative AI to existing applications or to implement new AI apps using Spring AI.
-
-We assume no previous AI experience. The workshop teaches key AI concepts and how to apply them using the Spring AI project.
-
-### Workshop Stages (Learning Path):
+## Workshop Stages
 
 1. **Chat Fundamentals** — ChatModel, ChatClient, prompt templates, structured output, tool calling, streaming
 2. **Embeddings** — vector generation, similarity, chunking, document readers (JSON, Text, PDF)
@@ -141,24 +76,6 @@ We assume no previous AI experience. The workshop teaches key AI concepts and ho
 6. **MCP** — Model Context Protocol (stdio, HTTP, dynamic tools, resources, prompts)
 7. **Agentic Systems** — inner monologue, model-directed loop, Spring Shell CLIs
 8. **Observability** — distributed tracing, metrics, logs with OpenTelemetry + Grafana LGTM
-
-See [migration/flow.md](migration/flow.md) for the detailed demo flow with all endpoints.
-
----
-
-## Repo Organization
-
-Spring AI provides a consistent API across many AI providers. The same code works with OpenAI, Google, Azure, Anthropic, AWS Bedrock, and local Ollama models.
-
-- **`/components/data/`** — shared datasets (bikes, customers, products, orders)
-- **`/components/apis/`** — provider-independent API demos (chat, embedding, vector-store, audio, image)
-- **`/components/patterns/`** — AI patterns (RAG, chat memory, stuff-prompt, chain-of-thought, self-reflection, distributed tracing)
-- **`/components/config-pgvector/`** — PgVector auto-configuration (profile-based)
-- **`/applications/`** — provider-specific Spring Boot apps (ollama, openai, anthropic, azure, google, aws, gateway)
-- **`/mcp/`** — Model Context Protocol demos (stdio, HTTP, client, dynamic tools, capabilities)
-- **`/agentic-system/`** — agentic AI patterns (inner monologue, model-directed loop)
-- **`/docker/`** — infrastructure (PostgreSQL/pgvector, Grafana LGTM observability stack)
-- **`/migration/`** — upgrade documentation, test results, model mapping
 
 ## AI Provider Options
 
@@ -176,13 +93,20 @@ Spring AI provides a consistent API across many AI providers. The same code work
 | Profile | Purpose |
 |---------|---------|
 | `pgvector` | PostgreSQL vector store (instead of in-memory) |
-| `spy` | Route traffic through gateway for inspection |
 | `observation` | Full observability (traces + metrics + logs to LGTM) |
+| `ui` | Workshop dashboard at /dashboard |
+| `spy` | Route traffic through gateway for inspection |
 
-## Recommendations
+## Repo Organization
 
-1. Start with **Ollama** — no API keys needed, all core demos work locally
-2. Follow the stages in order (chat -> embeddings -> vectors -> patterns -> agents)
-3. Run with `observation` profile and explore traces in Grafana
-4. Try the same demos with different providers to see Spring AI's portability
-5. See [migration/model_mapping.md](migration/model_mapping.md) for the full provider compatibility matrix
+- **`/components/apis/`** — provider-independent API demos (chat, embedding, vector-store, audio, image)
+- **`/components/patterns/`** — AI patterns (RAG, chat memory, stuff-prompt, chain-of-thought, self-reflection, distributed tracing)
+- **`/components/config-openapi/`** — OpenAPI/Swagger UI configuration
+- **`/components/config-dashboard/`** — Workshop dashboard UI (Thymeleaf + Bootstrap 5 + htmx)
+- **`/components/config-pgvector/`** — PgVector auto-configuration (profile-based)
+- **`/components/data/`** — shared datasets (bikes, customers, products, orders)
+- **`/applications/`** — provider-specific Spring Boot apps (ollama, openai, anthropic, azure, google, aws, gateway)
+- **`/mcp/`** — Model Context Protocol demos (stdio, HTTP, client, dynamic tools, capabilities)
+- **`/agentic-system/`** — agentic AI patterns (inner monologue, model-directed loop)
+- **`/docker/`** — infrastructure (PostgreSQL/pgvector, Grafana LGTM observability stack)
+- **`/docs/`** — workshop documentation

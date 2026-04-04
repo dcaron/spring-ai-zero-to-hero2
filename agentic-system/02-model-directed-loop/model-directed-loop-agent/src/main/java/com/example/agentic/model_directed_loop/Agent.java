@@ -70,17 +70,26 @@ You may now begin acting as a thoughtful, tool-using agent.
   }
 
   public ChatTraceResponse userMessage(ChatRequest request) {
-    this.chatClient.prompt().user(request.text()).call();
-
     List<ChatResponse> trace = new ArrayList<>();
     int stepCount = 0;
+    boolean firstStep = true;
+
     while (true) {
-      String json = this.chatClient.prompt().call().content();
+      String json;
+      if (firstStep) {
+        // First step: send the user message
+        json = this.chatClient.prompt().user(request.text()).call().content();
+        firstStep = false;
+      } else {
+        // Subsequent steps: continue the conversation (memory has context)
+        json = this.chatClient.prompt().user("Continue.").call().content();
+      }
+
       ChatResponse step = JsonParser.fromJson(json, ChatResponse.class);
       trace.add(step);
       stepCount++;
 
-      if (!step.requestReinvocation() || stepCount > MAX_STEP_COUNT) {
+      if (!step.requestReinvocation() || stepCount >= MAX_STEP_COUNT) {
         break;
       }
     }

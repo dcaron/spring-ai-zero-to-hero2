@@ -1,0 +1,10 @@
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
+    tagsSorter: alpha
+    docExpansion: list
+  show-actuator: false
+  paths-to-exclude: /login

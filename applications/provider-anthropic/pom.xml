@@ -19,6 +19,16 @@
 		</dependency>
 		<dependency>
 			<groupId>com.example</groupId>
+			<artifactId>config-openapi</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-dashboard</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
 			<artifactId>01-stuff-the-prompt</artifactId>
 			<version>${project.version}</version>
 		</dependency>

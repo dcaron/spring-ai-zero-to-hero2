@@ -5,6 +5,7 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -14,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * AOP Aspect for controller tracing. Creates root spans with SpanKind.SERVER for HTTP requests.
@@ -57,7 +60,15 @@ public class ControllerTracingAspect {
     if (annotation != null && !annotation.name().isBlank()) {
       spanName = annotation.name();
     } else {
-      spanName = joinPoint.getTarget().getClass().getSimpleName() + "." + method.getName();
+      // Use the HTTP request path as span name (e.g. GET /rag/02/query)
+      ServletRequestAttributes attrs =
+          (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+      if (attrs != null) {
+        HttpServletRequest request = attrs.getRequest();
+        spanName = request.getMethod() + " " + request.getRequestURI();
+      } else {
+        spanName = joinPoint.getTarget().getClass().getSimpleName() + "." + method.getName();
+      }
     }
 
     Span span = tracer.spanBuilder(spanName).setSpanKind(SpanKind.SERVER).startSpan();

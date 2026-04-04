@@ -11,31 +11,41 @@ A complete walkthrough of the workshop structure, demo flow, and AI provider opt
 ```
 spring-ai-zero-to-hero/
 |
-+-- applications/           <-- Provider-specific Spring Boot apps (pick one to run)
-|   +-- provider-ollama/    <-- LOCAL: No API keys, runs on your machine
-|   +-- provider-openai/    <-- CLOUD: Full features (chat, image, audio, multimodal)
-|   +-- provider-anthropic/ <-- CLOUD: Claude models
-|   +-- provider-azure/     <-- ENTERPRISE: Azure OpenAI + Azure Vector Store
-|   +-- provider-google/    <-- CLOUD: Gemini models
-|   +-- provider-aws/       <-- ENTERPRISE: Bedrock (Claude, Titan)
-|   +-- gateway/            <-- Network spy for inspecting API calls
++-- workshop.sh                 <-- Unified CLI: check, setup, start, stop, reset, status
 |
-+-- components/             <-- Shared modules (provider-independent)
-|   +-- apis/               <-- API demos: chat, embedding, vector-store, audio, image
-|   +-- patterns/           <-- AI patterns: RAG, chat memory, stuff-prompt, CoT, reflection, tracing
-|   +-- config-pgvector/    <-- PgVector auto-configuration
-|   +-- data/               <-- Shared datasets (bikes, customers, products, orders)
++-- applications/               <-- Provider-specific Spring Boot apps (pick one to run)
+|   +-- provider-ollama/        <-- LOCAL: No API keys, runs on your machine
+|   +-- provider-openai/        <-- CLOUD: Full features (chat, image, audio, multimodal)
+|   +-- provider-anthropic/     <-- CLOUD: Claude models
+|   +-- provider-azure/         <-- ENTERPRISE: Azure OpenAI + Azure Vector Store
+|   +-- provider-google/        <-- CLOUD: Gemini models
+|   +-- provider-aws/           <-- ENTERPRISE: Bedrock (Claude, Titan)
+|   +-- gateway/                <-- Network spy for inspecting API calls
 |
-+-- mcp/                    <-- Model Context Protocol demos
++-- components/                 <-- Shared modules (provider-independent)
+|   +-- apis/                   <-- API demos: chat, embedding, vector-store, audio, image
+|   +-- patterns/               <-- AI patterns: RAG, chat memory, stuff-prompt, CoT, reflection, tracing
+|   +-- config-openapi/         <-- OpenAPI/Swagger UI (always active)
+|   +-- config-dashboard/       <-- Workshop dashboard UI (active with 'ui' profile)
+|   +-- config-pgvector/        <-- PgVector auto-configuration
+|   +-- data/                   <-- Shared datasets (bikes, customers, products, orders)
+|
++-- mcp/                        <-- Model Context Protocol demos
 |   +-- 01-basic-stdio-mcp-server/
 |   +-- 02-basic-http-mcp-server/
 |   +-- 03-basic-mcp-client/
 |   +-- 04-dynamic-tool-calling/
 |   +-- 05-mcp-capabilities/
 |
-+-- agentic-system/         <-- Agentic AI patterns
-    +-- 01-inner-monologue/
-    +-- 02-model-directed-loop/
++-- agentic-system/             <-- Agentic AI patterns
+|   +-- 01-inner-monologue/
+|   +-- 02-model-directed-loop/
+|
++-- docker/                     <-- Infrastructure
+|   +-- postgres/               <-- PostgreSQL + pgvector + pgAdmin
+|   +-- observability-stack/    <-- Grafana LGTM (logs, traces, metrics)
+|
++-- docs/                       <-- Workshop documentation
 ```
 
 ### Key Design Principle

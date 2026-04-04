@@ -1,12 +1,14 @@
 # Chat Examples
 
 All Chat examples are packaged in `chat` module, e.g.
-* Chat Example 01
-* Chat Example 02
-* Chat Example 03
-* Chat Example 04
-* Chat Example 05
-* Chat Example 06
+* Chat Example 01 — Basic ChatModel
+* Chat Example 02 — ChatClient vs ChatModel
+* Chat Example 03 — Prompt Templates
+* Chat Example 04 — Structured Output
+* Chat Example 05 — Tool/Function Calling
+* Chat Example 06 — System Roles
+* Chat Example 07 — Multimodal
+* Chat Example 08 — Streaming
 
 ## Chat Example 01
 
@@ -40,9 +42,9 @@ http://localhost:8080/chat/01/joke
 
 ## Chat Example 02
 
-Open the `PromptController.java` and explore the contents.
+Open the `ChatClientController.java` and `ChatModelController.java` and explore the contents.
 
-Test The Endpoint:
+Test The Endpoints:
 <table>
 <tr>
 <th>Command</th>
@@ -52,19 +54,31 @@ Test The Endpoint:
 <td>
 
 ```
-http localhost:8080/chat/02/joke
+http localhost:8080/chat/02/client/joke
 ```
 ```
-http localhost:8080/chat/02/threeJokes
+http localhost:8080/chat/02/client/threeJokes
+```
+```
+http localhost:8080/chat/02/model/joke
+```
+```
+http localhost:8080/chat/02/model/threeJokes
 ```
 </td>
 <td>
 
 ```
-http://localhost:8080/chat/02/joke
+http://localhost:8080/chat/02/client/joke
 ```
 ```
-http://localhost:8080/chat/02/threeJokes
+http://localhost:8080/chat/02/client/threeJokes
+```
+```
+http://localhost:8080/chat/02/model/joke
+```
+```
+http://localhost:8080/chat/02/model/threeJokes
 ```
 </td>
 </tr>
@@ -150,7 +164,7 @@ http://localhost:8080/chat/04/plays/object
 
 ## Chat Example 05
 
-Open the `FunctionController.java` and explore the contents.
+Open the `ToolController.java` and explore the contents.
 
 Test The Endpoint:
 <table>
@@ -162,19 +176,37 @@ Test The Endpoint:
 <td>
 
 ```
-http localhost:8080/chat/05/pack
+http localhost:8080/chat/05/time
+```
+```
+http localhost:8080/chat/05/dayOfWeek
 ```
 ```
 http localhost:8080/chat/05/weather
+```
+```
+http localhost:8080/chat/05/pack
+```
+```
+http localhost:8080/chat/05/search
 ```
 </td>
 <td>
 
 ```
-http://localhost:8080/chat/05/pack
+http://localhost:8080/chat/05/time
+```
+```
+http://localhost:8080/chat/05/dayOfWeek
 ```
 ```
 http://localhost:8080/chat/05/weather
+```
+```
+http://localhost:8080/chat/05/pack
+```
+```
+http://localhost:8080/chat/05/search
 ```
 </td>
 </tr>
@@ -208,6 +240,58 @@ http://localhost:8080/chat/06/fruit
 ```
 ```
 http://localhost:8080/chat/06/veg
+```
+</td>
+</tr>
+</table>
+
+## Chat Example 07
+
+Open the `MultiModalController.java` and explore the contents.
+
+Test The Endpoint:
+<table>
+<tr>
+<th>Command</th>
+<th>URL</th>
+</tr>
+<tr>
+<td>
+
+```
+http localhost:8080/chat/07/explain
+```
+</td>
+<td>
+
+```
+http://localhost:8080/chat/07/explain
+```
+</td>
+</tr>
+</table>
+
+## Chat Example 08
+
+Open the `StreamingChatModelController.java` and explore the contents.
+
+Test The Endpoint:
+<table>
+<tr>
+<th>Command</th>
+<th>URL</th>
+</tr>
+<tr>
+<td>
+
+```
+http localhost:8080/chat/08/essay
+```
+</td>
+<td>
+
+```
+http://localhost:8080/chat/08/essay
 ```
 </td>
 </tr>

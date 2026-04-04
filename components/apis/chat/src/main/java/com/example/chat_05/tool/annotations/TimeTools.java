@@ -1,6 +1,5 @@
 package com.example.chat_05.tool.annotations;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -15,11 +14,21 @@ public class TimeTools {
       returnDirect = false)
   public String currentTimeIn(
       @ToolParam(required = false, description = "IANA time zone identifiers") String timeZone) {
+    ZonedDateTime now;
     if (timeZone == null) {
-      return LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
+      now = ZonedDateTime.now();
+    } else {
+      now = ZonedDateTime.now(ZoneId.of(timeZone));
     }
-    ZoneId zoneId = ZoneId.of(timeZone);
-    ZonedDateTime now = ZonedDateTime.now(zoneId);
-    return now.format(DateTimeFormatter.ISO_DATE_TIME);
+    ZonedDateTime tomorrow = now.plusDays(1);
+    return "Today is "
+        + now.getDayOfWeek()
+        + " "
+        + now.format(DateTimeFormatter.ISO_DATE_TIME)
+        + ". Tomorrow is "
+        + tomorrow.getDayOfWeek()
+        + " "
+        + tomorrow.toLocalDate()
+        + ".";
   }
 }

@@ -79,6 +79,16 @@
 		</dependency>
 		<dependency>
 			<groupId>com.example</groupId>
+			<artifactId>config-openapi</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-dashboard</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
 			<artifactId>04-distributed-tracing</artifactId>
 			<version>${project.version}</version>
 		</dependency>
@@ -103,16 +113,6 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<!-- observability dependencies -->
-		<!--
-      Enables Spring Boot Actuator endpoints like:
-      - /actuator/health
-      Required to activate observability auto-configuration.
-      Without this, observability features like metrics and tracing will not activate.
-    -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
 
 		<!--
       Spring Boot 4.x OpenTelemetry Starter

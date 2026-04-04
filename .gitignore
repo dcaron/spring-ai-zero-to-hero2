@@ -43,4 +43,8 @@ build/
 .claude/
 .mcp.json
 CLAUDE.md
+.superpowers/
+
+docs/superpowers/
+*.pid
 

@@ -16,5 +16,7 @@
 		<module>apis</module>
 		<module>patterns</module>
 		<module>config-pgvector</module>
+		<module>config-openapi</module>
+		<module>config-dashboard</module>
 	</modules>
 </project>

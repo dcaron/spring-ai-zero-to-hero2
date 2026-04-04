@@ -2,6 +2,11 @@ package com.example.embed_04;
 
 import com.example.data.DataFiles;
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.ai.document.Document;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 2: Embeddings")
 @TracedEndpoint
 @RestController
 @RequestMapping("/embed/04")
@@ -31,6 +37,18 @@ public class DocumentController {
     this.dataFiles = dataFiles;
   }
 
+  @Operation(
+      summary = "Read and embed JSON documents",
+      description = "JsonReader: loads bike data from JSON")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Summary of parsed documents and embedding details",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Input file was parsed into 10 documents\nEmbedding for example document computed has 1536 dimensions\n...")))
   @GetMapping("json/bikes")
   public String bikeJsonToDocs() {
     DocumentReader reader =
@@ -59,6 +77,18 @@ public class DocumentController {
             document.getText());
   }
 
+  @Operation(
+      summary = "Read and embed text documents",
+      description = "TextReader: loads plain text, chunks, creates Documents")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Summary of parsed documents, chunk count, and embedding details",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Input file was parsed into 1 documents\nThe document was too big and it was split into 1245 chunks\n...")))
   @GetMapping("text/works")
   public String getShakespeareWorks() {
     DocumentReader reader = new TextReader(this.dataFiles.getShakespeareWorksResource());
@@ -89,6 +119,18 @@ public class DocumentController {
             document.getText());
   }
 
+  @Operation(
+      summary = "Read PDF by page",
+      description = "PagePdfDocumentReader: one Document per page")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Summary of pages read and embedding details",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Input pdf read from bylaw.pdf\nEach page of the pdf was turned into a Document object\n42 total Document objects were created\n...")))
   @GetMapping("pdf/pages")
   public String getBylaw() {
     PagePdfDocumentReader pdfReader =
@@ -151,6 +193,18 @@ public class DocumentController {
     return pdfToDocsSummary + chuckSummary;
   }
 
+  @Operation(
+      summary = "Read PDF by paragraph",
+      description = "ParagraphPdfDocumentReader: one Document per paragraph")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Summary of paragraphs read as Document objects",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Input pdf read from bylaw.pdf\nEach paragraph of the pdf was turned into a Document object\n...")))
   @GetMapping("/pdf/para")
   public String paragraphs() {
     ParagraphPdfDocumentReader pdfReader =

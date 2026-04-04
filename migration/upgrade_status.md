@@ -357,3 +357,116 @@ public List<Document> search(String query) { ... }
 **Issue 3:** Deprecated `functions` config and azure vector store config removed from application.yaml
 **Setup:** Created via `az cognitiveservices account create` (East US, S0) + `az cognitiveservices account deployment create` (Standard SKU, capacity 1)
 **Result:** 8/8 PASS — all chat endpoints work (slow due to 1 TPM rate limit but functional)
+
+---
+
+## Workshop Helpers, Docs & Dashboard (2026-04-04)
+
+### New Modules
+
+**`components/config-openapi`** — SpringDoc OpenAPI / Swagger UI integration
+- SpringDoc OpenAPI 3.0.1 with `@OpenAPIDefinition` for 5 stage tag groups
+- OpenAPI annotations (`@Tag`, `@Operation`, `@Parameter`, `@ApiResponse`) on all 21 controllers
+- Server-side path sorting for correct endpoint ordering in Swagger UI
+- `springdoc.paths-to-exclude: /login` to hide utility endpoints
+- Swagger UI always active at `/swagger-ui.html`, OpenAPI spec at `/v3/api-docs`
+
+**`components/config-dashboard`** — Workshop dashboard UI
+- Thymeleaf + Bootstrap 5.3.3 (dark theme) + htmx 2.0.4
+- Activated with `ui` profile, served at `/dashboard`
+- Spring-branded dark theme with CSS variables and collapsible sidebar
+- All frontend assets vendored locally (Bootstrap, Bootstrap Icons, htmx) for offline workshop use
+- Auto-discovers endpoints from OpenAPI spec at runtime via `OpenApiSpecReader`
+- Stage detail pages with split layout: endpoint list + "Try it" panel
+- Proxy endpoint forwards requests to actual API endpoints
+- Specialized response views:
+  - Plain text for chat endpoints
+  - JSON viewer with pretty-printing for structured output
+  - Streaming text via fetch + ReadableStream for SSE endpoints
+  - Similarity bar chart for embedding comparison endpoints
+  - Chat bubble conversation view for Stage 4 (patterns) endpoints
+  - Auto-detect JSON arrays: string arrays as numbered lists, object arrays as cards
+- Parameter inputs with placeholder examples from OpenAPI, Enter key triggers request
+- Dropdown selects for parameters with `@Schema(allowableValues)` (e.g., embed_03 size)
+- Copy-to-clipboard curl command line with live parameter updates
+- Group descriptions for each endpoint group in the sidebar
+- Dashboard excluded from tracing via `ObservationPredicate`
+
+### workshop.sh
+
+Unified script replacing `check-deps.sh` and `download-deps.sh`:
+- CLI mode: `check`, `setup`, `start`, `stop`, `reset`, `status`, `logs`, `infra`
+- Interactive TUI menu with provider selection, profile toggling (pgvector/observation/ui default on), and infrastructure management
+- Abort option (`a`) in all submenus returns to main menu
+- Database reset: drops and recreates public schema in all 3 PostgreSQL databases
+- Port 8080 check before starting (uses `lsof` on macOS, `ss` on Linux)
+- Kills Maven + forked Java process on stop (process group kill + port fallback)
+- Runs `mvn install` before `spring-boot:run` (resolves local module dependencies)
+- Health check via `/v3/api-docs` fallback (not all providers have actuator)
+- 3-minute startup timeout for slower machines
+- Compatible with macOS bash 3.2 and Linux bash 4+
+
+### Docs Restructure
+
+- `docs/README.md` — landing page routing to quickstart or full guide
+- `docs/quickstart.md` — 5-minute setup for live workshop attendees
+- `docs/guide.md` — full 8-stage walkthrough for self-learners
+- `docs/providers.md` — provider comparison, credentials, model requirements
+- `docs/troubleshooting.md` — common issues from test findings
+- `docs/examples_chat.md` — fixed all URLs (chat_02 split into client/model paths, added chat_07/08)
+- `docs/examples_embedding.md` — fixed completely wrong URL mappings (controllers were renumbered)
+- `docs/examples_image.md` / `docs/examples_audio.md` — added OpenAI-only notes
+- Root `README.md` updated to point to new docs structure
+
+### Observability Fixes
+
+- Suppressed generic `http.server.requests` observation so `@TracedEndpoint` spans are root spans in Tempo
+- Trace root span names now show HTTP request path (e.g., `GET /rag/02/query`) instead of class.method
+- Fixed Grafana LGTM datasource provisioning for trace-to-log correlation (overrides default `grafana-datasources.yaml`)
+- Trace-to-logs query uses line filter: `{${__tags}} |= \`${__trace.traceId}\`` (trace_id is in log content, not a Loki label)
+- Enabled OTel logging export with explicit `enabled: true` and `transport: http`
+- Loki derivedFields configured for log-to-trace linking
+
+### Endpoint Fixes
+
+- `/embed/01/dimension` — shows provider name, model name, and dimensions (not Java class name)
+- `/embed/01/text` — added `text` request parameter so users can try different inputs
+- `/embed/03/big` — added `size` parameter (small/large) with dropdown in UI
+- `/chat/02/client/threeJokes` and `/chat/02/model/threeJokes` — fixed to make 3 separate API calls (most providers return 1 generation per request)
+- `/chat/05/dayOfWeek` — added system prompt to force tool call; TimeTools now returns both today and tomorrow day-of-week
+- `/chat/07/explain` — fixed OpenAPI example to match actual image (fruit basket, not Spring diagram)
+- `/cot/bio/oneshot` — removed unused `message` parameter (bio is generated from Profile.pdf)
+- Removed duplicate `spring-boot-starter-actuator` from provider-openai pom.xml
+- Fixed Ollama Flyway migration dimension: 1024 → 768 (matches nomic-embed-text)
+- Fixed swagger-annotations version conflict (removed standalone 2.2.30, conflicts with springdoc 3.0.1)
+
+### MCP Fixes
+
+- MCP 02, 04 (server), 05: added `protocol: STREAMABLE` and `streamable-http.mcp-endpoint: /mcp` — without this config the Streamable HTTP transport didn't register the `/mcp` endpoint, causing 404 on client initialize
+- SSE transport is fully removed — all HTTP MCP servers now use Streamable HTTP protocol
+
+### Stage 6 (MCP) Test Results (2026-04-04)
+
+| Module | Status | Details |
+|--------|--------|---------|
+| MCP 01 (stdio) | PASS | Tool listed, weather call returned temp for Amsterdam |
+| MCP 02 (Streamable HTTP) | PASS | Initialized, 1 tool registered, weather call successful |
+| MCP 03 (client) | N/A | Client module, requires OpenAI provider running |
+| MCP 04 (dynamic tools) | PASS (compile) | Server config fixed, needs separate client test |
+| MCP 05 (full capabilities) | PASS | 2 tools, 9 resource templates, 12 prompts, 6 completions — all working |
+
+### Stage 7 (Agentic) Fixes and Test Results (2026-04-04)
+
+**Fix: model-directed-loop reinvocation loop**
+- The agent loop was sending empty prompts after the first user message because line 73 sent the user message but discarded the result, then the loop on line 78 sent blank prompts
+- Fixed by sending the user message in the first loop iteration and "Continue." in subsequent iterations, so the model (with chat memory) always has context
+- Max 5 steps safety limit remains in place
+
+| Module | Status | Details |
+|--------|--------|---------|
+| inner-monologue-agent | PASS | Creates agent, responds with inner thoughts + message. Request body uses `{"text":"..."}` |
+| model-directed-loop-agent | PASS | Creates agent, responds correctly. Fixed reinvocation loop bug |
+| inner-monologue-cli | PASS (compile) | Spring Shell 4, interactive — starts correctly |
+| model-directed-loop-cli | PASS (compile) | Spring Shell 4, interactive — starts correctly |
+
+**Note:** All Stage 7 agent modules require OpenAI provider (`OpenAiChatOptions.toolChoice("required")`). They are included as dependencies in `provider-openai`.

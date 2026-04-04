@@ -80,8 +80,10 @@ management:
           endpoint: http://localhost:4318/v1/traces
     logging:
       export:
+        enabled: true
         otlp:
           endpoint: http://localhost:4318/v1/logs
+          transport: http
   otlp:
     metrics:
       export:

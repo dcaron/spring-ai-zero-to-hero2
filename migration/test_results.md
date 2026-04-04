@@ -147,14 +147,17 @@
 |------|--------|:--:|-------|
 | MCP 01 | basic-stdio-mcp-server | PASS | Fixed StdioClientTransport (now requires McpJsonMapper) |
 | MCP 02 | basic-http-mcp-server | PASS | Streamable HTTP, 1 tool registered |
+| MCP 04 server | dynamic-tool-calling/server | PASS | Streamable HTTP config added |
 | MCP 05 | mcp-capabilities | PASS | 2 tools, 9 templates, 12 prompts, 6 completions |
 
-**3/3 PASS** (servers start and register capabilities)
+**4/4 PASS** (servers start and register capabilities)
 
 ### Findings
 - Fixed bean name conflict in MCP 05 (Spring AI 2.0 auto-config creates same bean names)
 - MCP servers are provider-independent — no AI model needed
 - MCP clients (03, 04) configured for OpenAI by default
+- All HTTP MCP servers required `protocol: STREAMABLE` and `streamable-http.mcp-endpoint: /mcp` — without this the Streamable HTTP transport didn't register, causing 404 on client initialize
+- SSE transport fully removed — all HTTP servers use Streamable HTTP
 
 ---
 
@@ -162,14 +165,18 @@
 
 | Demo | Module | Status | Notes |
 |------|--------|:--:|-------|
-| Inner monologue agent | 01 agent | NEEDS OpenAI | Uses OpenAiChatOptions |
+| Inner monologue agent | 01 agent | PASS | Creates agent, responds with inner thoughts + message |
 | Inner monologue CLI | 01 cli | PASS (starts) | Spring Shell 4 commands registered |
-| Model-directed loop agent | 02 agent | NEEDS OpenAI | Uses OpenAiChatOptions |
+| Model-directed loop agent | 02 agent | PASS | Fixed reinvocation loop bug, responds correctly |
 | Model-directed loop CLI | 02 cli | PASS (starts) | Spring Shell 4 commands registered |
+
+**4/4 PASS** (agents tested with OpenAI, CLIs compile and start)
 
 ### Findings
 - Agent apps require OpenAI (use `OpenAiChatOptions.toolChoice("required")`)
 - CLI modules start with Spring Shell 4 after migration fixes
+- **Fixed:** model-directed-loop agent had a reinvocation loop bug — first call sent user message but discarded result, subsequent calls sent empty prompts. Fixed to send user message in first iteration and "Continue." in subsequent steps
+- Request body for agent messages uses `{"text":"..."}` not `{"message":"..."}`
 
 ---
 

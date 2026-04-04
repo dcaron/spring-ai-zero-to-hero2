@@ -1,6 +1,12 @@
 package com.example.embed_02;
 
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Stream;
@@ -11,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 2: Embeddings")
 @TracedEndpoint
 @RestController
 @RequestMapping("/embed/02")
@@ -38,6 +45,18 @@ public class SimilarityController {
     return new Score(a, b, similarity);
   }
 
+  @Operation(
+      summary = "Compare word similarity",
+      description = "Computes cosine similarity between word pairs")
+  @ApiResponse(
+      responseCode = "200",
+      description = "List of word pair similarity scores sorted by similarity descending",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "[{\"a\": \"man\", \"b\": \"man\", \"similarity\": 1.0}, {\"a\": \"king\", \"b\": \"queen\", \"similarity\": 0.85}]")))
   @GetMapping("words")
   public List<Score> words() {
     return Stream.of(
@@ -54,9 +73,25 @@ public class SimilarityController {
         .toList();
   }
 
+  @Operation(
+      summary = "Search similar quotes",
+      description = "Finds most semantically similar quote using cosine similarity")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Quotes ranked by semantic similarity to the topic",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "[{\"a\": \"getting over losing a job\", \"b\": \"Failure is simply the opportunity...\", \"similarity\": 0.82}]")))
   @GetMapping("quotes")
   public List<Score> quotes(
-      @RequestParam(value = "topic", defaultValue = "getting over losing a job") String topic) {
+      @Parameter(
+              description = "Topic to find semantically similar quotes for",
+              example = "donate to the cancer foundation")
+          @RequestParam(value = "topic", defaultValue = "getting over losing a job")
+          String topic) {
 
     /* Stuff to try out
 

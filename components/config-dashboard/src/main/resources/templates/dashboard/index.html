@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" data-bs-theme="dark">
+<head th:replace="~{fragments/layout :: head('Spring AI Workshop')}"></head>
+<body>
+<div class="app-container">
+
+    <nav th:replace="~{fragments/layout :: sidebar(${activePage})}"></nav>
+
+    <div class="main-wrapper">
+        <div th:replace="~{fragments/layout :: topbar('Dashboard', ${providerName}, ${activeProfiles})}"></div>
+
+        <div class="main-content">
+
+            <!-- Stat Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-value" th:text="${totalEndpoints}">0</div>
+                        <div class="stat-label">Endpoints</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-value" th:text="${#lists.size(stages)}">5</div>
+                        <div class="stat-label">Stages</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-value" th:text="${chatModel}">default</div>
+                        <div class="stat-label">Chat Model</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-value" th:text="${#lists.size(activeProfiles)}">0</div>
+                        <div class="stat-label">Active Profiles</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage Cards -->
+            <div class="row g-3">
+                <div class="col-12 col-md-6" th:each="stage : ${stages}">
+                    <a th:href="@{/dashboard/stage/{n}(n=${stage.number()})}" class="text-decoration-none">
+                        <div class="stage-card" th:style="'border-left-color: ' + ${stage.accentColor()}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="mb-0 text-light" th:text="${stage.name()}">Stage Name</h5>
+                                <span class="badge-profile" th:text="${#lists.size(stage.endpoints())} + ' endpoints'">0 endpoints</span>
+                            </div>
+                            <p class="text-muted small mb-0" th:text="${stage.description()}">Description</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

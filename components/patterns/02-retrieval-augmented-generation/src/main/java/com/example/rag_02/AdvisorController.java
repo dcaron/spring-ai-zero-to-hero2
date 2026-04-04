@@ -3,6 +3,12 @@ package com.example.rag_02;
 import com.example.JsonReader2;
 import com.example.data.DataFiles;
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.ai.chat.client.ChatClient;
@@ -17,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 4: Patterns")
 @TracedEndpoint
 @RestController
 @RequestMapping("/rag/02")
@@ -58,6 +65,16 @@ public class AdvisorController {
 			---------------------
 			""";
 
+  @Operation(
+      summary = "Load data for advisor RAG",
+      description = "Loads bike data. Required before /query.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Confirmation message with chunk and document counts",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(value = "vector store loaded with 25 chunks from 10 documents")))
   @GetMapping("/load")
   public String load() throws IOException {
     // turn the json specs file into a document per bike
@@ -76,9 +93,24 @@ public class AdvisorController {
         .formatted(chunks.size(), documents.size());
   }
 
+  @Operation(
+      summary = "Advisor-based RAG query",
+      description = "QuestionAnswerAdvisor handles vector search + prompt augmentation")
+  @ApiResponse(
+      responseCode = "200",
+      description = "AI-generated answer using QuestionAnswerAdvisor",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Based on our bike specifications, the TrailBlazer X offers the longest range...")))
   @GetMapping("query")
   public String query(
-      @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range? /n")
+      @Parameter(
+              description = "Question about bikes to answer using advisor-based RAG",
+              example = "Which bikes have extra long range")
+          @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range? /n")
           String topic) {
 
     return this.chatClient

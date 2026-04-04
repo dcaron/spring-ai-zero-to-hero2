@@ -1,5 +1,6 @@
 package com.example.tracing;
 
+import io.micrometer.observation.ObservationPredicate;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.aop.ObservedAspect;
 import io.opentelemetry.api.OpenTelemetry;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.server.observation.ServerRequestObservationContext;
 import org.springframework.stereotype.Component;
 
 /**
@@ -36,6 +38,21 @@ public class OpenTelemetryConfig {
   public Tracer tracer(OpenTelemetry openTelemetry) {
     logger.info("OpenTelemetry Tracer created for spring-ai-workshop");
     return openTelemetry.getTracer("spring-ai-workshop", "1.0.0");
+  }
+
+  /**
+   * Suppress the generic HTTP server observation (http get /**) so @TracedEndpoint spans are the
+   * root spans in Tempo. Also excludes non-API paths (swagger, static resources).
+   */
+  @Bean
+  public ObservationPredicate suppressHttpServerObservation() {
+    return (name, context) -> {
+      if ("http.server.requests".equals(name)
+          && context instanceof ServerRequestObservationContext) {
+        return false;
+      }
+      return true;
+    };
   }
 
   /**

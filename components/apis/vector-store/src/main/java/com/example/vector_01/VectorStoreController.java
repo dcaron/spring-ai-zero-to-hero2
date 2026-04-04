@@ -2,6 +2,12 @@ package com.example.vector_01;
 
 import com.example.data.DataFiles;
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -18,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 3: Vector Stores")
 @TracedEndpoint
 @RestController
 @RequestMapping("/vector/01")
@@ -32,6 +39,14 @@ public class VectorStoreController {
     this.vectorStore = vectorStore;
   }
 
+  @Operation(
+      summary = "Load documents into vector store",
+      description = "Reads bike JSON, chunks, embeds, stores. Call before /query.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Confirmation message with document count",
+      content =
+          @Content(examples = @ExampleObject(value = "vector store loaded with 10 documents")))
   @GetMapping("/load")
   public String load() throws IOException {
     // turn the json specs file into a document per bike
@@ -60,9 +75,23 @@ public class VectorStoreController {
     return "vector store loaded with %s documents".formatted(documents.size());
   }
 
+  @Operation(
+      summary = "Semantic similarity search",
+      description = "Searches vector store for semantically similar documents")
+  @ApiResponse(
+      responseCode = "200",
+      description = "List of matching document texts",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value = "[\"Bike name: TrailBlazer X...\", \"Bike name: MountainKing...\"]")))
   @GetMapping("query")
   public List<String> query(
-      @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range")
+      @Parameter(
+              description = "Semantic search query",
+              example = "Which bikes have extra long range")
+          @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range")
           String topic) {
 
     // search the vector store for the top 4 bikes that match the query

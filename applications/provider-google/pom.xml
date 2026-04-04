@@ -17,6 +17,16 @@
 			<artifactId>chat</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-openapi</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-dashboard</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<!-- Embedding/vector-store excluded: Gemini API key mode
 		     doesn't auto-configure EmbeddingModel in Spring AI 2.0.0-M4 -->
 		<!--

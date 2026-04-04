@@ -5,3 +5,7 @@ spring:
       server:
         name: 05-mcp-capabilities-server
         version: 0.0.1
+        type: SYNC
+        protocol: STREAMABLE
+        streamable-http:
+          mcp-endpoint: /mcp

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" data-bs-theme="dark">
+<head th:replace="~{fragments/layout :: head(${stage.name()})}"></head>
+<body>
+<div class="app-container">
+
+    <nav th:replace="~{fragments/layout :: sidebar(${activePage})}"></nav>
+
+    <div class="main-wrapper">
+        <div th:replace="~{fragments/layout :: topbar(${stage.name()}, null, null)}"></div>
+
+        <div class="main-content">
+            <div class="d-flex gap-3" style="height: calc(100vh - 110px);">
+
+                <!-- Left Panel: Endpoint List -->
+                <div style="width: 380px; min-width: 380px; overflow-y: auto;">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge" th:style="'background-color:' + ${stage.accentColor()}" th:text="'Stage ' + ${stage.number()}">Stage</span>
+                            <span class="fw-bold" th:text="${stage.name()}">Name</span>
+                        </div>
+                        <p class="text-muted small mb-0" th:text="${stage.description()}">description</p>
+                    </div>
+
+                    <div th:if="${#maps.isEmpty(groupedEndpoints)}" class="text-muted small p-3">
+                        No endpoints discovered. Ensure the application is running and OpenAPI docs are available.
+                    </div>
+
+                    <div th:each="entry : ${groupedEndpoints}" class="mb-3">
+                        <div class="mb-1 px-1">
+                            <span class="text-muted small text-uppercase" th:text="${entry.key}">group</span>
+                            <span th:if="${groupDescriptions.containsKey(entry.key)}" class="text-muted small" style="font-size:11px" th:text="' — ' + ${groupDescriptions.get(entry.key)}">desc</span>
+                        </div>
+                        <div th:each="ep : ${entry.value}"
+                             class="endpoint-item mb-1"
+                             style="cursor: pointer;"
+                             th:data-path="${ep.path()}"
+                             th:data-method="${ep.method()}"
+                             th:data-summary="${ep.summary()}"
+                             th:data-description="${ep.description()}"
+                             th:data-view-type="${ep.responseViewType()}"
+                             th:data-params="${paramsJson.get(ep.method() + ' ' + ep.path())}"
+                             onclick="selectEndpoint(this)">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="method-badge"
+                                      th:classappend="${ep.method().toLowerCase()}"
+                                      th:text="${ep.method()}">GET</span>
+                                <code class="small text-light" style="font-size: 12px;" th:text="${ep.path()}">/path</code>
+                            </div>
+                            <div th:if="${!#strings.isEmpty(ep.summary())}" class="text-muted small mt-1" th:text="${ep.summary()}">summary</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel -->
+                <div class="flex-grow-1 d-flex flex-column gap-3" style="overflow-y: auto;">
+
+                    <!-- Param Bar -->
+                    <div id="param-bar" class="param-bar">
+                        <p class="text-muted small mb-0">Select an endpoint from the left panel to get started.</p>
+                    </div>
+
+                    <!-- Response Panel -->
+                    <div id="response-panel" class="response-panel p-3 flex-grow-1">
+                        <p class="text-muted text-center mt-4">Select an endpoint and click "Try it" to see the response here.</p>
+                    </div>
+
+                    <!-- Curl Line -->
+                    <div class="curl-line">
+                        <code id="curl-line-text">curl "http://localhost:8080/..."</code>
+                        <button id="copy-btn" class="btn btn-sm btn-outline-secondary btn-copy" onclick="copyCurl()">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

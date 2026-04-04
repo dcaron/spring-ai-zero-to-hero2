@@ -3,6 +3,12 @@ package com.example.rag_01;
 import com.example.JsonReader2;
 import com.example.data.DataFiles;
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 4: Patterns")
 @TracedEndpoint
 @RestController
 @RequestMapping("/rag/01")
@@ -31,6 +38,16 @@ public class RagController {
     this.chatClient = builder.build();
   }
 
+  @Operation(
+      summary = "Load data for manual RAG",
+      description = "Loads bike data into vector store. Required before /query.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Confirmation message with chunk and document counts",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(value = "vector store loaded with 25 chunks from 10 documents")))
   @GetMapping("/load")
   public String load() throws IOException {
     // turn the json specs file into a document per bike
@@ -49,9 +66,24 @@ public class RagController {
         .formatted(chunks.size(), documents.size());
   }
 
+  @Operation(
+      summary = "Manual RAG query",
+      description = "Search vector store, stuff results into prompt, generate answer")
+  @ApiResponse(
+      responseCode = "200",
+      description = "AI-generated answer based on retrieved bike documents",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Based on our bike specifications, the TrailBlazer X offers the longest range...")))
   @GetMapping("query")
   public String query(
-      @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range")
+      @Parameter(
+              description = "Question about bikes to answer using RAG",
+              example = "Which bikes have extra long range")
+          @RequestParam(value = "topic", defaultValue = "Which bikes have extra long range")
           String topic) {
 
     // search the vector store for the top 4 bikes that match the query

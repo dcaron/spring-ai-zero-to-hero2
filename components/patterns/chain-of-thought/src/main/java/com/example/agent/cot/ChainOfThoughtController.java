@@ -1,6 +1,11 @@
 package com.example.agent.cot;
 
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -9,9 +14,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 5: Agents")
 @TracedEndpoint
 @RestController
 @RequestMapping("/cot/bio/")
@@ -33,12 +38,20 @@ public class ChainOfThoughtController {
     this.bioWriterAgent = bioWriterAgent;
   }
 
+  @Operation(
+      summary = "Generate bio (single pass)",
+      description = "Single-pass bio generation from Profile.pdf")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Generated biography with character and word count",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "Jane Doe is a seasoned software engineer...\n\n-------\n\nCharacters: 342 Words: 58")))
   @GetMapping("/oneshot")
-  public String oneShot(
-      @RequestParam(
-              value = "message",
-              defaultValue = "Hello my name is John, what is the capital of France?")
-          String message) {
+  public String oneShot() {
 
     LinkedProfile profile = new LinkedProfile(this.profile);
     String bio =
@@ -66,6 +79,18 @@ public class ChainOfThoughtController {
     return result;
   }
 
+  @Operation(
+      summary = "Generate bio (chain of thought)",
+      description = "Multi-step: outline → draft → refine → polish. ~10s with Ollama.")
+  @ApiResponse(
+      responseCode = "200",
+      description = "All intermediate steps and final biography separated by dividers",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "\n\n-------\n\nStep 1: Outline...\n\n-------\n\nFinal bio...\n\n-------\n\nCharacters: 342 Words: 58")))
   @GetMapping("/flow")
   public String agenticFlow() {
     LinkedProfile profile = new LinkedProfile(this.profile);

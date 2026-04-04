@@ -1,6 +1,12 @@
 package com.example.chat_04;
 
 import com.example.tracing.TracedEndpoint;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -14,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Stage 1: Chat")
 @TracedEndpoint
 @RestController()
 @RequestMapping("/chat/04")
@@ -25,9 +32,20 @@ public class StructuredOutputConverterController {
     this.chatClient = builder.build();
   }
 
+  @Operation(summary = "List plays as raw text")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Plays as raw text",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value = "Hamlet, Macbeth, Othello, King Lear, A Midsummer Night's Dream")))
   @GetMapping("/plays")
   public String getPlays(
-      @RequestParam(value = "author", defaultValue = "Shakespeare") String topic) {
+      @Parameter(description = "Playwright author name", example = "Shakespeare")
+          @RequestParam(value = "author", defaultValue = "Shakespeare")
+          String topic) {
 
     return chatClient
         .prompt()
@@ -43,9 +61,21 @@ public class StructuredOutputConverterController {
         .content();
   }
 
+  @Operation(
+      summary = "List plays as JSON array",
+      description = "Structured output: response parsed to List<String>")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Plays as JSON array",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(value = "[\"Hamlet\", \"Macbeth\", \"Othello\", \"King Lear\"]")))
   @GetMapping("/plays/list")
   public List<String> getPlaysList(
-      @RequestParam(value = "author", defaultValue = "Shakespeare") String topic) {
+      @Parameter(description = "Playwright author name", example = "Shakespeare")
+          @RequestParam(value = "author", defaultValue = "Shakespeare")
+          String topic) {
 
     return chatClient
         .prompt()
@@ -61,9 +91,23 @@ public class StructuredOutputConverterController {
         .entity(new ListOutputConverter(new DefaultConversionService()));
   }
 
+  @Operation(
+      summary = "List plays as JSON object",
+      description = "Structured output: response parsed to Map<String, Object>")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Playwright info as JSON object",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "{\"author\": \"William Shakespeare\", \"birthYear\": 1564, \"plays\": [\"Hamlet\", \"Macbeth\"]}")))
   @GetMapping("/plays/map")
   public Map<String, Object> getPlaysMap(
-      @RequestParam(value = "author", defaultValue = "Shakespeare") String topic) {
+      @Parameter(description = "Playwright author name", example = "Shakespeare")
+          @RequestParam(value = "author", defaultValue = "Shakespeare")
+          String topic) {
 
     return chatClient
         .prompt()
@@ -82,9 +126,23 @@ public class StructuredOutputConverterController {
         .entity(new MapOutputConverter());
   }
 
+  @Operation(
+      summary = "List plays as typed objects",
+      description = "Structured output: response parsed to Play[] Java records")
+  @ApiResponse(
+      responseCode = "200",
+      description = "Plays as typed Java record array",
+      content =
+          @Content(
+              examples =
+                  @ExampleObject(
+                      value =
+                          "[{\"author\": \"Shakespeare\", \"title\": \"Hamlet\", \"publicationYear\": 1603}]")))
   @GetMapping("/plays/object")
   public Play[] getPlaysObject(
-      @RequestParam(value = "author", defaultValue = "Shakespeare") String topic) {
+      @Parameter(description = "Playwright author name", example = "Shakespeare")
+          @RequestParam(value = "author", defaultValue = "Shakespeare")
+          String topic) {
 
     return chatClient
         .prompt()

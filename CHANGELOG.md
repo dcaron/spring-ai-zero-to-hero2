@@ -1,5 +1,80 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.1.0] — 2026-04-04: Workshop Helpers, Dashboard UI & Docs
+
+Workshop improvements for presenters and self-learners: interactive dashboard, OpenAPI docs, unified CLI script, and restructured documentation.
+
+### New Modules
+
+#### `components/config-openapi` — Swagger UI & OpenAPI Specs
+- SpringDoc OpenAPI 3.0.1 with `@OpenAPIDefinition` for 5 workshop stage tags
+- OpenAPI annotations on all 21 controllers (37 endpoints documented)
+- Server-side path sorting for correct endpoint ordering
+- Always active — Swagger UI at `/swagger-ui.html`, OpenAPI spec at `/v3/api-docs`
+
+#### `components/config-dashboard` — Workshop Dashboard UI
+- Thymeleaf + Bootstrap 5.3.3 (dark theme) + htmx 2.0.4
+- Activated with `ui` profile, served at `/dashboard`
+- Spring-branded dark theme with collapsible sidebar
+- All frontend assets vendored locally for offline workshop use
+- Auto-discovers endpoints from OpenAPI spec at runtime
+- Specialized response views: plain text, JSON viewer, streaming text, similarity bar charts, chat bubbles, step accordion
+- Parameter inputs with placeholder examples, dropdown selects for enum params
+- Copy-to-clipboard curl command with live parameter updates
+- Chat-style conversation view for Stage 4 (patterns) endpoints
+- Dashboard excluded from tracing via `ObservationPredicate`
+
+### `workshop.sh` — Unified CLI Script
+- Replaces `check-deps.sh` and `download-deps.sh`
+- CLI mode: `check`, `setup`, `start`, `stop`, `reset`, `status`, `logs`, `infra`
+- Interactive TUI menu with provider selection and profile toggling
+- Infrastructure submenu: start PostgreSQL, LGTM, or both
+- Abort option (`a`) in all submenus
+- Database reset: drops and recreates public schema in all 3 databases
+- Port 8080 check before starting (lsof on macOS, ss on Linux)
+- Process group kill on stop (Maven + forked Java)
+- Runs `mvn install` before `spring-boot:run` for module dependency resolution
+- Health check via `/v3/api-docs` fallback (not all providers have actuator)
+- Compatible with macOS bash 3.2 and Linux bash 4+
+
+### Documentation Restructure
+- `docs/README.md` — landing page with audience routing
+- `docs/quickstart.md` — 5-minute setup for live workshop attendees
+- `docs/guide.md` — full 8-stage walkthrough for self-learners
+- `docs/providers.md` — provider comparison, credentials, model requirements
+- `docs/troubleshooting.md` — common issues and solutions
+- Fixed all example docs (`examples_chat.md`, `examples_embedding.md`, `examples_image.md`, `examples_audio.md`) with correct URLs
+- Root `README.md` updated with screenshots, docs links, and workshop.sh instructions
+
+### Observability Fixes
+- Suppressed generic `http.server.requests` spans — `@TracedEndpoint` spans are now root spans
+- Trace root span names show HTTP request path (e.g., `GET /rag/02/query`)
+- Fixed Grafana LGTM datasource provisioning for trace-to-log correlation
+- Enabled OTel logging export with explicit `enabled: true`
+
+### MCP Fixes (Stage 6)
+- Added `protocol: STREAMABLE` and `streamable-http.mcp-endpoint: /mcp` to MCP 02, 04, 05
+- Without this config, the Streamable HTTP transport didn't register the `/mcp` endpoint
+- All 4 MCP servers tested and passing
+
+### Agentic Fixes (Stage 7)
+- Fixed model-directed-loop agent reinvocation loop: first call sent user message but discarded result, then loop sent empty prompts. Now sends user message in first iteration
+- Both agents tested with OpenAI and passing
+
+### Endpoint Fixes
+- `/embed/01/dimension` — shows provider, model name, and dimensions
+- `/embed/01/text` — added `text` request parameter
+- `/embed/03/big` — added `size` parameter (small/large dropdown)
+- `/chat/02/*/threeJokes` — makes 3 separate API calls (not 1)
+- `/chat/05/dayOfWeek` — system prompt forces tool call; TimeTools returns day-of-week
+- `/chat/07/explain` — fixed OpenAPI example to match actual image
+- `/cot/bio/oneshot` — removed unused `message` parameter
+- Fixed Ollama Flyway migration dimension: 1024 → 768
+- Removed duplicate `spring-boot-starter-actuator` from provider-openai
+- Hidden `/login` endpoint from OpenAPI via `springdoc.paths-to-exclude`
+
+---
+
 ## [2.0.0] — 2026-04-03: Spring Boot 4 + Spring AI 2 Migration
 
 Major version upgrade of the entire workshop from Spring Boot 3.5.6 / Spring AI 1.0.3 to Spring Boot 4.0.5 / Spring AI 2.0.0-M4.
@@ -107,7 +182,7 @@ Major version upgrade of the entire workshop from Spring Boot 3.5.6 / Spring AI 
 
 #### Infrastructure
 - Created sample `Profile.pdf` for chain-of-thought and self-reflection demos
-- Updated `check-deps.sh` and `download-deps.sh` for new models and versions
+- Replaced `check-deps.sh` and `download-deps.sh` with unified `workshop.sh` (see [2.1.0] below)
 - Cleaned up 11 obsolete observability config files
 
 ### Test Results

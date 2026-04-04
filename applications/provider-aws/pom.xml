@@ -17,6 +17,16 @@
 			<artifactId>chat</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-openapi</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>config-dashboard</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 		<!-- Embedding excluded: Bedrock Converse starter is chat-only,
 		     no EmbeddingModel auto-configuration -->
 		<!--
