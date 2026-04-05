@@ -430,8 +430,6 @@ Your App --> Gateway (:7777) --> AI Provider API
 2. Start your provider with the `spy` profile
 3. All AI API calls route through the gateway — check the gateway logs for full request and response bodies
 
-**Note:** Gateway port 7777 may conflict with MCP servers. Shut down any MCP server before starting the gateway.
-
 ---
 
 ## Module Dependency Reference
