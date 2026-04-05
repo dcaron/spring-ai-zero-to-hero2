@@ -97,6 +97,22 @@ Then open:
 | `ui` | Workshop dashboard at /dashboard |
 | `spy` | Route traffic through gateway for inspection |
 
+## Spring AI Deep Dive Documentation
+
+In-depth technical documentation covering Spring AI internals, AI model fundamentals (LLMs, tool calling, multimodal architecture), and detailed analysis of every demo across all 8 stages. Each document includes Spring AI component descriptions, Mermaid flow diagrams, and annotated code examples.
+
+| Document | Topic |
+|----------|-------|
+| [Introduction](docs/spring-ai/SPRING_AI_INTRODUCTION.md) | Spring AI architecture, ChatModel vs ChatClient, provider portability, AI model capabilities (tool calling, vision, audio, structured output), provider compatibility matrix |
+| [Stage 1: Chat](docs/spring-ai/SPRING_AI_STAGE_1.md) | ChatModel, ChatClient, prompt templates, structured output, tool calling, system roles, multimodal, streaming |
+| [Stage 2: Embeddings](docs/spring-ai/SPRING_AI_STAGE_2.md) | EmbeddingModel, cosine similarity, TokenTextSplitter, document readers (JSON, Text, PDF) |
+| [Stage 3: Vector Stores](docs/spring-ai/SPRING_AI_STAGE_3.md) | VectorStore abstraction, SimpleVectorStore vs PgVectorStore, ETL pipeline |
+| [Stage 4: AI Patterns](docs/spring-ai/SPRING_AI_STAGE_4.md) | Stuff-the-prompt, manual and advisor-based RAG, chat memory, advisor architecture |
+| [Stage 5: Advanced Agents](docs/spring-ai/SPRING_AI_STAGE_5.md) | Chain-of-thought pipeline, self-reflection Writer/Critic loop, TikaDocumentReader |
+| [Stage 6: MCP](docs/spring-ai/SPRING_AI_STAGE_6.md) | MCP servers (STDIO, HTTP), clients, dynamic tools, resources, prompts, completions |
+| [Stage 7: Agentic Systems](docs/spring-ai/SPRING_AI_STAGE_7.md) | Inner monologue, model-directed loop, forced tool calling, Spring Shell CLIs |
+| [Stage 8: Observability](docs/spring-ai/SPRING_AI_STAGE_8.md) | Custom tracing annotations, OpenTelemetry, LGTM stack, trace-log-metric correlation |
+
 ## Repo Organization
 
 - **`/components/apis/`** — provider-independent API demos (chat, embedding, vector-store, audio, image)
