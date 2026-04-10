@@ -2,7 +2,7 @@
 
 **Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | Java 25**
 
-A hands-on workshop for building AI-powered applicatiosns with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
+A hands-on workshop for building AI-powered applications with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
 
 <table>
 <tr>
