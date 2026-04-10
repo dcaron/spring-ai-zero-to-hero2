@@ -363,6 +363,31 @@ html, body {
     flex-shrink: 0;
 }
 
+/* ===== Gateway Panel ===== */
+.gateway-toggle {
+    background-color: #1a1a2e;
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+    transition: background-color 0.15s;
+}
+.gateway-toggle:hover {
+    background-color: #222244;
+}
+
+#gateway-body {
+    background-color: #0d0d1a;
+    border: 1px solid #2a2a4a;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 12px;
+}
+
 /* ===== Buttons ===== */
 .btn-spring-green {
     background-color: var(--spring-green);

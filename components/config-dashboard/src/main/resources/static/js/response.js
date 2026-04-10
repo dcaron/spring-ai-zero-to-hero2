@@ -81,6 +81,9 @@ function selectEndpoint(el) {
     var responsePanel = document.getElementById('response-panel');
     if (responsePanel) responsePanel.innerHTML = '<p class="text-muted text-center mt-4">Click "Try it" to call this endpoint</p>';
 
+    // Reset gateway panel
+    resetGatewayPanel();
+
     // Update curl line after form is in the DOM
     refreshCurl();
 
@@ -198,6 +201,7 @@ function tryEndpoint() {
                         if (result.done) {
                             var elapsed = Math.round(performance.now() - startTime);
                             statusEl.textContent = 'Done (' + elapsed + 'ms)';
+                            fetchGatewayAudit();
                             return;
                         }
                         var chunk = decoder.decode(result.value, {stream: true});
@@ -316,6 +320,7 @@ function tryEndpoint() {
                 } else {
                     responsePanel.innerHTML = header + content;
                 }
+                fetchGatewayAudit();
             });
         })
         .catch(function(err) {
@@ -375,3 +380,101 @@ function closeDocModal(event) {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeDocModal();
 });
+
+// ===== Gateway Panel =====
+var GATEWAY_URL = 'http://localhost:7777/audit/latest';
+var _lastGatewayAuditId = null;
+
+function resetGatewayPanel() {
+    var panel = document.getElementById('gateway-panel');
+    if (!panel) return;
+    panel.style.display = 'none';
+    var body = document.getElementById('gateway-body');
+    if (body) body.style.display = 'none';
+    var chevron = document.getElementById('gateway-chevron');
+    if (chevron) chevron.className = 'bi bi-chevron-down';
+    var reqBody = document.getElementById('gateway-request-body');
+    if (reqBody) reqBody.textContent = '—';
+    var resBody = document.getElementById('gateway-response-body');
+    if (resBody) resBody.textContent = '—';
+    var meta = document.getElementById('gateway-request-meta');
+    if (meta) meta.textContent = '';
+    // Snapshot current audit ID so we can detect fresh entries after the next call
+    fetch(GATEWAY_URL).then(function(r) {
+        if (!r.ok || r.status === 204) { _lastGatewayAuditId = null; return; }
+        return r.json();
+    }).then(function(data) {
+        _lastGatewayAuditId = data ? data.id : null;
+    }).catch(function() { _lastGatewayAuditId = null; });
+}
+
+function toggleGatewayPanel() {
+    var body = document.getElementById('gateway-body');
+    var chevron = document.getElementById('gateway-chevron');
+    if (!body) return;
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        if (chevron) chevron.className = 'bi bi-chevron-up';
+    } else {
+        body.style.display = 'none';
+        if (chevron) chevron.className = 'bi bi-chevron-down';
+    }
+}
+
+function fetchGatewayAudit() {
+    var panel = document.getElementById('gateway-panel');
+    if (!panel) return;
+
+    // Brief delay to let the gateway finish logging
+    setTimeout(function() {
+        fetch(GATEWAY_URL)
+            .then(function(resp) {
+                if (!resp.ok || resp.status === 204) return null;
+                return resp.json();
+            })
+            .then(function(data) {
+                if (!data) return;
+                // Only show if this is a fresh entry (different from snapshot taken on endpoint select)
+                if (data.id === _lastGatewayAuditId) return;
+
+                panel.style.display = 'block';
+
+                // Request meta
+                var metaEl = document.getElementById('gateway-request-meta');
+                if (metaEl) {
+                    metaEl.textContent = data.request.method + ' ' + data.request.uri;
+                }
+
+                // Request body — pretty-print JSON
+                var reqBodyEl = document.getElementById('gateway-request-body');
+                if (reqBodyEl) {
+                    reqBodyEl.textContent = formatJsonString(data.request.body);
+                }
+
+                // Response body — pretty-print JSON
+                var resBodyEl = document.getElementById('gateway-response-body');
+                if (resBodyEl) {
+                    resBodyEl.textContent = formatJsonString(data.response.body);
+                }
+
+                // Auto-expand
+                var body = document.getElementById('gateway-body');
+                var chevron = document.getElementById('gateway-chevron');
+                if (body) body.style.display = 'block';
+                if (chevron) chevron.className = 'bi bi-chevron-up';
+            })
+            .catch(function() {
+                // Gateway not running — hide panel silently
+                panel.style.display = 'none';
+            });
+    }, 500);
+}
+
+function formatJsonString(str) {
+    if (!str) return '—';
+    try {
+        return JSON.stringify(JSON.parse(str), null, 2);
+    } catch(e) {
+        return str;
+    }
+}

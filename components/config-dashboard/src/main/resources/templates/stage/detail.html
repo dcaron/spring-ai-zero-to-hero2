@@ -84,6 +84,29 @@
                         </button>
                     </div>
 
+                    <!-- Gateway Panel (spy profile only) -->
+                    <div th:if="${spyEnabled}" id="gateway-panel" style="display:none">
+                        <div class="gateway-toggle" onclick="toggleGatewayPanel()">
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="bi bi-hdd-network"></i>
+                                <span class="text-uppercase small fw-bold">Gateway</span>
+                                <span class="badge bg-secondary" style="font-size:10px">spy</span>
+                            </span>
+                            <i id="gateway-chevron" class="bi bi-chevron-down"></i>
+                        </div>
+                        <div id="gateway-body" style="display:none">
+                            <div class="mb-3">
+                                <div class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-arrow-up-right-circle me-1"></i>Request</div>
+                                <div id="gateway-request-meta" class="text-muted small mb-1"></div>
+                                <pre class="response-json" style="max-height:300px;overflow:auto"><code id="gateway-request-body">—</code></pre>
+                            </div>
+                            <div>
+                                <div class="text-muted small text-uppercase fw-bold mb-1"><i class="bi bi-arrow-down-left-circle me-1"></i>Response</div>
+                                <pre class="response-json" style="max-height:300px;overflow:auto"><code id="gateway-response-body">—</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

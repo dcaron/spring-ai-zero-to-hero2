@@ -25,9 +25,11 @@ management:
         include: "*"
 logging:
   level:
+    io.netty.resolver.dns.DnsServerAddressStreamProviders: OFF
     org:
       springframework:
         ai: DEBUG
+
 
 ---
 spring:

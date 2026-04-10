@@ -15,6 +15,11 @@ management:
     web:
       exposure:
         include: "*"
+logging:
+  level:
+    org:
+      springframework:
+        ai: DEBUG
 
 ---
 # Activate the spy profile and run the gateway app if you want to

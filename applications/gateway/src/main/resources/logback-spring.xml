@@ -20,5 +20,6 @@
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="OTEL" />
     </root>
+    <logger name="io.netty.resolver.dns.DnsServerAddressStreamProviders" level="OFF" />
 
 </configuration>

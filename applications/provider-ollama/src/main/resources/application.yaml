@@ -97,3 +97,4 @@ management:
 logging:
   level:
     com.example.tracing: DEBUG
+

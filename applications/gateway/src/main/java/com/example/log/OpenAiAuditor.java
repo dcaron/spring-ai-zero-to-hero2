@@ -10,8 +10,12 @@ public class OpenAiAuditor implements Auditor {
   private static final Logger logger = LoggerFactory.getLogger(OpenAiAuditor.class);
   private static final int MAX_BODY_LENGTH = 1000;
 
+  private volatile AuditLogEntry latestEntry;
+
   @Override
   public void log(AuditLogEntry auditEntry) {
+    this.latestEntry = auditEntry;
+
     var request = auditEntry.getRequest();
     var response = auditEntry.getResponse();
     String id = auditEntry.getId().toString().substring(0, 8);
@@ -26,6 +30,10 @@ public class OpenAiAuditor implements Auditor {
 
     // Log response
     logger.info("GATEWAY RESPONSE [id={}]: [body={}]", id, truncate(response.getBody()));
+  }
+
+  public AuditLogEntry getLatestEntry() {
+    return latestEntry;
   }
 
   private String truncate(String value) {
