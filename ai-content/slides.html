@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring AI Zero-to-Hero &mdash; Spring I/O 2026</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/theme/black.min.css" id="theme">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/highlight/monokai.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================== */
+/*  SPRING GREEN + GRADIENT THEME */
+/* ============================== */
+:root {
+  --sg: #6db33f;
+  --sg-light: #8fd360;
+  --sg-dark: #4a8c24;
+  --bg-deep: #0a0e1a;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(109,179,63,0.08);
+  --text: #e8eaed;
+  --text-dim: #8b919a;
+  --accent-blue: #4fc3f7;
+  --accent-purple: #b388ff;
+  --accent-orange: #ffb74d;
+  --accent-red: #ef5350;
+  --accent-teal: #4dd0e1;
+  --code-bg: #0d1117;
+  --grad-hero: linear-gradient(135deg, #0a0e1a 0%, #1a2940 40%, #0d2818 100%);
+  --grad-section: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+  --grad-green: linear-gradient(135deg, #6db33f, #4fc3f7);
+  --glass: rgba(255,255,255,0.06);
+  --glass-border: rgba(255,255,255,0.1);
+}
+
+/* Base */
+.reveal {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  color: var(--text);
+}
+.reveal .slides { text-align: left; }
+.reveal .slides section { padding: 30px 50px; }
+
+/* Typography */
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.reveal h1 { font-size: 2.4em; color: #fff; }
+.reveal h2 { font-size: 1.65em; color: #fff; }
+.reveal h3 { font-size: 1.05em; color: var(--sg-light); font-weight: 600; margin-bottom: 0.3em; }
+.reveal p { font-size: 0.82em; line-height: 1.6; color: var(--text); }
+.reveal ul, .reveal ol { margin-left: 0.4em; }
+.reveal li { font-size: 0.8em; line-height: 1.6; margin-bottom: 0.35em; color: var(--text); }
+.reveal li strong { color: #fff; }
+.reveal strong { color: #fff; }
+
+/* Code */
+.reveal pre {
+  width: 100%;
+  font-size: 0.46em;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  margin: 0.5em 0;
+}
+.reveal pre code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  padding: 20px 24px;
+  border-radius: 10px;
+  max-height: 480px;
+  background: var(--code-bg);
+  line-height: 1.55;
+}
+.reveal code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+}
+.reveal .small-code pre { font-size: 0.40em; }
+
+/* Tables */
+.reveal table { font-size: 0.68em; margin: 0.6em 0; border-collapse: separate; border-spacing: 0; width: 100%; }
+.reveal table th {
+  background: rgba(109,179,63,0.2);
+  color: var(--sg-light);
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--sg);
+}
+.reveal table td {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: var(--text);
+}
+.reveal table tr:hover td { background: var(--bg-card-hover); }
+
+/* Layouts */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: start; }
+.four-col { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; align-items: start; }
+
+/* Glass Cards */
+.card {
+  background: var(--glass);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: rgba(109,179,63,0.3); }
+.card h3 { margin-top: 0; }
+.card p, .card ul { font-size: 0.72em; color: var(--text-dim); }
+.card-icon { font-size: 1.8em; margin-bottom: 8px; display: block; }
+
+/* Badges & Pills */
+.pill {
+  display: inline-block;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  padding: 5px 16px;
+  border-radius: 100px;
+  font-size: 0.55em;
+  font-weight: 500;
+}
+.pill-green { background: rgba(109,179,63,0.2); border-color: var(--sg); color: var(--sg-light); }
+.pill-blue { background: rgba(79,195,247,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+.pill-purple { background: rgba(179,136,255,0.15); border-color: var(--accent-purple); color: var(--accent-purple); }
+.pill-orange { background: rgba(255,183,77,0.15); border-color: var(--accent-orange); color: var(--accent-orange); }
+
+.badge-sm {
+  display: inline-block;
+  background: var(--sg);
+  color: #fff;
+  padding: 3px 12px;
+  border-radius: 100px;
+  font-size: 0.5em;
+  font-weight: 600;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+/* Callout box */
+.callout {
+  background: rgba(109,179,63,0.1);
+  border-left: 4px solid var(--sg);
+  padding: 14px 20px;
+  border-radius: 0 8px 8px 0;
+  margin: 0.6em 0;
+  font-size: 0.78em;
+}
+.callout-blue {
+  background: rgba(79,195,247,0.08);
+  border-left-color: var(--accent-blue);
+}
+
+/* Timeline */
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.timeline-year {
+  min-width: 60px;
+  font-weight: 700;
+  font-size: 0.75em;
+  color: var(--sg-light);
+  padding-top: 2px;
+}
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sg);
+  margin-top: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(109,179,63,0.4);
+}
+.timeline-text {
+  font-size: 0.72em;
+  line-height: 1.5;
+}
+.timeline-text strong { color: #fff; }
+
+/* Flow arrows */
+.flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 1em 0;
+  font-size: 0.75em;
+}
+.flow-step {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+.flow-step-green { background: rgba(109,179,63,0.2); border-color: var(--sg); color: var(--sg-light); }
+.flow-arrow { color: var(--sg); font-size: 1.3em; }
+
+/* Stage number */
+.stage-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--grad-green);
+  color: #fff;
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.7em;
+  margin-right: 10px;
+  vertical-align: middle;
+  box-shadow: 0 4px 12px rgba(109,179,63,0.3);
+}
+
+/* Section dividers */
+.section-divider {
+  text-align: center !important;
+}
+.section-divider h2 { color: var(--sg-light) !important; font-weight: 400; font-size: 1.3em; }
+.section-label {
+  display: inline-block;
+  background: var(--grad-green);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Title slide */
+.title-slide { text-align: center !important; }
+.title-slide h1 {
+  font-size: 3em;
+  font-weight: 800;
+  background: var(--grad-green);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0;
+}
+.title-slide .subtitle {
+  font-size: 1.15em;
+  color: var(--text-dim);
+  font-weight: 300;
+  margin-top: 5px;
+}
+.title-slide .meta {
+  font-size: 0.65em;
+  color: var(--text-dim);
+  margin-top: 40px;
+}
+.title-slide .meta code {
+  color: var(--sg-light);
+  background: rgba(109,179,63,0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.95em;
+}
+
+/* Comparison blocks */
+.vs-container { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+.vs-label { font-size: 1.5em; font-weight: 700; color: var(--text-dim); text-align: center; }
+
+/* Stat callout */
+.stat { text-align: center; }
+.stat-number { font-size: 2.5em; font-weight: 800; background: var(--grad-green); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
+.stat-label { font-size: 0.6em; color: var(--text-dim); margin-top: 4px; }
+
+/* Glow effect on section backgrounds */
+.glow-top-right {
+  position: relative;
+}
+.glow-top-right::before {
+  content: '';
+  position: absolute;
+  top: -100px; right: -100px;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(109,179,63,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Dim helper */
+.dim { color: var(--text-dim); font-size: 0.7em; }
+
+/* Inline code in text */
+.reveal p code, .reveal li code {
+  background: rgba(109,179,63,0.12);
+  color: var(--sg-light);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<!--  TITLE                                                        -->
+<!-- ============================================================ -->
+<section data-background="linear-gradient(135deg, #0a0e1a 0%, #1a2940 40%, #0d2818 100%)">
+  <div class="title-slide">
+    <p style="margin-bottom:20px;">
+      <span class="pill pill-green" style="font-size:0.7em;">Spring I/O 2026</span>
+    </p>
+    <h1>Spring AI<br>Zero to Hero</h1>
+    <p class="subtitle">From AI Fundamentals to Agentic Systems</p>
+    <p class="meta">
+      <code>Spring Boot 4.0.5</code> &nbsp;&middot;&nbsp;
+      <code>Spring AI 2.0.0-M4</code> &nbsp;&middot;&nbsp;
+      <code>Java 25</code>
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  AGENDA                                                       -->
+<!-- ============================================================ -->
+<section data-background="var(--bg-deep)" class="glow-top-right">
+  <h2>What We'll Cover</h2>
+  <div class="two-col" style="margin-top:0.6em;">
+    <div>
+      <p><span class="stage-num">I</span> The AI Revolution &mdash; A Brief History</p>
+      <p><span class="stage-num">II</span> Java Developers Enter the AI World</p>
+      <p><span class="stage-num">III</span> Meet Spring AI</p>
+      <p><span class="stage-num">IV</span> Chat, Prompts &amp; Structured Output</p>
+      <p><span class="stage-num">V</span> Tool Calling &amp; Multimodal</p>
+    </div>
+    <div>
+      <p><span class="stage-num">VI</span> Embeddings &amp; Vector Stores</p>
+      <p><span class="stage-num">VII</span> RAG &amp; Chat Memory</p>
+      <p><span class="stage-num">VIII</span> Advanced Patterns &amp; MCP</p>
+      <p><span class="stage-num">IX</span> Agentic Systems</p>
+      <p><span class="stage-num">X</span> Observability &amp; Production</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART I: AI HISTORY                                           -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Part I</p>
+  <h1 style="font-size:2.2em;">The AI Revolution</h1>
+  <h2>From Turing to Transformers</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The Long Road to AI</h2>
+  <div style="margin-top:0.4em;">
+    <div class="timeline-item">
+      <span class="timeline-year">1950</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Turing Test</strong> &mdash; Alan Turing asks "Can machines think?" and proposes the imitation game</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">1956</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Dartmouth Conference</strong> &mdash; The term "Artificial Intelligence" is coined. Optimism is sky-high</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">1966</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>ELIZA</strong> &mdash; First chatbot. Pattern matching, no understanding &mdash; but fooled many people</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">1974-93</span><span class="timeline-dot" style="background:var(--accent-red);box-shadow:0 0 8px rgba(239,83,80,0.4);"></span>
+      <span class="timeline-text"><strong>AI Winters</strong> &mdash; Overpromise, underdeliver. Funding dries up. Twice.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">1997</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Deep Blue beats Kasparov</strong> &mdash; Brute force search, not learning. But a landmark moment.</span>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The Deep Learning Revolution</h2>
+  <div style="margin-top:0.4em;">
+    <div class="timeline-item">
+      <span class="timeline-year">2012</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>AlexNet</strong> &mdash; Deep neural nets crush ImageNet. GPU training changes everything. The deep learning era begins.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2013</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Word2Vec</strong> &mdash; Words become vectors. "King - Man + Woman = Queen." The foundation for embeddings.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2017</span><span class="timeline-dot" style="background:var(--accent-blue);box-shadow:0 0 8px rgba(79,195,247,0.5);"></span>
+      <span class="timeline-text"><strong>"Attention Is All You Need"</strong> &mdash; Google's Transformer paper. The architecture behind every modern LLM.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2018</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>GPT-1 &amp; BERT</strong> &mdash; Pre-trained language models. Transfer learning comes to NLP.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2020</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>GPT-3</strong> &mdash; 175B parameters. Few-shot learning. "It can write code?!"</span>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The Generative AI Explosion</h2>
+  <div style="margin-top:0.4em;">
+    <div class="timeline-item">
+      <span class="timeline-year">Nov 2022</span><span class="timeline-dot" style="background:var(--sg);box-shadow:0 0 12px rgba(109,179,63,0.6);"></span>
+      <span class="timeline-text"><strong>ChatGPT launches</strong> &mdash; 100M users in 2 months. AI becomes mainstream overnight.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2023</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>GPT-4, Claude, Gemini, Llama 2</strong> &mdash; Multimodal, open-source, tool use. An arms race begins.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2024</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Agents &amp; MCP</strong> &mdash; AI that uses tools, browses the web, writes code. Model Context Protocol standardizes integration.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2025</span><span class="timeline-dot"></span>
+      <span class="timeline-text"><strong>Spring AI 1.0</strong> &mdash; The Spring ecosystem embraces AI. Java developers join the party.</span>
+    </div>
+    <div class="timeline-item">
+      <span class="timeline-year">2026</span><span class="timeline-dot" style="background:var(--sg);box-shadow:0 0 12px rgba(109,179,63,0.6);"></span>
+      <span class="timeline-text"><strong>Spring AI 2.0 + Spring Boot 4</strong> &mdash; Production-grade AI with observability, MCP, and agentic patterns. <em>That's us, today.</em></span>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Approaches to AI &mdash; What Changed?</h2>
+  <div class="three-col" style="margin-top:0.8em;">
+    <div class="card">
+      <h3 style="color:var(--accent-orange);">Rule-Based (1960s-90s)</h3>
+      <p>Hand-written rules, expert systems, decision trees. Brittle. Doesn't scale. Every edge case = new rule.</p>
+      <p style="color:var(--accent-red); font-size:0.65em;">if city == "Berlin" then weather = ...</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--accent-blue);">Classical ML (2000s-10s)</h3>
+      <p>Learn patterns from data. SVM, random forests, gradient boosting. Good for structured data. Requires feature engineering.</p>
+      <p style="color:var(--accent-blue); font-size:0.65em;">features &rarr; model.fit() &rarr; predict</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--sg-light);">Generative AI (2020s)</h3>
+      <p>Pre-trained on the internet. Understands language. <strong>Generates</strong> text, code, images. You describe what you want in natural language.</p>
+      <p style="color:var(--sg-light); font-size:0.65em;">"Write a REST controller for..."</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:1em;">
+    The paradigm shift: from <strong>programming rules</strong> to <strong>describing intent</strong>. The model figures out the rest.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>How LLMs Actually Work</h2>
+  <ul>
+    <li>A <strong>Transformer neural network</strong> trained on vast text corpora</li>
+    <li>Core task: <strong>predict the next token</strong> given all previous tokens</li>
+    <li>Not a database &mdash; it <em>generates</em> text probabilistically</li>
+    <li>Stateless: every call is independent. Context must be provided each time.</li>
+  </ul>
+  <div class="two-col" style="margin-top:0.8em;">
+    <div class="card">
+      <h3>Tokens</h3>
+      <p>LLMs see tokens, not words. ~1 token &asymp; 0.75 English words. "Spring Framework" &rarr; 2-3 tokens.</p>
+    </div>
+    <div class="card">
+      <h3>Context Window</h3>
+      <p>Max tokens per request (input + output). GPT-4o: 128K. Claude: 200K. Qwen3: 32K.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART II: JAVA IN THE AI WORLD                                -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Part II</p>
+  <h1 style="font-size:2.2em;">Java Enters the AI World</h1>
+  <h2>It's Not Just Python Anymore</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The Python Assumption</h2>
+  <ul>
+    <li>AI has been <strong>Python-first</strong> since the deep learning revolution</li>
+    <li>TensorFlow, PyTorch, scikit-learn, LangChain, HuggingFace &mdash; all Python</li>
+    <li>Java developers were told: <em>"Learn Python or get left behind"</em></li>
+  </ul>
+  <div class="callout" style="margin-top:1em;">
+    But here's the thing: <strong>building AI-powered applications</strong> is fundamentally different from <strong>training AI models</strong>.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Training vs. Consuming</h2>
+  <div class="vs-container" style="margin-top:0.8em;">
+    <div class="card">
+      <h3 style="color:var(--accent-orange);">Training Models</h3>
+      <p>GPU clusters, CUDA, tensor math, loss functions, gradient descent. This IS Python territory.</p>
+      <p class="dim">You probably won't do this.</p>
+    </div>
+    <div class="vs-label">vs</div>
+    <div class="card" style="border-color: var(--sg);">
+      <h3 style="color:var(--sg-light);">Building AI Applications</h3>
+      <p>REST APIs, dependency injection, transaction management, security, observability, deployment. This is <strong>your territory</strong>.</p>
+      <p class="dim">This is what this workshop is about.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:0.8em;">
+    LLMs are accessed via HTTP APIs. You don't need Python to call an API. You need <strong>good application architecture</strong> &mdash; and that's where Java and Spring shine.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Why Java Developers Are Uniquely Positioned</h2>
+  <div class="three-col" style="margin-top:0.8em;">
+    <div class="card">
+      <span class="card-icon">&#9881;</span>
+      <h3>Enterprise Backbone</h3>
+      <p>AI features ship inside existing enterprise apps &mdash; not as standalone notebooks. Your Spring services are where AI lands.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#128737;</span>
+      <h3>Production Readiness</h3>
+      <p>Type safety, observability, security, transactions, testing. Python notebooks don't deploy themselves.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon">&#9889;</span>
+      <h3>Spring Ecosystem</h3>
+      <p>DI, auto-configuration, portable abstractions, Micrometer, Actuator. All of this now works with AI.</p>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The AI Stack for Java Developers</h2>
+  <pre><code class="language-plaintext" style="font-size:1em; line-height:1.7;">
+  You DON'T need to know          You DO need to know
+  ~~~~~~~~~~~~~~~~~~~~~~          ~~~~~~~~~~~~~~~~~~~~
+  PyTorch / TensorFlow            Spring Boot / Spring AI
+  CUDA / GPU programming          REST APIs / HTTP clients
+  Model training / fine-tuning    Prompt engineering
+  Python data science stack       Embeddings &amp; vector stores
+  Jupyter notebooks               RAG patterns
+  Gradient descent math           Tool calling &amp; agents
+  </code></pre>
+  <div class="callout" style="margin-top:0.6em;">
+    Spring AI brings AI to your existing skills. No career pivot required.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART III: MEET SPRING AI                                     -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Part III</p>
+  <h1 style="font-size:2.2em;">Meet Spring AI</h1>
+  <h2>The Spring Way to Build AI Applications</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>What Is Spring AI?</h2>
+  <ul>
+    <li>A <strong>Spring ecosystem project</strong> for AI-powered applications</li>
+    <li>Portable abstractions: write once, run against any provider</li>
+    <li>Auto-configuration: add a starter, set an API key, go</li>
+    <li>POJO-centric: your business logic stays in plain Java</li>
+  </ul>
+  <div class="callout" style="margin-top:1em;">
+    Think of it as <strong>"Spring Data for AI"</strong> &mdash; a uniform API across providers, just like Spring Data across databases.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Architecture</h2>
+  <pre><code class="language-plaintext" style="font-size:0.95em; line-height:1.6;">
+  ┌─────────────────────────────────────────────────────────┐
+  │                   Your Application                       │
+  │    Controller  &rarr;  Service  &rarr;  @Tool  &rarr;  OutputConverter │
+  ├─────────────────────────────────────────────────────────┤
+  │              Spring AI Abstraction Layer                  │
+  │   ChatClient  &bull; EmbeddingModel  &bull; VectorStore  &bull; Advisor  │
+  ├─────────────────────────────────────────────────────────┤
+  │             Provider Auto-Configuration                  │
+  │   OpenAI  &bull; Anthropic  &bull; Azure  &bull; Google  &bull; AWS  &bull; Ollama  │
+  └─────────────────────────────────────────────────────────┘
+  </code></pre>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Key Abstractions</h2>
+  <table>
+    <thead><tr><th>Abstraction</th><th>Interface</th><th>What It Does</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Chat</strong></td><td><code>ChatModel</code> / <code>ChatClient</code></td><td>Text generation &amp; conversation</td></tr>
+      <tr><td><strong>Embedding</strong></td><td><code>EmbeddingModel</code></td><td>Text &rarr; semantic vectors</td></tr>
+      <tr><td><strong>Vector Store</strong></td><td><code>VectorStore</code></td><td>Store &amp; search embeddings</td></tr>
+      <tr><td><strong>Advisors</strong></td><td><code>Advisor</code></td><td>Intercept/enrich prompts (RAG, memory)</td></tr>
+      <tr><td><strong>Tools</strong></td><td><code>@Tool</code></td><td>Let models call your Java methods</td></tr>
+      <tr><td><strong>MCP</strong></td><td>Model Context Protocol</td><td>Standardized tool/resource sharing</td></tr>
+      <tr><td><strong>Streaming</strong></td><td><code>StreamingChatModel</code></td><td>Token-by-token reactive output</td></tr>
+      <tr><td><strong>Observability</strong></td><td>Micrometer + OTel</td><td>Metrics, traces, logs for AI calls</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Provider Portability</h2>
+  <p>Same code, different provider &mdash; swap a Maven dependency and a YAML property.</p>
+  <pre><code class="language-java">// This code runs against ANY provider - zero changes
+String answer = chatClient.prompt()
+    .user("Tell me a joke about Spring")
+    .call()
+    .content();</code></pre>
+  <div class="two-col" style="margin-top:0.8em;">
+    <table>
+      <thead><tr><th>Provider</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Ollama (local, free)</td><td><span class="pill pill-green" style="font-size:0.85em;">44 / 44</span></td></tr>
+        <tr><td>OpenAI</td><td><span class="pill pill-green" style="font-size:0.85em;">44 / 44</span></td></tr>
+        <tr><td>Anthropic</td><td><span class="pill pill-green" style="font-size:0.85em;">14 / 14</span></td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Provider</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Azure OpenAI</td><td><span class="pill pill-green" style="font-size:0.85em;">8 / 8</span></td></tr>
+        <tr><td>Google Gemini</td><td><span class="pill pill-green" style="font-size:0.85em;">13 / 13</span></td></tr>
+        <tr><td>AWS Bedrock</td><td><span class="pill pill-green" style="font-size:0.85em;">8 / 8</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Workshop Architecture</h2>
+  <pre><code class="language-plaintext" style="font-size:0.92em; line-height:1.6;">spring-ai-zero-to-hero/
+├── applications/               &larr; Provider-specific apps (pick one)
+│   ├── provider-ollama/        &larr; LOCAL: no API keys needed
+│   ├── provider-openai/        &larr; CLOUD: full features
+│   └── ...                     &larr; anthropic, azure, google, aws
+├── components/                 &larr; Shared, provider-independent
+│   ├── apis/chat/              &larr; Stage 1: Chat fundamentals
+│   ├── apis/embedding/         &larr; Stage 2: Embeddings
+│   ├── apis/vector-store/      &larr; Stage 3: Vector stores
+│   └── patterns/               &larr; Stages 4-5: RAG, memory, CoT
+├── mcp/                        &larr; Stage 6: MCP servers &amp; clients
+├── agentic-system/             &larr; Stage 7: Agentic patterns
+└── docker/                     &larr; PostgreSQL, Grafana LGTM</code></pre>
+  <div class="callout">Components depend on <code>spring-ai-client-chat</code> (the abstraction). Provider apps add the starter. No code changes to switch.</div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART IV: CHAT & PROMPTS                                      -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stage 1</p>
+  <h1 style="font-size:2.2em;">Chat Fundamentals</h1>
+  <h2>ChatModel, ChatClient, Prompts</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>The Simplest AI Call</h2>
+  <p><span class="pill pill-green">GET /chat/01/joke</span></p>
+  <pre><code class="language-java">private final ChatModel chatModel;
+
+@GetMapping("joke")
+public String getJoke() {
+    return this.chatModel.call("Tell me a joke");
+}</code></pre>
+  <div class="callout">
+    <code>ChatModel.call(String)</code> &mdash; string in, string out. The absolute minimum API.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>ChatClient &mdash; The Fluent API <span class="badge-sm">Recommended</span></h2>
+  <p><span class="pill pill-green">GET /chat/02/client/joke?topic=java</span></p>
+  <pre><code class="language-java">// Full response chain
+ChatResponse response = chatClient.prompt()
+    .user("Tell me a joke about " + topic)
+    .call()
+    .chatResponse();
+Generation generation = response.getResult();
+AssistantMessage msg = generation.getOutput();
+return msg.getText();
+
+// Shorthand (preferred!)
+String joke = chatClient.prompt()
+    .user("Tell me a short joke")
+    .call()
+    .content();</code></pre>
+  <p class="dim">ChatClient is to ChatModel what Spring Data JPA is to JDBC.</p>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Prompt Templates</h2>
+  <p><span class="pill pill-green">GET /chat/03/joke?topic=cats</span></p>
+  <pre><code class="language-java">// Inline template with {variable} placeholders
+chatClient.prompt()
+    .user(u -> u.text("Tell me a joke about {topic}")
+                .param("topic", topic))
+    .call().content();
+
+// File-based template (classpath resource)
+chatClient.prompt()
+    .user(u -> u.text(new ClassPathResource("prompts/plays.st"))
+                .param("author", author))
+    .call().content();</code></pre>
+  <div class="callout">
+    Always use <code>{variable}</code> + <code>.param()</code> instead of string concatenation. Cleaner, testable, supports external files.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>System Roles</h2>
+  <p><span class="pill pill-green">GET /chat/06/fruit</span> vs <span class="pill pill-orange">GET /chat/06/veg</span></p>
+  <pre><code class="language-java">public RoleController(ChatClient.Builder builder) {
+    this.chatClient = builder
+        .defaultSystem("""
+            You are a helpful expert on plants, however
+            you are not allowed to answer any question about
+            vegetables - you can only answer about fruits.
+            """)
+        .build();
+}
+
+@GetMapping("/fruit")
+public String fruit() {
+    return chatClient.prompt()
+        .user("What is the color of a banana?")
+        .call().content();  // "A banana is yellow when ripe"
+}
+
+@GetMapping("/veg")
+public String veg() {
+    return chatClient.prompt()
+        .user("What is the color of a carrot?")
+        .call().content();  // "Sorry, I can only answer about fruits"
+}</code></pre>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART V: STRUCTURED OUTPUT & TOOLS                            -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stage 1 (continued)</p>
+  <h1 style="font-size:2.2em;">Structured Output &amp; Tools</h1>
+  <h2>Type-Safe AI Responses &amp; Function Calling</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Structured Output</h2>
+  <p><span class="pill pill-green">GET /chat/04/plays/object</span> &mdash; AI &rarr; typed Java records</p>
+  <pre><code class="language-java">// Define your target type
+record Play(String author, String title, Integer publicationYear) {}
+
+// Return a List&lt;String&gt;
+chatClient.prompt()
+    .user(u -> u.text("List plays by {author}").param("author", "Shakespeare"))
+    .call()
+    .entity(new ListOutputConverter(new DefaultConversionService()));
+
+// Return typed Java records — the Spring AI magic
+Play[] plays = chatClient.prompt()
+    .user(u -> u.text("List plays by {author}").param("author", "Shakespeare"))
+    .call()
+    .entity(Play[].class);</code></pre>
+  <div class="callout">
+    <code>.entity(Class)</code> auto-generates JSON schema, appends format instructions, and deserializes. No manual parsing.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Tool Calling with @Tool</h2>
+  <p><span class="pill pill-green">GET /chat/05/time?city=Berlin</span></p>
+  <div class="small-code">
+  <pre><code class="language-java">// Your Java methods become AI-callable tools
+public class TimeTools {
+    @Tool(description = "Returns the current time in a specific timezone")
+    public String currentTimeIn(
+            @ToolParam(description = "IANA timezone") String timeZone) {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(timeZone));
+        return "Today is " + now.getDayOfWeek() + " " + now;
+    }
+}
+
+// Register tools with the prompt
+chatClient.prompt()
+    .tools(new TimeTools())
+    .user(u -> u.text("What is the current time in {city}?")
+                .param("city", city))
+    .call().content();</code></pre>
+  </div>
+  <div class="callout-blue callout">
+    The AI <strong>decides</strong> when to call the tool. Spring AI handles the multi-turn conversation automatically.
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Tool Calling Flow</h2>
+  <pre><code class="language-plaintext" style="font-size:1em; line-height:1.7;">
+  ┌────────────────┐                     ┌──────────────┐
+  │  Your App      │                     │  LLM         │
+  └───────┬────────┘                     └──────┬───────┘
+          │  1. Prompt + tool schemas (JSON)    │
+          │────────────────────────────────────▸│
+          │                                     │
+          │  2. tool_call: getWeather("Berlin")  │
+          │◂────────────────────────────────────│
+          │                                     │
+          │  3. Invoke Java method              │
+          │  4. Send tool result back           │
+          │────────────────────────────────────▸│
+          │                                     │
+          │  5. "Berlin is 22&#176;C and sunny"       │
+          │◂────────────────────────────────────│
+  </code></pre>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Bean-Based Tools &amp; Multimodal</h2>
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--accent-blue);">Wrap Existing Services</h3>
+      <pre><code class="language-java">@Bean
+FunctionToolCallback weatherCb(
+        WeatherService svc) {
+    return FunctionToolCallback.builder(
+        "weatherFunction",
+        (WeatherRequest req) ->
+            svc.getWeather(req.city()))
+        .inputType(WeatherRequest.class)
+        .description("Get weather")
+        .build();
+}
+
+// Reference by bean name
+chatClient.prompt()
+  .toolNames("weatherFunction")
+  .user("Weather in Berlin?")
+  .call().content();</code></pre>
+    </div>
+    <div>
+      <h3 style="color:var(--accent-purple);">Vision &amp; Streaming</h3>
+      <pre><code class="language-java">// Send image + text
+chatClient.prompt()
+  .user(u -> u
+    .text("Describe this image")
+    .media(MimeTypeUtils.IMAGE_PNG,
+           imageResource))
+  .call().content();
+
+// Token-by-token streaming
+@GetMapping("/essay")
+Flux&lt;String&gt; essay(
+        @RequestParam String topic) {
+    return chatModel
+        .stream("Write about " + topic);
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART VI: EMBEDDINGS & VECTOR STORES                          -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stages 2 &amp; 3</p>
+  <h1 style="font-size:2.2em;">Embeddings &amp; Vector Stores</h1>
+  <h2>The Foundation of Semantic Search</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>What Are Embeddings?</h2>
+  <p>Dense float vectors that capture <strong>semantic meaning</strong>.</p>
+  <pre><code class="language-plaintext" style="font-size:1em;">"king"   &rarr; [0.12, -0.45, 0.78, 0.33, ...]  ┐
+                                                ├ close (cosine ~ 0.85)
+"queen"  &rarr; [0.14, -0.42, 0.75, 0.31, ...]  ┘
+
+"banana" &rarr; [-0.67, 0.22, 0.11, -0.89, ...]    far away (~ 0.15)</code></pre>
+  <pre><code class="language-java">// Generate an embedding
+float[] vector = embeddingModel.embed("mountain bike");
+// → 768 floats (nomic-embed-text) or 1536 (OpenAI)</code></pre>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Chunking, Reading &amp; Storing</h2>
+  <pre><code class="language-java">// Large documents must be split before embedding
+TokenTextSplitter splitter = new TokenTextSplitter();
+List&lt;Document&gt; chunks = splitter.split(largeDocument);
+
+// Read from various sources
+JsonReader jsonReader = new JsonReader(bikesResource,
+    "name", "price", "shortDescription", "description");
+
+// Load into vector store
+vectorStore.add(splitter.split(jsonReader.get()));
+
+// Semantic similarity search
+List&lt;Document&gt; results = vectorStore
+    .similaritySearch("mountain bike");</code></pre>
+  <div class="two-col" style="margin-top:0.6em;">
+    <div class="card">
+      <h3>SimpleVectorStore</h3>
+      <p>In-memory, zero setup. Great for dev/testing.</p>
+    </div>
+    <div class="card" style="border-color:var(--sg);">
+      <h3>PgVectorStore</h3>
+      <p>PostgreSQL + pgvector. HNSW index. Production-ready.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART VII: RAG & MEMORY                                       -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stage 4</p>
+  <h1 style="font-size:2.2em;">RAG &amp; Chat Memory</h1>
+  <h2>Grounding AI in Your Data</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>RAG &mdash; Retrieval Augmented Generation</h2>
+  <p>The most important AI pattern for enterprise applications.</p>
+  <div class="flow" style="margin:1.2em 0;">
+    <span class="flow-step flow-step-green">Embed docs</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step flow-step-green">Search</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step flow-step-green">Augment prompt</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step flow-step-green">Generate</span>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--accent-orange);">Manual RAG</h3>
+      <pre><code class="language-java">List&lt;Document&gt; docs = vectorStore
+    .similaritySearch(query);
+String context = docs.stream()
+    .map(Document::getText)
+    .collect(joining("\n"));
+
+chatClient.prompt()
+  .system(s -> s.text(qaPrompt)
+    .param("context", context))
+  .user(query)
+  .call().content();</code></pre>
+    </div>
+    <div>
+      <h3 style="color:var(--sg-light);">QuestionAnswerAdvisor</h3>
+      <pre><code class="language-java">// All-in-one: search + augment
+chatClient.prompt()
+  .advisors(
+    new QuestionAnswerAdvisor(
+        vectorStore))
+  .user(query)
+  .call()
+  .content();
+
+// Advisor automatically:
+// 1. Searches vector store
+// 2. Injects into prompt
+// 3. Generates answer</code></pre>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Chat Memory</h2>
+  <p><span class="pill pill-green">GET /mem/02/hello?message=Hi, I'm Alice</span> &rarr; <span class="pill pill-blue">GET /mem/02/name</span></p>
+  <pre><code class="language-java">ChatMemory memory = MessageWindowChatMemory.builder()
+    .chatMemoryRepository(new InMemoryChatMemoryRepository())
+    .maxMessages(10)
+    .build();
+
+this.chatClient = builder
+    .defaultAdvisors(PromptChatMemoryAdvisor.builder(memory).build())
+    .build();
+
+// Request 1: "Hi, I'm Alice" → stored in memory
+// Request 2: "What's my name?" → AI remembers "Alice"
+chatClient.prompt()
+    .user(message)
+    .advisors(a -> a.param("chat_memory_conversation_id", id))
+    .call().content();</code></pre>
+  <div class="callout">
+    LLMs are stateless. The memory advisor re-injects conversation history with every request.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART VIII: ADVANCED PATTERNS & MCP                           -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stages 5 &amp; 6</p>
+  <h1 style="font-size:2.2em;">Advanced Patterns &amp; MCP</h1>
+  <h2>Chain of Thought, Self-Reflection, Model Context Protocol</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Chain of Thought</h2>
+  <p><span class="pill pill-green">GET /cot/bio/flow</span> &mdash; multi-step pipeline</p>
+  <div class="small-code">
+  <pre><code class="language-java">public List&lt;String&gt; writeBio(String profile) {
+    // Step 1: Create outline
+    String outline = chatClient.prompt()
+        .user(u -> u.text("Create an outline for a biography:\n\n{profile}")
+                    .param("profile", profile))
+        .call().content();
+
+    // Step 2-3: Draft and condense (similar pattern)
+
+    // Step 4: Refine with expert persona
+    String refined = chatClient.prompt()
+        .system("You are an expert biography editor")
+        .user(u -> u.text("Polish this biography:\n\n{draft}")
+                    .param("draft", draft))
+        .call().content();
+
+    return List.of(outline, draft, condensed, refined);
+}</code></pre>
+  </div>
+  <p class="dim">Each step focuses on one aspect. The <code>.system()</code> prompt changes the AI's role per step.</p>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Self-Reflection Agent</h2>
+  <p><span class="pill pill-green">GET /reflection/bio/agent?iterations=3</span></p>
+  <div class="flow" style="margin:0.8em 0;">
+    <span class="flow-step flow-step-green">Writer</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step" style="background:rgba(239,83,80,0.15);border-color:var(--accent-red);color:var(--accent-red);">Critic</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step flow-step-green">Writer (revise)</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step" style="background:rgba(239,83,80,0.15);border-color:var(--accent-red);color:var(--accent-red);">Critic</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step flow-step-green">Final</span>
+  </div>
+  <pre><code class="language-java">for (int i = 0; i &lt; iterations; i++) {
+    // Writer generates (or revises based on feedback)
+    String draft = chatClient.prompt()
+        .system("You are a professional biography writer")
+        .user(writerPrompt + feedback)
+        .call().content();
+
+    // Critic reviews
+    String feedback = chatClient.prompt()
+        .system("You are a harsh but fair biography critic")
+        .user("Review this biography:\n\n" + draft)
+        .call().content();
+}</code></pre>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Model Context Protocol (MCP)</h2>
+  <p>Open standard for connecting AI apps to external tools &amp; data sources.</p>
+  <div class="two-col" style="margin-top:0.6em;">
+    <div class="card">
+      <h3 style="color:var(--accent-blue);">MCP Server</h3>
+      <pre><code class="language-java">@Bean
+ToolCallbackProvider weatherTools(
+        WeatherService svc) {
+    return MethodToolCallbackProvider
+        .builder()
+        .toolObjects(svc)
+        .build();
+}</code></pre>
+      <p class="dim">Exposes tools via STDIO or HTTP</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--accent-purple);">MCP Capabilities</h3>
+      <table>
+        <tr><td><code>@Tool</code></td><td>Callable functions</td></tr>
+        <tr><td><code>@McpResource</code></td><td>Readable data</td></tr>
+        <tr><td><code>@McpPrompt</code></td><td>Prompt templates</td></tr>
+        <tr><td><code>@McpComplete</code></td><td>Autocomplete</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:0.8em;">
+    MCP enables <strong>runtime tool discovery</strong>. AI apps adapt their capabilities on the fly.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART IX: AGENTIC SYSTEMS                                     -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stage 7</p>
+  <h1 style="font-size:2.2em;">Agentic Systems</h1>
+  <h2>AI That Controls Its Own Execution</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>From Calls to Agents</h2>
+  <div class="three-col" style="margin-top:0.8em;">
+    <div class="card">
+      <h3 style="color:var(--accent-blue);">Simple Call</h3>
+      <p>You control the flow. One prompt, one response. Stages 1-4.</p>
+      <p class="dim">Developer decides what happens.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--accent-purple);">Pipeline</h3>
+      <p>You orchestrate multi-step chains. CoT, reflection. Stage 5.</p>
+      <p class="dim">Developer designs the steps.</p>
+    </div>
+    <div class="card" style="border-color:var(--sg);">
+      <h3 style="color:var(--sg-light);">Agent</h3>
+      <p>The model controls execution. Decides tools, steps, when to stop. Stage 7.</p>
+      <p class="dim">Model decides what happens.</p>
+    </div>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Inner Monologue Agent</h2>
+  <p>The model reveals its reasoning via a structured tool call.</p>
+  <pre><code class="language-java">// Force the model to always respond via the tool
+OpenAiChatOptions options = OpenAiChatOptions.builder()
+    .toolChoice("required")
+    .build();
+
+// The tool captures visible message AND private reasoning
+@Tool(description = "Send a message to the user")
+public ChatResponse sendMessage(
+    @ToolParam(description = "The message") String message,
+    @ToolParam(description = "Private thoughts") String innerThoughts) {
+    return new ChatResponse(message, innerThoughts);
+}</code></pre>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Model-Directed Loop</h2>
+  <p>The model decides whether to continue processing or stop.</p>
+  <div class="small-code">
+  <pre><code class="language-java">@Tool(description = "Send a message to the user")
+public ChatResponse sendMessage(
+    @ToolParam(description = "Message") String message,
+    @ToolParam(description = "Reasoning") String innerThoughts,
+    @ToolParam(description = "Continue thinking?") boolean requestReinvocation) {
+    return new ChatResponse(message, innerThoughts, requestReinvocation);
+}
+
+// The agent loop
+List&lt;ChatResponse&gt; trace = new ArrayList&lt;&gt;();
+for (int step = 0; step &lt; MAX_STEPS; step++) {
+    ChatResponse response = chatClient.prompt()
+        .options(OpenAiChatOptions.builder().toolChoice("required").build())
+        .tools(new SendMessageTool())
+        .user(step == 0 ? userMessage : "Continue.")
+        .call().content();
+
+    trace.add(response);
+    if (!response.requestReinvocation()) break;  // Model says "done"
+}</code></pre>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!--  PART X: OBSERVABILITY                                        -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Stage 8</p>
+  <h1 style="font-size:2.2em;">Observability</h1>
+  <h2>Traces, Metrics &amp; Logs for AI</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Full-Stack Observability</h2>
+  <p>Spring Boot 4 + OpenTelemetry &mdash; production-grade AI monitoring.</p>
+  <div class="three-col" style="margin-top:0.8em;">
+    <div class="card">
+      <span class="card-icon" style="color:var(--accent-blue);">&#128269;</span>
+      <h3>Traces (Tempo)</h3>
+      <p>HTTP &rarr; ChatClient &rarr; AI Provider. Latency at every layer.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon" style="color:var(--sg-light);">&#128200;</span>
+      <h3>Metrics (Mimir)</h3>
+      <p>JVM, HTTP, HikariCP, AI call durations via Micrometer.</p>
+    </div>
+    <div class="card">
+      <span class="card-icon" style="color:var(--accent-purple);">&#128220;</span>
+      <h3>Logs (Loki)</h3>
+      <p>Correlated with trace IDs via Logback OTel appender.</p>
+    </div>
+  </div>
+  <pre><code class="language-java">// Custom tracing annotations
+@TracedEndpoint   // Controller methods (SpanKind.SERVER)
+@TracedService    // Service methods   (SpanKind.INTERNAL)
+@TracedRepository // Repository methods (SpanKind.CLIENT)</code></pre>
+  <p class="dim">Single <code>grafana/otel-lgtm:latest</code> container provides the entire observability stack.</p>
+</section>
+
+<!-- ============================================================ -->
+<!--  GETTING STARTED                                              -->
+<!-- ============================================================ -->
+<section data-background="var(--grad-section)" class="section-divider">
+  <p class="section-label">Workshop</p>
+  <h1 style="font-size:2.2em;">Let's Code!</h1>
+  <h2>5-Minute Setup</h2>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Getting Started</h2>
+  <pre><code class="language-bash"># 1. Check prerequisites
+./workshop.sh check
+
+# 2. Setup infrastructure (Docker, Ollama models)
+./workshop.sh setup
+
+# 3. Start with Ollama (local, free, all 44 demos)
+./workshop.sh start ollama --profiles pgvector,observation,ui
+
+# 4. Open the dashboard
+open http://localhost:8080/dashboard
+
+# 5. Try your first AI call
+curl "http://localhost:8080/chat/01/joke?topic=spring"</code></pre>
+  <div class="two-col" style="margin-top:0.8em;">
+    <table>
+      <thead><tr><th>Prerequisite</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>JDK</td><td>25</td></tr>
+        <tr><td>Docker</td><td>Latest</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Prerequisite</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>Ollama</td><td>Latest</td></tr>
+        <tr><td>Maven</td><td>via <code>mvnw</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section data-background="var(--bg-deep)">
+  <h2>Spring Profiles</h2>
+  <table>
+    <thead><tr><th>Profile</th><th>What It Adds</th><th>Infrastructure</th></tr></thead>
+    <tbody>
+      <tr><td><em>(none)</em></td><td>In-memory vector store</td><td>None</td></tr>
+      <tr><td><code>pgvector</code></td><td>PostgreSQL pgvector</td><td>Docker PostgreSQL</td></tr>
+      <tr><td><code>observation</code></td><td>Full tracing + metrics</td><td>Docker LGTM stack</td></tr>
+      <tr><td><code>spy</code></td><td>Network inspection proxy</td><td>Gateway app</td></tr>
+      <tr><td><code>ui</code></td><td>Interactive dashboard</td><td>None</td></tr>
+    </tbody>
+  </table>
+  <pre><code class="language-bash"># Combine freely
+./workshop.sh start ollama --profiles pgvector,observation,ui
+./workshop.sh start openai --profiles spy,pgvector</code></pre>
+</section>
+
+<!-- ============================================================ -->
+<!--  SUMMARY                                                      -->
+<!-- ============================================================ -->
+<section data-background="var(--bg-deep)">
+  <h2>The Full Journey</h2>
+  <table>
+    <thead><tr><th style="width:45px;"></th><th>Topic</th><th>Key Spring AI API</th></tr></thead>
+    <tbody>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">1</span></td><td>Chat Fundamentals</td><td><code>ChatClient</code>, <code>@Tool</code>, <code>ChatOptions</code></td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">2</span></td><td>Embeddings</td><td><code>EmbeddingModel</code>, <code>TokenTextSplitter</code></td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">3</span></td><td>Vector Stores</td><td><code>VectorStore</code>, <code>similaritySearch()</code></td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">4</span></td><td>AI Patterns</td><td><code>QuestionAnswerAdvisor</code>, <code>ChatMemory</code></td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">5</span></td><td>Advanced Patterns</td><td>Chain of Thought, Self-Reflection</td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">6</span></td><td>MCP</td><td>MCP Server/Client starters</td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">7</span></td><td>Agentic Systems</td><td><code>toolChoice("required")</code>, loops</td></tr>
+      <tr><td><span class="stage-num" style="width:30px;height:30px;font-size:0.6em;border-radius:8px;">8</span></td><td>Observability</td><td>OTel, Micrometer, Grafana LGTM</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!--  CLOSING                                                      -->
+<!-- ============================================================ -->
+<section data-background="linear-gradient(135deg, #0a0e1a 0%, #1a2940 40%, #0d2818 100%)">
+  <div class="title-slide">
+    <h1 style="font-size:2.8em;">Thank You!</h1>
+    <p class="subtitle" style="margin-top:20px;">Spring AI Zero-to-Hero</p>
+    <p class="meta" style="margin-top:30px;">
+      <code>Spring Boot 4.0.5</code> &nbsp;&middot;&nbsp;
+      <code>Spring AI 2.0.0-M4</code> &nbsp;&middot;&nbsp;
+      <code>Java 25</code>
+    </p>
+    <p style="margin-top:30px;">
+      <span class="pill pill-green" style="font-size:0.8em;">Spring I/O 2026</span>
+    </p>
+  </div>
+</section>
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/highlight/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/notes/notes.min.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  width: 1280,
+  height: 720,
+  margin: 0.06,
+  transition: 'slide',
+  transitionSpeed: 'default',
+  backgroundTransition: 'fade',
+  center: false,
+  plugins: [ RevealHighlight, RevealNotes ],
+  highlight: { highlightOnLoad: true }
+});
+</script>
+</body>
+</html>
