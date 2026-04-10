@@ -1,5 +1,28 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.2.0] — 2026-04-10: Enhanced Observability & Offline Workshop Tools
+
+End-to-end distributed tracing with per-span log correlation in Grafana, and offline workshop tooling for slow-WiFi venues.
+
+### Observability
+
+- **Endpoint payload logging** — `ControllerTracingAspect` logs request params/body and truncated response at INFO level, auto-correlated to OTel traces in Loki
+- **Distributed tracing through spy gateway** — Added `spring-boot-starter-opentelemetry`, `observation` profile, and `logback-spring.xml` to gateway module. Full end-to-end traces (backend → gateway → AI provider) visible in Grafana Tempo with `spy,observation` profiles
+- **Per-span log correlation** — New `SpanLoggingObservationHandler` emits INFO logs for Spring AI chat observations (`AI CALL START/END`) and HTTP client observations (`HTTP CLIENT REQUEST/RESPONSE`), ensuring every span has associated logs
+- **Structured gateway audit logs** — Refactored `OpenAiAuditor` to emit separate `GATEWAY REQUEST` / `GATEWAY RESPONSE` log lines with truncated payloads, replacing one large concatenated string
+- **Grafana trace-to-logs fix** — Changed datasource query from `|=` (line content filter) to `| trace_id =` (structured metadata filter) for correct OTLP log correlation
+- **Application name in console logs** — Added `<springProperty>` for app name in logback patterns (`[gateway]`, `[ollama]`) so interleaved logs are distinguishable
+- **Gateway OTel logback installer** — Added `OpenTelemetryLogbackInstaller` so gateway logs reach Loki via OTLP export
+
+### Workshop Tools
+
+- **Docker image export/import** — New `models/containers.sh` script: export/import/pull/list for all 4 workshop Docker images (pgvector, pgAdmin, Grafana LGTM, MailDev). Produces `containers.tar.gz` for USB stick distribution
+- **Gateway auto-starts with observation** — `workshop.sh` passes `observation` profile to gateway when selected
+- **Prerequisites update** — Added prominent "Important — Before Joining the Workshop" section with all Docker and Ollama pull commands
+- **Offline setup docs** — USB stick import instructions with links to `containers.sh` and `ollama.sh`
+
+---
+
 ## [2.1.0] — 2026-04-04: Workshop Helpers, Dashboard UI & Docs
 
 Workshop improvements for presenters and self-learners: interactive dashboard, OpenAPI docs, unified CLI script, and restructured documentation.
