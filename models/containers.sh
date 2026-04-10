@@ -131,9 +131,14 @@ do_list() {
     if image_exists "$image"; then
       local size
       size=$(docker image inspect "$image" --format='{{.Size}}' 2>/dev/null)
-      # Convert bytes to human-readable
+      # Convert bytes to human-readable (awk works on both macOS and Linux)
       local human_size
-      human_size=$(numfmt --to=iec-i --suffix=B "$size" 2>/dev/null || echo "${size} bytes")
+      human_size=$(echo "$size" | awk '{
+        if ($1 >= 1073741824) printf "%.1f GiB", $1/1073741824
+        else if ($1 >= 1048576) printf "%.0f MiB", $1/1048576
+        else if ($1 >= 1024) printf "%.0f KiB", $1/1024
+        else printf "%d B", $1
+      }' 2>/dev/null || echo "${size} bytes")
       echo -e "  ${GREEN}✓${RESET}  $image  ${DIM}($human_size)${RESET}"
     else
       echo -e "  ${RED}✗${RESET}  $image  ${DIM}(not pulled)${RESET}"
