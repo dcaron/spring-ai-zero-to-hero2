@@ -6,6 +6,31 @@
 
 ---
 
+## Important — Before Joining the Workshop
+
+Please make sure Docker is installed and pull the required container images **before** the workshop. Conference WiFi is often too slow for large downloads.
+
+### Docker Images (required)
+
+```bash
+docker pull pgvector/pgvector:pg18
+docker pull dpage/pgadmin4:latest
+docker pull grafana/otel-lgtm:latest
+docker pull maildev/maildev:2.2.1
+```
+
+### Ollama Models (optional — only if using local provider)
+
+```bash
+ollama pull qwen3
+ollama pull nomic-embed-text
+ollama pull llava
+```
+
+> **Tip:** If USB sticks are provided at the workshop, you can import pre-downloaded images and models instead. See [Offline Setup (USB Stick)](#offline-setup-usb-stick) below.
+
+---
+
 ## Tech Stack
 
 | Component | Version |
