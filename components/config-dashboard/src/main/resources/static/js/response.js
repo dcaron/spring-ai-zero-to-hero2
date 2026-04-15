@@ -107,7 +107,7 @@ function selectEndpoint(el) {
 
     var html = '<div class="d-flex align-items-center gap-2 mb-2">';
     html += '<span class="method-badge method-' + method.toLowerCase() + '">' + method + '</span>';
-    html += '<code class="text-light">' + escapeHtml(path) + '</code>';
+    html += '<code style="color:var(--spring-text)">' + escapeHtml(path) + '</code>';
     html += '</div>';
     if (description) {
         html += '<p class="text-muted small mb-3">' + escapeHtml(description) + '</p>';
@@ -321,7 +321,7 @@ function tryEndpoint() {
                                 content += '<div style="width:60px;height:8px;background:var(--spring-border);border-radius:4px;flex-shrink:0">';
                                 content += '<div style="width:' + pct + '%;height:100%;background:' + barColor + ';border-radius:4px"></div>';
                                 content += '</div>';
-                                content += '<div class="text-light text-truncate" style="flex:1" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</div>';
+                                content += '<div class="text-truncate" style="flex:1;color:var(--spring-text)" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</div>';
                                 content += '</div>';
                             });
                             content += '</div>';
@@ -357,7 +357,7 @@ function tryEndpoint() {
                                     var val = item[key];
                                     var displayVal = (typeof val === 'string' && val.length > 200)
                                         ? '<pre style="white-space:pre-wrap;margin:4px 0 0;font-size:12px">' + escapeHtml(val) + '</pre>'
-                                        : '<span class="text-light">' + escapeHtml(String(val)) + '</span>';
+                                        : '<span style="color:var(--spring-text)">' + escapeHtml(String(val)) + '</span>';
                                     content += '<div class="mb-1"><span class="text-muted small" style="min-width:80px;display:inline-block">' + escapeHtml(key) + ':</span> ' + displayVal + '</div>';
                                 });
                                 content += '</div>';
