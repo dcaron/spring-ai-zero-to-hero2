@@ -401,7 +401,7 @@ function tryEndpoint() {
                 if (loading) loading.remove();
                 var chatMessages = document.getElementById('chat-messages');
                 if (chatMessages) {
-                    chatMessages.innerHTML += '<div style="align-self:flex-start;max-width:75%;background:#3a2020;border:1px solid #5a3030;color:#e06c75;padding:8px 14px;border-radius:14px 14px 14px 2px;font-size:13px">Error: ' + escapeHtml(err.message) + '</div>';
+                    chatMessages.innerHTML += '<div style="align-self:flex-start;max-width:75%;background:var(--error-bg);border:1px solid var(--error-border);color:var(--error-text);padding:8px 14px;border-radius:14px 14px 14px 2px;font-size:13px">Error: ' + escapeHtml(err.message) + '</div>';
                 }
             } else {
                 responsePanel.innerHTML = '<div class="text-danger mt-4"><i class="bi bi-exclamation-triangle"></i> Error: ' + escapeHtml(err.message) + '</div>';
