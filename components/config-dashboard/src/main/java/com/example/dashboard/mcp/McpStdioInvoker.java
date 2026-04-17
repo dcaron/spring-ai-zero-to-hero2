@@ -9,6 +9,7 @@ import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Map;
@@ -36,11 +37,39 @@ public class McpStdioInvoker {
   }
 
   public boolean jarPresent() {
-    return Files.exists(Paths.get(jarPath));
+    return resolveJar() != null;
   }
 
   public String jarPath() {
     return jarPath;
+  }
+
+  /**
+   * Resolve the configured (possibly relative) jar path. Absolute paths are returned as-is;
+   * relative paths are first tried against the JVM cwd, then walked up the directory tree to handle
+   * the common case where the provider app runs from its module directory instead of the project
+   * root. Returns {@code null} if the jar cannot be found.
+   */
+  Path resolveJar() {
+    Path configured = Paths.get(jarPath);
+    if (Files.exists(configured)) {
+      return configured.toAbsolutePath();
+    }
+    if (configured.isAbsolute()) {
+      return null;
+    }
+    Path current = Paths.get("").toAbsolutePath();
+    for (int i = 0; i < 5; i++) {
+      Path candidate = current.resolve(jarPath);
+      if (Files.exists(candidate)) {
+        return candidate.toAbsolutePath();
+      }
+      current = current.getParent();
+      if (current == null) {
+        break;
+      }
+    }
+    return null;
   }
 
   public ListToolsResult listTools() {
@@ -52,7 +81,8 @@ public class McpStdioInvoker {
   }
 
   <T> T withClient(Function<McpSyncClient, T> fn) {
-    if (!jarPresent()) {
+    Path resolved = resolveJar();
+    if (resolved == null) {
       throw new IllegalStateException("STDIO jar not built at " + jarPath);
     }
     var params =
@@ -62,7 +92,7 @@ public class McpStdioInvoker {
                 "-Dspring.main.web-application-type=none",
                 "-Dlogging.pattern.console=",
                 "-jar",
-                jarPath)
+                resolved.toString())
             .build();
     var transport = new StdioClientTransport(params, McpJsonDefaults.getMapper());
     McpSyncClient client = McpClient.sync(transport).requestTimeout(REQUEST_TIMEOUT).build();
