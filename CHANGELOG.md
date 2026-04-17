@@ -21,6 +21,38 @@
 
 ---
 
+## [2.2.2] — 2026-04-15: Dashboard Light/Dark Mode Toggle
+
+Adds a persistent theme toggle to the workshop dashboard topbar, available on every page (overview + all stage detail pages).
+
+### Dashboard Theme Toggle
+
+- **Sun/moon button in the topbar** — switches between the existing dark theme (default) and a new light theme on click
+- **Persistent preference** — `localStorage` key `theme` stores the user's choice; survives refreshes and browser restarts with no expiration
+- **Flash prevention** — `theme.js` runs as an IIFE in `<head>` before first paint, reading `localStorage` synchronously so the correct theme renders from the initial page load
+- **Light theme uses darker green tones** (`#3d7a1c`) for WCAG AA contrast against the light background
+- **Highlight.js colors** adapted to a GitHub-style palette when light mode is active
+- **Smooth 200ms transitions** between themes, disabled on initial page load to avoid a flash animation
+- **Mermaid diagrams re-render** with matching theme on toggle — existing diagrams have their original markdown restored and re-processed
+- **Bootstrap `data-bs-theme` kept in sync** so form controls, close buttons, and other Bootstrap components follow the theme automatically
+
+### CSS Architecture Refactor
+
+- **50+ CSS custom properties** defined in `:root`, with `[data-theme="light"]` overrides — covers all UI colors, JSON syntax highlighting, highlight.js tokens, code blocks, modals, gateway panel, and component-specific elements
+- **All hardcoded color literals removed** from stylesheets and templates in favour of theme-aware `var(--spring-*)` references
+- **Bootstrap `text-light` utility replaced** with `var(--spring-text)` inline styles on endpoint paths, stage card titles, doc modal title, similarity labels, and card values
+- **`btn-close-white` removed** from gateway modal — Bootstrap's `data-bs-theme` now handles close-button contrast
+
+### Files
+
+- New: `components/config-dashboard/src/main/resources/static/js/theme.js` (toggle logic, persistence, Mermaid re-init)
+- Modified: `workshop.css` (+200 lines: variables + light overrides + toggle button + transitions)
+- Modified: `layout.html` (theme.js in `<head>`, toggle button in topbar, dynamic Mermaid theme init)
+- Modified: `response.js` (theme-aware error bubbles and dynamic HTML)
+- Modified: `stage/detail.html`, `dashboard/index.html` (theme-aware text + modal close styling)
+
+---
+
 ## [2.2.1] — 2026-04-11: Anthropic Provider Fix & Gateway Spy UI Improvements
 
 Bug fixes for the Anthropic provider and visual improvements to the gateway spy panel in the workshop dashboard.
