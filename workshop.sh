@@ -39,6 +39,58 @@ app_is_ready() {
     return 1
 }
 
+# ─────────────────────────────────────────────────────────────
+# MCP helpers — process lifecycle for mcp/ demos
+# ─────────────────────────────────────────────────────────────
+MCP_STATE_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/.workshop/mcp"
+MCP_DEMOS=(02 04 05)           # long-running demos; 01 is jar-build only
+MCP_ALL_DEMOS=(01 02 04 05)    # 03 is a CLI runner, not a server
+
+declare -A MCP_PORTS=(
+    [02]=8081
+    [04]=8082
+    [05]=8083
+)
+
+declare -A MCP_MODULES=(
+    [01]="mcp/01-mcp-stdio-server"
+    [02]="mcp/02-mcp-http-server"
+    [04]="mcp/04-dynamic-tool-calling/server"
+    [05]="mcp/05-mcp-capabilities"
+)
+
+declare -A MCP_LABELS=(
+    [01]="STDIO Server"
+    [02]="HTTP Server"
+    [04]="Dynamic Tool Calling (server)"
+    [05]="Full Capabilities"
+)
+
+MCP_STDIO_JAR="mcp/01-mcp-stdio-server/target/01-mcp-stdio-server-0.0.1-SNAPSHOT.jar"
+
+mcp_pid_file() { echo "${MCP_STATE_DIR}/${1}.pid"; }
+mcp_log_file() { echo "${MCP_STATE_DIR}/${1}.log"; }
+
+mcp_ensure_state_dir() {
+    mkdir -p "${MCP_STATE_DIR}"
+}
+
+mcp_is_up() {
+    local id="$1"
+    local port="${MCP_PORTS[$id]:-}"
+    [ -z "${port}" ] && return 1
+    # TCP port-bound probe (not /actuator/health — 04 returns 503 until latch fires)
+    if command -v nc &>/dev/null; then
+        nc -z localhost "${port}" &>/dev/null
+    else
+        (echo > "/dev/tcp/localhost/${port}") &>/dev/null
+    fi
+}
+
+mcp_stdio_jar_present() {
+    [ -f "${SCRIPT_DIR}/${MCP_STDIO_JAR}" ]
+}
+
 # ── Credential check helpers ────────────────────────────────
 # Returns 0 if provider has a configured (non-placeholder) creds.yaml
 provider_has_creds() {
