@@ -235,6 +235,28 @@ logging:
     console: ""                        # Suppress log output on stdout
 ```
 
+### Curl equivalents
+
+All 01 interactions go through the dashboard (which spawns the jar as a subprocess per request). There's no long-running port to hit directly.
+
+```bash
+# Status (shows jar-present + build hint)
+curl -s http://localhost:8080/dashboard/mcp/01/status
+
+# List tools — spawns the jar, lists, closes (~1–2s cold)
+curl -s http://localhost:8080/dashboard/mcp/01/tools
+
+# Invoke getTemperature (city-only geocodes; lat+lon goes straight to the weather API)
+curl -s -X POST http://localhost:8080/dashboard/mcp/01/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"city":"Berlin"}}'
+
+# Invoke with coordinates
+curl -s -X POST http://localhost:8080/dashboard/mcp/01/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"latitude":52.52,"longitude":13.41}}'
+```
+
 > **Takeaway:** STDIO MCP servers must keep stdout clean — only JSON-RPC messages. Disable Spring Boot banner and console logging. The client spawns the server as a subprocess and communicates via piped stdin/stdout.
 
 ---
@@ -296,6 +318,31 @@ spring:
         protocol: STREAMABLE          # HTTP transport (not STDIO)
         streamable-http:
           mcp-endpoint: /mcp           # HTTP endpoint path
+```
+
+### Curl equivalents
+
+02 is reachable two ways: through the dashboard's REST wrapper on `:8080`, OR directly as raw MCP JSON-RPC on `:8081/mcp`. The dashboard wrapper is easier to hand-roll; the raw protocol requires a session-aware Streamable HTTP handshake and is usually driven by an MCP client SDK.
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/02/status
+
+# List tools (via dashboard — uses the long-lived McpClient instance)
+curl -s http://localhost:8080/dashboard/mcp/02/tools
+
+# Invoke getTemperature (city auto-geocode)
+curl -s -X POST http://localhost:8080/dashboard/mcp/02/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"city":"Hamburg"}}'
+
+# Invoke with coordinates
+curl -s -X POST http://localhost:8080/dashboard/mcp/02/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"latitude":35.6762,"longitude":139.6503,"city":"Tokyo"}}'
+
+# Spring Boot Actuator health (port 8081 directly)
+curl -s http://localhost:8081/actuator/health
 ```
 
 > **Takeaway:** Switching from STDIO to HTTP requires changing the starter dependency (`spring-ai-starter-mcp-server` → `spring-ai-starter-mcp-server-webmvc`) and the config (`stdio: true` → `protocol: STREAMABLE`). The tool code stays identical.
@@ -456,6 +503,23 @@ Config (`mcp-servers-external.json`):
 
 This mode is CLI-only: the dashboard can't spawn `npx` subprocesses for arbitrary external servers, and reaching those servers requires creds (`BRAVE_API_KEY`) the dashboard doesn't manage.
 
+### Curl equivalents
+
+03 is a client, not a server. The dashboard's `/03/run` endpoint runs the ChatClient demo against whichever of 01/02 are live.
+
+```bash
+# Status (informational — 03 is a CLI, not a bound port)
+curl -s http://localhost:8080/dashboard/mcp/03/status
+
+# Run demo in local mode (uses 01 STDIO subprocess + 02 HTTP)
+# Response contains { mode, question, response, toolsFrom }
+curl -s -X POST 'http://localhost:8080/dashboard/mcp/03/run?mode=local'
+
+# External mode is rejected from the dashboard — returns 400 pointing at the CLI
+curl -s -X POST 'http://localhost:8080/dashboard/mcp/03/run?mode=external'
+# → {"error":"external mode not available from the dashboard","hint":"./mvnw spring-boot:run -pl mcp/03-mcp-client -Dspring-boot.run.profiles=mcp-external",...}
+```
+
 > **Takeaway:** MCP clients treat tools from any server the same way — the `ChatClient.toolCallbacks(...)` API doesn't care whether a tool lives in a local STDIO subprocess, a local HTTP server, or an external npx-spawned service. Swapping between local and external is purely a config change. This is the power of MCP: plug any tool ecosystem into any AI application.
 
 ---
@@ -568,6 +632,37 @@ McpClientCustomizer<?> customizeMcpClient() {
         latch.countDown();
     };
 }
+```
+
+### Curl equivalents
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/04/status
+
+# List tools — initially shows only weatherForecast
+curl -s http://localhost:8080/dashboard/mcp/04/tools
+
+# Trigger dynamic registration (one-shot per server process)
+# After this call, MathTools (sumNumbers, multiplyNumbers, divideNumbers) are registered
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/update-tools
+# → {"signal":"Update signal received!"}
+
+# List tools again — now shows 4 tools
+curl -s http://localhost:8080/dashboard/mcp/04/tools
+
+# Invoke the weather forecast (Berlin)
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"weatherForecast","args":{"latitude":52.52,"longitude":13.41}}'
+
+# Invoke the newly-registered math tool
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"sumNumbers","args":{"number1":3,"number2":5}}'
+
+# Call the server's own /updateTools endpoint directly (bypass the dashboard)
+curl -s http://localhost:8082/updateTools
 ```
 
 > **Takeaway:** `McpSyncServer.addTool()` enables runtime tool registration without restarting the server. `McpToolUtils.toSyncToolSpecifications()` bridges Spring AI's `ToolCallback` abstraction to MCP's protocol format. This supports plugin architectures where tools are loaded dynamically.
@@ -761,6 +856,55 @@ List<SyncCompletionSpecification> completionSpecs() {
     return SyncMcpAnnotationProviders.completeSpecifications(
         List.of(new AutocompleteProvider()));
 }
+```
+
+### Curl equivalents
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/05/status
+
+# ── TOOLS ──────────────────────────────────────────
+curl -s http://localhost:8080/dashboard/mcp/05/tools
+
+# Invoke getAlerts (valid two-letter US code; returns active NWS alerts)
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getAlerts","args":{"state":"CA"}}'
+
+# Invoke getWeatherForecastByLocation (US coordinates — api.weather.gov is US-only)
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getWeatherForecastByLocation","args":{"latitude":47.6062,"longitude":-122.3321}}'
+
+# ── RESOURCES ──────────────────────────────────────
+# The dashboard merges resources/list (concrete) and resources/templates/list
+curl -s http://localhost:8080/dashboard/mcp/05/resources
+
+# Read a templated URI — substitute a known username: john, jane, bob, alice
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-profile://alice'
+
+# Specific attribute (name, email, age, location)
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-attribute://alice/email'
+
+# Status icon (🟢 🟠 ⚪ 🔴)
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-status://jane'
+
+# ── PROMPTS ────────────────────────────────────────
+curl -s http://localhost:8080/dashboard/mcp/05/prompts
+
+# Get a rendered prompt with arguments
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/prompts/get \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"personalized-message","args":{"name":"Alice","age":28,"interests":"AI, hiking"}}'
+
+# Get a simpler prompt
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/prompts/get \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"greeting","args":{"name":"Bob"}}'
 ```
 
 > **Takeaway:** MCP is more than just tools. Resources expose data, prompts provide reusable templates, and completions enable IDE-like autocomplete. Spring AI's `@Mcp*` annotations make all four capabilities declarative — annotate methods and register the providers as beans.

@@ -182,7 +182,9 @@
             if (enumValues) {
                 html += '<select class="form-select form-select-sm" ' +
                     'data-arg-name="' + escapeHtml(key) + '" ' +
-                    'data-arg-type="' + escapeHtml(type) + '">';
+                    'data-arg-type="' + escapeHtml(type) + '" ' +
+                    'data-uid="' + uid + '" ' +
+                    'onchange="mcpRefreshInvokeCurl(this)">';
                 if (!isRequired) html += '<option value="">(leave empty)</option>';
                 enumValues.forEach(function(v) {
                     html += '<option value="' + escapeHtml(String(v)) + '">' + escapeHtml(String(v)) + '</option>';
@@ -192,8 +194,10 @@
                 html += '<input type="text" class="form-control form-control-sm" ' +
                     'data-arg-name="' + escapeHtml(key) + '" ' +
                     'data-arg-type="' + escapeHtml(type) + '" ' +
+                    'data-uid="' + uid + '" ' +
                     'value="' + escapeHtml(firstExample) + '" ' +
-                    'placeholder="' + escapeHtml(prop.description || key) + '">';
+                    'placeholder="' + escapeHtml(prop.description || key) + '" ' +
+                    'oninput="mcpRefreshInvokeCurl(this)">';
             }
             if (prop.description) {
                 html += '<div class="form-text text-muted" style="font-size:11px">' +
@@ -206,6 +210,13 @@
             'data-tool-name="' + escapeHtml(toolName) + '" ' +
             'data-uid="' + uid + '" ' +
             'onclick="mcpSubmitInvoke(this)">Submit</button>';
+        // Live curl line (matches the .curl-line pattern from stages 1–5)
+        html += '<div class="curl-line mt-2" style="font-size:11px">';
+        html += '<code id="' + uid + '-curl"></code>';
+        html += '<button class="btn btn-sm btn-outline-secondary btn-copy" ' +
+            'data-uid="' + uid + '" onclick="mcpCopyInvokeCurl(this)">' +
+            '<i class="bi bi-clipboard"></i> Copy</button>';
+        html += '</div>';
         html += '<div class="mcp-invoke-result mt-2"></div>';
         return html;
     }
@@ -214,7 +225,60 @@
         var uid = btn.dataset.uid;
         var form = document.getElementById(uid);
         if (!form) return;
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        var show = form.style.display === 'none';
+        form.style.display = show ? 'block' : 'none';
+        if (show) {
+            // Pre-fill the curl line with the default/example values
+            mcpBuildInvokeCurl(uid);
+        }
+    };
+
+    // Collect {name: value} args from all input/select elements in the form,
+    // coerced by data-arg-type.
+    function mcpCollectArgs(form) {
+        var args = {};
+        form.querySelectorAll('[data-arg-name]').forEach(function(el) {
+            var name = el.dataset.argName;
+            var type = el.dataset.argType || 'string';
+            var val = el.value;
+            if (val == null || val === '') return;
+            if (type === 'number' || type === 'integer') args[name] = Number(val);
+            else if (type === 'boolean') args[name] = val === 'true';
+            else args[name] = val;
+        });
+        return args;
+    }
+
+    // Rebuild the curl line for a given invoke form.
+    function mcpBuildInvokeCurl(uid) {
+        var form = document.getElementById(uid);
+        if (!form) return;
+        var btn = form.querySelector('button[data-tool-name]');
+        if (!btn) return;
+        var demoId = btn.dataset.demoId;
+        var toolName = btn.dataset.toolName;
+        var args = mcpCollectArgs(form);
+        var body = JSON.stringify({ tool: toolName, args: args });
+        var origin = window.location.origin || ('http://' + window.location.host);
+        var curl = "curl -s -X POST " + origin + "/dashboard/mcp/" + demoId + "/invoke \\\n" +
+            "  -H 'Content-Type: application/json' \\\n" +
+            "  -d '" + body.replace(/'/g, "'\\''") + "'";
+        var codeEl = document.getElementById(uid + '-curl');
+        if (codeEl) codeEl.textContent = curl;
+    }
+
+    window.mcpRefreshInvokeCurl = function(el) {
+        mcpBuildInvokeCurl(el.dataset.uid);
+    };
+
+    window.mcpCopyInvokeCurl = function(btn) {
+        var codeEl = document.getElementById(btn.dataset.uid + '-curl');
+        if (!codeEl) return;
+        navigator.clipboard.writeText(codeEl.textContent).then(function() {
+            var original = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+            setTimeout(function() { btn.innerHTML = original; }, 1500);
+        });
     };
 
     window.mcpSubmitInvoke = function(btn) {
@@ -224,16 +288,7 @@
         var form = document.getElementById(uid);
         if (!form) return;
         var resultEl = form.querySelector('.mcp-invoke-result');
-        var args = {};
-        form.querySelectorAll('input[data-arg-name]').forEach(function(inp) {
-            var name = inp.dataset.argName;
-            var type = inp.dataset.argType;
-            var val = inp.value;
-            if (!val) return;
-            if (type === 'number' || type === 'integer') args[name] = Number(val);
-            else if (type === 'boolean') args[name] = val === 'true';
-            else args[name] = val;
-        });
+        var args = mcpCollectArgs(form);
         resultEl.innerHTML = '<div class="text-muted small"><div class="spinner-border spinner-border-sm" role="status"></div> Invoking…</div>';
         fetch('/dashboard/mcp/' + demoId + '/invoke', {
             method: 'POST',
@@ -287,15 +342,39 @@
             html += '<div class="input-group input-group-sm mb-2">';
             html += '<span class="input-group-text">uri</span>';
             html += '<input type="text" class="form-control" id="' + uid + '-uri" value="' + escapeHtml(uri) + '" ' +
+                'data-demo-id="' + escapeHtml(demoId) + '" data-uid="' + uid + '" ' +
+                'oninput="mcpRefreshReadCurl(this)" ' +
                 (entry.kind === 'template' ? 'placeholder="replace {placeholders} before submitting"' : '') + '>';
             html += '<button class="btn btn-spring-green" data-demo-id="' + escapeHtml(demoId) +
                 '" data-uid="' + uid + '" onclick="mcpReadResource(this)">Read</button>';
+            html += '</div>';
+            // Live curl line
+            html += '<div class="curl-line mb-2" style="font-size:11px">';
+            html += '<code id="' + uid + '-curl"></code>';
+            html += '<button class="btn btn-sm btn-outline-secondary btn-copy" ' +
+                'data-uid="' + uid + '" onclick="mcpCopyInvokeCurl(this)">' +
+                '<i class="bi bi-clipboard"></i> Copy</button>';
             html += '</div>';
             html += '<div id="' + uid + '-result"></div>';
             html += cardClose();
         });
         document.getElementById('mcp-modal-body').innerHTML = html;
+        // Pre-populate each resource's curl line from the initial URI
+        document.querySelectorAll('#mcp-modal-body input[id$="-uri"]').forEach(function(inp) {
+            mcpBuildReadCurl(inp.dataset.uid, inp.dataset.demoId, inp.value);
+        });
     }
+
+    function mcpBuildReadCurl(uid, demoId, uri) {
+        var origin = window.location.origin || ('http://' + window.location.host);
+        var url = origin + "/dashboard/mcp/" + demoId + "/resources/read?uri=" + encodeURIComponent(uri);
+        var codeEl = document.getElementById(uid + '-curl');
+        if (codeEl) codeEl.textContent = "curl -s '" + url.replace(/'/g, "'\\''") + "'";
+    }
+
+    window.mcpRefreshReadCurl = function(el) {
+        mcpBuildReadCurl(el.dataset.uid, el.dataset.demoId, el.value);
+    };
 
     window.mcpReadResource = function(btn) {
         var demoId = btn.dataset.demoId;
@@ -339,7 +418,13 @@
                         (arg.required ? ' <span class="text-danger">*</span>' : '') + '</label>';
                     html += '<input type="text" class="form-control form-control-sm" ' +
                         'data-arg-name="' + escapeHtml(arg.name || '') + '" ' +
-                        'placeholder="' + escapeHtml(arg.description || arg.name || '') + '">';
+                        'data-uid="' + uid + '" ' +
+                        'placeholder="' + escapeHtml(arg.description || arg.name || '') + '" ' +
+                        'oninput="mcpRefreshPromptCurl(this)">';
+                    if (arg.description) {
+                        html += '<div class="form-text text-muted" style="font-size:11px">' +
+                            escapeHtml(arg.description) + '</div>';
+                    }
                     html += '</div>';
                 });
             } else {
@@ -349,11 +434,48 @@
                 'data-demo-id="' + escapeHtml(demoId) + '" ' +
                 'data-prompt-name="' + escapeHtml(prompt.name || '') + '" ' +
                 'data-uid="' + uid + '" onclick="mcpGetPrompt(this)">Get prompt</button>';
+            // Live curl line
+            html += '<div class="curl-line mt-2" style="font-size:11px">';
+            html += '<code id="' + uid + '-curl"></code>';
+            html += '<button class="btn btn-sm btn-outline-secondary btn-copy" ' +
+                'data-uid="' + uid + '" onclick="mcpCopyInvokeCurl(this)">' +
+                '<i class="bi bi-clipboard"></i> Copy</button>';
+            html += '</div>';
             html += '<div id="' + uid + '-result" class="mt-2"></div>';
             html += cardClose();
         });
         document.getElementById('mcp-modal-body').innerHTML = html;
+        // Pre-populate each prompt's curl line
+        prompts.forEach(function(prompt, idx) {
+            mcpBuildPromptCurl('prm-' + demoId + '-' + idx, demoId, prompt.name || '');
+        });
     }
+
+    function mcpBuildPromptCurl(uid, demoId, promptName) {
+        var card = document.getElementById(uid + '-curl');
+        if (!card) return;
+        // Collect args from sibling inputs under the same prompt card
+        var args = {};
+        var anchor = card.closest('.mb-3');
+        if (anchor) {
+            anchor.querySelectorAll('input[data-arg-name][data-uid="' + uid + '"]').forEach(function(inp) {
+                if (inp.value) args[inp.dataset.argName] = inp.value;
+            });
+        }
+        var origin = window.location.origin || ('http://' + window.location.host);
+        var body = JSON.stringify({ name: promptName, args: args });
+        var curl = "curl -s -X POST " + origin + "/dashboard/mcp/" + demoId + "/prompts/get \\\n" +
+            "  -H 'Content-Type: application/json' \\\n" +
+            "  -d '" + body.replace(/'/g, "'\\''") + "'";
+        card.textContent = curl;
+    }
+
+    window.mcpRefreshPromptCurl = function(inp) {
+        var uid = inp.dataset.uid;
+        var card = inp.closest('.mb-3');
+        var btn = card ? card.querySelector('button[data-prompt-name]') : null;
+        if (btn) mcpBuildPromptCurl(uid, btn.dataset.demoId, btn.dataset.promptName);
+    };
 
     window.mcpGetPrompt = function(btn) {
         var demoId = btn.dataset.demoId;
