@@ -293,26 +293,42 @@ Requires `Profile.pdf` in the classpath — a sample is included in the reposito
 ## Stage 6: Model Context Protocol (MCP)
 
 **Module:** `mcp/`
+**Dashboard:** http://localhost:8080/dashboard/stage/6
 
-MCP is the protocol that enables AI models to discover and use tools dynamically at runtime. Each demo runs as a **separate Spring Boot application** — not part of the provider apps.
+MCP lets AI models discover and use tools at runtime. Five demos — each runs as a **separate Spring Boot application**.
 
-| Demo | Module | Transport | Concept |
-|------|--------|-----------|---------|
-| 01 | basic-stdio-mcp-server | STDIO | MCP server communicating via stdin/stdout |
-| 02 | basic-http-mcp-server | Streamable HTTP | MCP server over HTTP |
-| 03 | basic-mcp-client | STDIO | MCP client connecting to a server |
-| 04 server | dynamic-tool-calling/server | Streamable HTTP | Tool registration and discovery at runtime |
-| 04 client | dynamic-tool-calling/client | HTTP | Client discovering tools dynamically |
-| 05 | mcp-capabilities | Streamable HTTP | Full showcase: tools, resources, prompts, completions |
+| Demo | Module | Transport | Port | Purpose |
+|------|--------|-----------|------|---------|
+| 01 | `01-mcp-stdio-server` | STDIO | — (subprocess per request) | MCP server via stdin/stdout |
+| 02 | `02-mcp-http-server` | Streamable HTTP | 8081 | MCP server over HTTP |
+| 03 | `03-mcp-client` | Client | — | ChatClient + ToolCallbackProvider using MCP servers |
+| 04 server | `04-dynamic-tool-calling/server` | Streamable HTTP | 8082 | Runtime tool registration (`McpSyncServer.addTool`) |
+| 04 client | `04-dynamic-tool-calling/client` | HTTP | — | Client that discovers newly added tools |
+| 05 | `05-mcp-capabilities` | Streamable HTTP | 8083 | Full showcase: tools, resources, prompts, completions |
 
-MCP servers are provider-independent. MCP clients (03, 04) are configured for OpenAI by default.
-
-Run each module individually:
+**Start everything via the workshop script:**
 
 ```bash
-./mvnw spring-boot:run -pl mcp/01-basic-stdio-mcp-server
-./mvnw spring-boot:run -pl mcp/02-basic-http-mcp-server
+./workshop.sh mcp start all       # builds 01 jar + starts 02/04/05
+./workshop.sh mcp status          # table of demo | port | pid | up?
+./workshop.sh mcp stop all        # stop them
+./workshop.sh mcp logs 04         # tail a specific demo's log
 ```
+
+Once started, open **http://localhost:8080/dashboard/stage/6** and click the action buttons on each card to list tools / invoke / trigger dynamic registration / read resources / get prompts. Each card has a **Docs** button that opens the full `SPRING_AI_STAGE_6.md` section in a modal.
+
+**Advanced: direct Maven invocation** — if you prefer classic `spring-boot:run`, each module starts individually:
+
+```bash
+./mvnw spring-boot:run -pl mcp/02-mcp-http-server                       # :8081
+./mvnw spring-boot:run -pl mcp/04-dynamic-tool-calling/server           # :8082
+./mvnw spring-boot:run -pl mcp/05-mcp-capabilities                      # :8083
+./mvnw spring-boot:run -pl mcp/03-mcp-client                            # local mode
+./mvnw spring-boot:run -pl mcp/03-mcp-client \
+    -Dspring-boot.run.profiles=mcp-external                             # Brave+filesystem
+```
+
+MCP servers are provider-independent. MCP clients (03, 04) are configured for OpenAI by default.
 
 ---
 
