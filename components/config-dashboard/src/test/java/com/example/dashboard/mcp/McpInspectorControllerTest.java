@@ -63,4 +63,39 @@ class McpInspectorControllerTest {
         .andExpect(jsonPath("$.status").value("down"))
         .andExpect(jsonPath("$.startCommand").value("./workshop.sh mcp build-01"));
   }
+
+  @Test
+  void toolsEndpointReturnsMcpResult() throws Exception {
+    io.modelcontextprotocol.spec.McpSchema.ListToolsResult listResult =
+        new io.modelcontextprotocol.spec.McpSchema.ListToolsResult(java.util.List.of(), null);
+    io.modelcontextprotocol.client.McpSyncClient client =
+        org.mockito.Mockito.mock(io.modelcontextprotocol.client.McpSyncClient.class);
+    when(client.listTools()).thenReturn(listResult);
+    when(registry.getOrConnect("02")).thenReturn(client);
+
+    mockMvc
+        .perform(get("/dashboard/mcp/02/tools"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tools").isArray());
+  }
+
+  @Test
+  void toolsEndpoint01UsesStdioInvoker() throws Exception {
+    io.modelcontextprotocol.spec.McpSchema.ListToolsResult listResult =
+        new io.modelcontextprotocol.spec.McpSchema.ListToolsResult(java.util.List.of(), null);
+    when(stdio.listTools()).thenReturn(listResult);
+
+    mockMvc.perform(get("/dashboard/mcp/01/tools")).andExpect(status().isOk());
+  }
+
+  @Test
+  void toolsEndpointReturns503WhenServerDown() throws Exception {
+    when(registry.getOrConnect("02")).thenThrow(new RuntimeException("Connection refused"));
+
+    mockMvc
+        .perform(get("/dashboard/mcp/02/tools"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.error").value("server offline"))
+        .andExpect(jsonPath("$.hint").value("./workshop.sh mcp start 02"));
+  }
 }

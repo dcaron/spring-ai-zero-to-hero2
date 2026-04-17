@@ -48,4 +48,35 @@ public class McpInspectorController {
     body.put("startCommand", startCommand);
     return ResponseEntity.ok(body);
   }
+
+  @GetMapping("/{id}/tools")
+  public ResponseEntity<?> tools(@PathVariable String id) {
+    McpDemo demo = catalog.get(id);
+    try {
+      if (demo.port() == null) {
+        return ResponseEntity.ok(stdio.listTools());
+      }
+      return ResponseEntity.ok(registry.getOrConnect(id).listTools());
+    } catch (Exception e) {
+      return offlineResponse(id, demo, e);
+    }
+  }
+
+  private ResponseEntity<Map<String, Object>> offlineResponse(
+      String id, McpDemo demo, Exception cause) {
+    registry.reset(id);
+    String hint =
+        demo.port() == null ? "./workshop.sh mcp build-01" : "./workshop.sh mcp start " + id;
+    return ResponseEntity.status(503)
+        .body(
+            Map.of(
+                "error",
+                "server offline",
+                "demo",
+                id,
+                "hint",
+                hint,
+                "detail",
+                cause.getMessage() == null ? "" : cause.getMessage()));
+  }
 }
