@@ -1,3 +1,17 @@
+> **✨ New in Stage 6 UI:** This demo is runnable from the workshop dashboard at [**/dashboard/stage/6**](http://localhost:8080/dashboard/stage/6).
+>
+> Start the demo's server (where applicable) via:
+>
+> ```bash
+> ./workshop.sh mcp start <id>   # 02, 04, or 05
+> ./workshop.sh mcp build-01     # for 01 STDIO
+> ./workshop.sh mcp status
+> ```
+>
+> See [`docs/spring-ai/SPRING_AI_STAGE_6.md`](../../docs/spring-ai/SPRING_AI_STAGE_6.md) for the full walkthrough.
+
+---
+
 # Dynamic Tool Update Example
 
 This example demonstrates how a Model Context Protocol (MCP) server can dynamically update its available tools at runtime, and how a client can detect and use these updated tools.

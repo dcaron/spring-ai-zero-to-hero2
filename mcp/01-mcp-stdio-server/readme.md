@@ -1,3 +1,17 @@
+> **✨ New in Stage 6 UI:** This demo is runnable from the workshop dashboard at [**/dashboard/stage/6**](http://localhost:8080/dashboard/stage/6).
+>
+> Start the demo's server (where applicable) via:
+>
+> ```bash
+> ./workshop.sh mcp start <id>   # 02, 04, or 05
+> ./workshop.sh mcp build-01     # for 01 STDIO
+> ./workshop.sh mcp status
+> ```
+>
+> See [`docs/spring-ai/SPRING_AI_STAGE_6.md`](../../docs/spring-ai/SPRING_AI_STAGE_6.md) for the full walkthrough.
+
+---
+
 # Spring AI MCP Basic STDIO Server
 
 A Spring Boot starter project demonstrating how to build a Model Context Protocol (MCP) server that provides weather-related tools using the Open-Meteo API. This project showcases the Spring AI MCP Server Boot Starter capabilities with STDIO transport implementation.
