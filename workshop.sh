@@ -91,6 +91,114 @@ mcp_stdio_jar_present() {
     [ -f "${SCRIPT_DIR}/${MCP_STDIO_JAR}" ]
 }
 
+mcp_build_01_jar() {
+    header "Building 01 STDIO jar"
+    echo -e "  ${CYAN}→${NC} ./mvnw package -DskipTests -pl mcp/01-mcp-stdio-server -am"
+    if "${SCRIPT_DIR}/mvnw" package -DskipTests -pl mcp/01-mcp-stdio-server -am -q -f "${SCRIPT_DIR}/pom.xml"; then
+        ok "01 jar built at ${MCP_STDIO_JAR}"
+    else
+        fail "01 jar build failed"
+        return 1
+    fi
+}
+
+mcp_port_in_use() {
+    local port="$1"
+    if command -v lsof &>/dev/null; then
+        lsof -ti:"${port}" &>/dev/null
+    elif command -v ss &>/dev/null; then
+        ss -tlnp 2>/dev/null | grep -q ":${port} "
+    else
+        return 1
+    fi
+}
+
+mcp_start_demo() {
+    local id="$1"
+    local port="${MCP_PORTS[$id]:-}"
+    local module="${MCP_MODULES[$id]:-}"
+    local label="${MCP_LABELS[$id]:-}"
+
+    if [ -z "${port}" ] || [ -z "${module}" ]; then
+        fail "Unknown MCP demo: ${id}"
+        return 1
+    fi
+
+    mcp_ensure_state_dir
+
+    if mcp_is_up "${id}"; then
+        ok "MCP ${id} (${label}) already running on port ${port}"
+        return 0
+    fi
+
+    if mcp_port_in_use "${port}"; then
+        fail "Port ${port} already in use"
+        info "Free the port: lsof -ti:${port} | xargs kill"
+        return 1
+    fi
+
+    local log_file
+    log_file=$(mcp_log_file "${id}")
+    header "Starting MCP ${id} (${label}) on port ${port}"
+    echo -e "  ${CYAN}→${NC} ./mvnw spring-boot:run -pl ${module}"
+    echo -e "  ${CYAN}→${NC} logs: ${log_file}"
+
+    (
+        "${SCRIPT_DIR}/mvnw" spring-boot:run \
+            -pl "${module}" \
+            -f "${SCRIPT_DIR}/pom.xml" \
+            > "${log_file}" 2>&1
+    ) &
+    local pid=$!
+    echo "${pid}" > "$(mcp_pid_file "${id}")"
+
+    echo -e "  ${CYAN}→${NC} Waiting for MCP ${id} on port ${port}..."
+    local attempts=0
+    while [ "${attempts}" -lt 60 ]; do
+        if mcp_is_up "${id}"; then
+            ok "MCP ${id} ready (PID ${pid})"
+            return 0
+        fi
+        if ! kill -0 "${pid}" 2>/dev/null; then
+            fail "MCP ${id} process exited unexpectedly — see ${log_file}"
+            rm -f "$(mcp_pid_file "${id}")"
+            return 1
+        fi
+        sleep 2
+        attempts=$((attempts + 1))
+    done
+    warn "MCP ${id} startup timed out — check ${log_file}"
+    return 1
+}
+
+mcp_stop_demo() {
+    local id="$1"
+    local pid_file
+    pid_file=$(mcp_pid_file "${id}")
+    if [ ! -f "${pid_file}" ]; then
+        if mcp_is_up "${id}"; then
+            warn "MCP ${id} is up but no PID file — kill via lsof"
+            local orphan
+            orphan=$(lsof -ti:"${MCP_PORTS[$id]}" 2>/dev/null | head -1)
+            [ -n "${orphan}" ] && kill "${orphan}" 2>/dev/null && ok "MCP ${id} stopped (PID ${orphan})"
+        else
+            info "MCP ${id} not running"
+        fi
+        return 0
+    fi
+    local pid
+    pid=$(cat "${pid_file}")
+    if kill -0 "${pid}" 2>/dev/null; then
+        kill "${pid}" 2>/dev/null || true
+        sleep 1
+        kill -0 "${pid}" 2>/dev/null && kill -9 "${pid}" 2>/dev/null
+        ok "MCP ${id} stopped (PID ${pid})"
+    else
+        info "MCP ${id} process already gone"
+    fi
+    rm -f "${pid_file}"
+}
+
 # ── Credential check helpers ────────────────────────────────
 # Returns 0 if provider has a configured (non-placeholder) creds.yaml
 provider_has_creds() {
