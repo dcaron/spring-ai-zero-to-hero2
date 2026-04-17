@@ -74,7 +74,7 @@ Then open:
 3. **Vector Stores** — pgvector, similarity search, in-memory vs persistent
 4. **AI Patterns** — stuff-the-prompt, RAG (manual + advisor), chat memory
 5. **Advanced Agents** — chain-of-thought, self-reflection (writer + critic)
-6. **MCP** — Model Context Protocol (stdio, HTTP, dynamic tools, resources, prompts)
+6. **MCP** — Model Context Protocol (stdio, HTTP, dynamic tools, resources, prompts) — runnable from the workshop dashboard at `/dashboard/stage/6`
 7. **Agentic Systems** — inner monologue, model-directed loop, Spring Shell CLIs
 8. **Observability** — distributed tracing, metrics, logs with OpenTelemetry + Grafana LGTM
 
