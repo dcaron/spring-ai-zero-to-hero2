@@ -39,6 +39,319 @@ app_is_ready() {
     return 1
 }
 
+# ─────────────────────────────────────────────────────────────
+# MCP helpers — process lifecycle for mcp/ demos
+# ─────────────────────────────────────────────────────────────
+MCP_STATE_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/.workshop/mcp"
+MCP_DEMOS=(02 04 05)           # long-running demos; 01 is jar-build only
+MCP_ALL_DEMOS=(01 02 04 05)    # 03 is a CLI runner, not a server
+
+# bash 3.2 compatibility: no associative arrays — use case-based lookup helpers
+mcp_port_for() {
+    case "$1" in
+        02) echo 8081 ;;
+        04) echo 8082 ;;
+        05) echo 8083 ;;
+        *)  echo "" ;;
+    esac
+}
+
+mcp_module_for() {
+    case "$1" in
+        01) echo "mcp/01-mcp-stdio-server" ;;
+        02) echo "mcp/02-mcp-http-server" ;;
+        04) echo "mcp/04-dynamic-tool-calling/server" ;;
+        05) echo "mcp/05-mcp-capabilities" ;;
+        *)  echo "" ;;
+    esac
+}
+
+mcp_label_for() {
+    case "$1" in
+        01) echo "STDIO Server" ;;
+        02) echo "HTTP Server" ;;
+        04) echo "Dynamic Tool Calling (server)" ;;
+        05) echo "Full Capabilities" ;;
+        *)  echo "?" ;;
+    esac
+}
+
+MCP_STDIO_JAR="mcp/01-mcp-stdio-server/target/01-mcp-stdio-server-0.0.1-SNAPSHOT.jar"
+
+mcp_pid_file() { echo "${MCP_STATE_DIR}/${1}.pid"; }
+mcp_log_file() { echo "${MCP_STATE_DIR}/${1}.log"; }
+
+mcp_ensure_state_dir() {
+    mkdir -p "${MCP_STATE_DIR}"
+}
+
+mcp_is_up() {
+    local id="$1"
+    local port
+    port=$(mcp_port_for "${id}")
+    [ -z "${port}" ] && return 1
+    # TCP port-bound probe (not /actuator/health — 04 returns 503 until latch fires)
+    if command -v nc &>/dev/null; then
+        nc -z localhost "${port}" &>/dev/null
+    else
+        (echo > "/dev/tcp/localhost/${port}") &>/dev/null
+    fi
+}
+
+mcp_stdio_jar_present() {
+    [ -f "${SCRIPT_DIR}/${MCP_STDIO_JAR}" ]
+}
+
+mcp_build_01_jar() {
+    header "Building 01 STDIO jar"
+    echo -e "  ${CYAN}→${NC} ./mvnw package -DskipTests -pl mcp/01-mcp-stdio-server -am"
+    if "${SCRIPT_DIR}/mvnw" package -DskipTests -pl mcp/01-mcp-stdio-server -am -q -f "${SCRIPT_DIR}/pom.xml"; then
+        ok "01 jar built at ${MCP_STDIO_JAR}"
+    else
+        fail "01 jar build failed"
+        return 1
+    fi
+}
+
+mcp_port_in_use() {
+    local port="$1"
+    if command -v lsof &>/dev/null; then
+        lsof -ti:"${port}" &>/dev/null
+    elif command -v ss &>/dev/null; then
+        ss -tlnp 2>/dev/null | grep -q ":${port} "
+    else
+        return 1
+    fi
+}
+
+mcp_start_demo() {
+    local id="$1"
+    local port module label
+    port=$(mcp_port_for "${id}")
+    module=$(mcp_module_for "${id}")
+    label=$(mcp_label_for "${id}")
+
+    if [ -z "${port}" ] || [ -z "${module}" ]; then
+        fail "Unknown MCP demo: ${id}"
+        return 1
+    fi
+
+    mcp_ensure_state_dir
+
+    if mcp_is_up "${id}"; then
+        ok "MCP ${id} (${label}) already running on port ${port}"
+        return 0
+    fi
+
+    if mcp_port_in_use "${port}"; then
+        fail "Port ${port} already in use"
+        info "Free the port: lsof -ti:${port} | xargs kill"
+        return 1
+    fi
+
+    local log_file
+    log_file=$(mcp_log_file "${id}")
+    header "Starting MCP ${id} (${label}) on port ${port}"
+    echo -e "  ${CYAN}→${NC} ./mvnw spring-boot:run -pl ${module}"
+    echo -e "  ${CYAN}→${NC} logs: ${log_file}"
+
+    (
+        "${SCRIPT_DIR}/mvnw" spring-boot:run \
+            -pl "${module}" \
+            -f "${SCRIPT_DIR}/pom.xml" \
+            > "${log_file}" 2>&1
+    ) &
+    local pid=$!
+    echo "${pid}" > "$(mcp_pid_file "${id}")"
+
+    echo -e "  ${CYAN}→${NC} Waiting for MCP ${id} on port ${port}..."
+    local attempts=0
+    while [ "${attempts}" -lt 60 ]; do
+        if mcp_is_up "${id}"; then
+            ok "MCP ${id} ready (PID ${pid})"
+            return 0
+        fi
+        if ! kill -0 "${pid}" 2>/dev/null; then
+            fail "MCP ${id} process exited unexpectedly — see ${log_file}"
+            rm -f "$(mcp_pid_file "${id}")"
+            return 1
+        fi
+        sleep 2
+        attempts=$((attempts + 1))
+    done
+    warn "MCP ${id} startup timed out — check ${log_file}"
+    return 1
+}
+
+mcp_stop_demo() {
+    local id="$1"
+    local pid_file port
+    pid_file=$(mcp_pid_file "${id}")
+    port=$(mcp_port_for "${id}")
+
+    if [ ! -f "${pid_file}" ]; then
+        if mcp_is_up "${id}"; then
+            warn "MCP ${id} is up but no PID file — sweeping port ${port}"
+            if command -v lsof &>/dev/null; then
+                local orphan_pids
+                orphan_pids=$(lsof -ti:"${port}" 2>/dev/null || true)
+                if [ -n "${orphan_pids}" ]; then
+                    echo "${orphan_pids}" | xargs kill -9 2>/dev/null || true
+                    ok "MCP ${id} stopped (port ${port} swept)"
+                fi
+            else
+                info "lsof not available — cannot sweep port ${port}"
+            fi
+        else
+            info "MCP ${id} not running"
+        fi
+        return 0
+    fi
+
+    local pid
+    pid=$(cat "${pid_file}")
+    if kill -0 "${pid}" 2>/dev/null; then
+        # Kill the entire process group (mvnw + forked JVM)
+        kill -- -"${pid}" 2>/dev/null || kill "${pid}" 2>/dev/null || true
+        # Wait briefly for graceful shutdown
+        local waited=0
+        while kill -0 "${pid}" 2>/dev/null && [ "${waited}" -lt 10 ]; do
+            sleep 1
+            waited=$((waited + 1))
+        done
+        if kill -0 "${pid}" 2>/dev/null; then
+            kill -9 -- -"${pid}" 2>/dev/null || kill -9 "${pid}" 2>/dev/null || true
+        fi
+        ok "MCP ${id} stopped (PID ${pid})"
+    else
+        info "MCP ${id} process already gone"
+    fi
+
+    # Port-bound sweep — catches orphaned JVM children the process-group kill missed
+    if command -v lsof &>/dev/null; then
+        local port_pids
+        port_pids=$(lsof -ti:"${port}" 2>/dev/null || true)
+        if [ -n "${port_pids}" ]; then
+            echo "${port_pids}" | xargs kill -9 2>/dev/null || true
+        fi
+    fi
+
+    rm -f "${pid_file}"
+}
+
+mcp_status_table() {
+    header "MCP demo status"
+    printf "  %-4s %-34s %-6s %-7s %s\n" "ID" "Demo" "Port" "Up?" "PID"
+    printf "  %-4s %-34s %-6s %-7s %s\n" "──" "──────────────────────────────" "────" "───" "─────"
+    for id in "${MCP_ALL_DEMOS[@]}"; do
+        local port label
+        port=$(mcp_port_for "${id}")
+        [ -z "${port}" ] && port="n/a"
+        label=$(mcp_label_for "${id}")
+        local pid_file
+        pid_file=$(mcp_pid_file "${id}")
+        local pid="—"
+        [ -f "${pid_file}" ] && pid=$(cat "${pid_file}")
+        local up="—"
+        if [ "${id}" = "01" ]; then
+            mcp_stdio_jar_present && up="jar ✓" || up="jar ✗"
+            port="stdio"
+        else
+            mcp_is_up "${id}" && up="✓" || up="✗"
+        fi
+        printf "  %-4s %-34s %-6s %-7s %s\n" "${id}" "${label}" "${port}" "${up}" "${pid}"
+    done
+    echo ""
+}
+
+cmd_mcp() {
+    local action="${1:-}"
+    shift || true
+
+    case "${action}" in
+        start)
+            if [ $# -eq 0 ]; then
+                fail "Usage: ./workshop.sh mcp start <id>|all"
+                return 1
+            fi
+            local rc=0
+            for target in "$@"; do
+                case "${target}" in
+                    all)
+                        mcp_build_01_jar
+                        for id in "${MCP_DEMOS[@]}"; do mcp_start_demo "${id}" || true; done
+                        ;;
+                    01)
+                        mcp_build_01_jar
+                        ;;
+                    02|04|05)
+                        mcp_start_demo "${target}"
+                        ;;
+                    *)
+                        fail "Unknown MCP id: ${target} (expected 01|02|04|05|all)"
+                        rc=1
+                        ;;
+                esac
+            done
+            return ${rc}
+            ;;
+        stop)
+            if [ $# -eq 0 ]; then
+                fail "Usage: ./workshop.sh mcp stop <id>|all"
+                return 1
+            fi
+            local rc=0
+            for target in "$@"; do
+                case "${target}" in
+                    all) for id in "${MCP_DEMOS[@]}"; do mcp_stop_demo "${id}"; done ;;
+                    02|04|05) mcp_stop_demo "${target}" ;;
+                    01) info "01 is STDIO — nothing to stop (no long-running process)" ;;
+                    *)
+                        fail "Unknown MCP id: ${target} (expected 01|02|04|05|all)"
+                        rc=1
+                        ;;
+                esac
+            done
+            return ${rc}
+            ;;
+        status)
+            mcp_status_table
+            ;;
+        logs)
+            local id="${1:-}"
+            if [ -z "${id}" ]; then
+                fail "Usage: ./workshop.sh mcp logs <id>"
+                return 1
+            fi
+            local log_file
+            log_file=$(mcp_log_file "${id}")
+            if [ ! -f "${log_file}" ]; then
+                fail "No log file for MCP ${id} at ${log_file}"
+                return 1
+            fi
+            tail -f "${log_file}"
+            ;;
+        build-01)
+            mcp_build_01_jar
+            ;;
+        "")
+            echo "Usage: ./workshop.sh mcp <start|stop|status|logs|build-01> [args]"
+            echo ""
+            echo "Examples:"
+            echo "  ./workshop.sh mcp start all          Build 01 jar, start 02/04/05"
+            echo "  ./workshop.sh mcp start 02           Start only 02"
+            echo "  ./workshop.sh mcp stop all           Stop 02/04/05"
+            echo "  ./workshop.sh mcp status             Show demo table"
+            echo "  ./workshop.sh mcp logs 04            Tail 04's log"
+            echo "  ./workshop.sh mcp build-01           Build the STDIO jar"
+            ;;
+        *)
+            fail "Unknown mcp subcommand: ${action}"
+            return 1
+            ;;
+    esac
+}
+
 # ── Credential check helpers ────────────────────────────────
 # Returns 0 if provider has a configured (non-placeholder) creds.yaml
 provider_has_creds() {
@@ -130,7 +443,20 @@ services_status_line() {
         line+="lgtm:${RED}off${NC}"
     fi
 
-    echo -e "${line}"
+    local mcp_parts=()
+    for id in "${MCP_DEMOS[@]}"; do
+        if mcp_is_up "${id}"; then
+            mcp_parts+=("${id}${GREEN}✓${NC}")
+        else
+            mcp_parts+=("${id}${RED}✗${NC}")
+        fi
+    done
+    local mcp_summary=""
+    if [ "${#mcp_parts[@]}" -gt 0 ]; then
+        mcp_summary=" | MCP: $(IFS=' '; echo "${mcp_parts[*]}")"
+    fi
+
+    echo -e "${line}${mcp_summary}"
 }
 
 # ── Constants ────────────────────────────────────────────────
@@ -495,6 +821,12 @@ cmd_stop() {
     fi
 
     ok "Provider stopped"
+
+    # Stop all MCP demos
+    header "Stopping MCP demos"
+    for id in "${MCP_DEMOS[@]}"; do
+        mcp_stop_demo "${id}"
+    done
 
     # Stop gateway if running
     if [ -f "${GATEWAY_PID_FILE}" ]; then
@@ -1021,6 +1353,10 @@ draw_menu() {
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN} 8)${NC} Open Grafana                                        ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN} 9)${NC} Open Swagger UI                                     ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}10)${NC} Open Dashboard                                      ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}11)${NC} Start MCP demo (01|02|04|05|all)                    ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}12)${NC} Stop MCP demo                                       ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}13)${NC} MCP status                                          ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}14)${NC} Tail MCP logs                                       ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${YELLOW} c)${NC} Configure credentials                               ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${RED} q)${NC} Quit                                                ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}                                                          ${BOLD}${CYAN}│${NC}"
@@ -1176,6 +1512,69 @@ interactive_start() {
     cmd_start "${SELECTED_PROVIDER}" "${SELECTED_PROFILES}"
 }
 
+interactive_mcp_start() {
+    echo ""
+    echo -e "${BOLD}Start MCP demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 01 (build STDIO jar)"
+    echo -e "  ${GREEN}2)${NC} 02 (HTTP server :8081)"
+    echo -e "  ${GREEN}3)${NC} 04 (Dynamic Tool Calling :8082)"
+    echo -e "  ${GREEN}4)${NC} 05 (Full Capabilities :8083)"
+    echo -e "  ${GREEN}5)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp start 01 ;;
+        2) cmd_mcp start 02 ;;
+        3) cmd_mcp start 04 ;;
+        4) cmd_mcp start 05 ;;
+        5) cmd_mcp start all ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_mcp_stop() {
+    echo ""
+    echo -e "${BOLD}Stop MCP demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 02"
+    echo -e "  ${GREEN}2)${NC} 04"
+    echo -e "  ${GREEN}3)${NC} 05"
+    echo -e "  ${GREEN}4)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp stop 02 ;;
+        2) cmd_mcp stop 04 ;;
+        3) cmd_mcp stop 05 ;;
+        4) cmd_mcp stop all ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_mcp_logs() {
+    echo ""
+    echo -e "${BOLD}Tail MCP logs:${NC}"
+    echo -e "  ${GREEN}1)${NC} 02"
+    echo -e "  ${GREEN}2)${NC} 04"
+    echo -e "  ${GREEN}3)${NC} 05"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp logs 02 ;;
+        2) cmd_mcp logs 04 ;;
+        3) cmd_mcp logs 05 ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
 run_menu() {
     while true; do
         draw_menu
@@ -1192,6 +1591,10 @@ run_menu() {
             8) open_url "http://localhost:3000"; info "Opening Grafana..."; read -r -p "  Press Enter to continue..." _ ;;
             9) open_url "http://localhost:8080/swagger-ui.html"; info "Opening Swagger UI..."; read -r -p "  Press Enter to continue..." _ ;;
             10) open_url "http://localhost:8080/dashboard"; info "Opening Dashboard..."; read -r -p "  Press Enter to continue..." _ ;;
+            11) interactive_mcp_start; read -r -p "  Press Enter to continue..." _ ;;
+            12) interactive_mcp_stop; read -r -p "  Press Enter to continue..." _ ;;
+            13) cmd_mcp status; read -r -p "  Press Enter to continue..." _ ;;
+            14) interactive_mcp_logs ;;
             c|C) cmd_creds; read -r -p "  Press Enter to continue..." _ ;;
             q|Q) echo ""; info "Goodbye!"; echo ""; exit 0 ;;
             *) warn "Invalid option: ${choice}" ;;
@@ -1245,6 +1648,9 @@ main() {
                     exit 1
                     ;;
             esac
+            ;;
+        mcp)
+            cmd_mcp "$@"
             ;;
         start)
             local provider="${1:-}"

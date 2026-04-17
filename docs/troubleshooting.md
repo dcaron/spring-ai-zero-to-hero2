@@ -194,3 +194,42 @@ colima start --memory 8 --cpu 4
 **Cause:** Micrometer 1.16 (included in Spring Boot 4) changed metric naming: `*_seconds_*` became `*_milliseconds_*`.
 
 **Fix:** If you are using custom dashboards or queries, update metric names accordingly. The pre-provisioned dashboards in `docker/observability-stack/` are already updated.
+
+---
+
+## Stage 6 / MCP
+
+### Port 8081 / 8082 / 8083 already in use
+
+```
+fail  Port 8081 already in use
+info  Free the port: lsof -ti:8081 | xargs kill
+```
+
+**Cause:** Another process bound to the MCP port (common if a previous run didn't shut down cleanly). **Fix:** run the hint above, or `./workshop.sh stop` to cleanup everything.
+
+### `workshop.sh mcp start NN` times out
+
+The MCP server didn't reach its port within 90s. Inspect the log:
+
+```bash
+./workshop.sh mcp logs NN
+```
+
+Usual culprits: Maven build failure, missing creds for the provider app that the MCP server depends on (03/04 clients need OpenAI creds), or bind failure.
+
+### Dashboard shows MCP server `not running`
+
+The status pill polls every 3 seconds via a TCP port probe. If the server is actually up:
+
+1. Check `nc -z localhost 8081 && echo OK` from the host — should print `OK`.
+2. Check the dashboard has the `ui` profile active — `./workshop.sh mcp status` should succeed.
+3. Confirm `spring-ai-starter-mcp-client` is on the classpath: `./mvnw -pl components/config-dashboard dependency:tree | grep mcp-client`.
+
+### 01 STDIO jar missing
+
+Dashboard shows `./workshop.sh mcp build-01`. Run that command — it builds `mcp/01-mcp-stdio-server/target/01-mcp-stdio-server-0.0.1-SNAPSHOT.jar`. Re-open the card after ~15s.
+
+### 04 "Trigger dynamic registration" has no further effect
+
+04's server uses a one-shot `CountDownLatch`. To repeat the demo, restart the server: `./workshop.sh mcp stop 04 && ./workshop.sh mcp start 04`, then click Trigger again on a fresh server process.

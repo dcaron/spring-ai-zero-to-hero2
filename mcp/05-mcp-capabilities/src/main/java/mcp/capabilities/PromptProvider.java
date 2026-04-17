@@ -42,7 +42,11 @@ public class PromptProvider {
    */
   @McpPrompt(name = "greeting", description = "A simple greeting prompt")
   public GetPromptResult greetingPrompt(
-      @McpArg(name = "name", description = "The name to greet", required = true) String name) {
+      @McpArg(
+              name = "name",
+              description = "The name to greet, e.g. Alice, Bob, John",
+              required = true)
+          String name) {
     return new GetPromptResult(
         "Greeting",
         List.of(
@@ -65,9 +69,20 @@ public class PromptProvider {
       description = "Generates a personalized message based on user information")
   public GetPromptResult personalizedMessage(
       McpSyncServerExchange exchange,
-      @McpArg(name = "name", description = "The user's name", required = true) String name,
-      @McpArg(name = "age", description = "The user's age", required = false) Integer age,
-      @McpArg(name = "interests", description = "The user's interests", required = false)
+      @McpArg(
+              name = "name",
+              description = "The user's name, e.g. Alice, Bob, John",
+              required = true)
+          String name,
+      @McpArg(
+              name = "age",
+              description = "The user's age in years, e.g. 14, 28, 45",
+              required = false)
+          Integer age,
+      @McpArg(
+              name = "interests",
+              description = "Comma-separated interests, e.g. \"AI, hiking, chess\"",
+              required = false)
           String interests) {
 
     exchange.loggingNotification(
@@ -166,7 +181,11 @@ public class PromptProvider {
    */
   @McpPrompt(name = "single-message", description = "Demonstrates returning a single PromptMessage")
   public PromptMessage singleMessagePrompt(
-      @McpArg(name = "name", description = "The user's name", required = true) String name) {
+      @McpArg(
+              name = "name",
+              description = "The user's name, e.g. Alice, Bob, John",
+              required = true)
+          String name) {
     return new PromptMessage(
         Role.ASSISTANT, new TextContent("Hello, " + name + "! This is a single message response."));
   }
@@ -181,7 +200,9 @@ public class PromptProvider {
   public List<String> stringListPrompt(
       @McpArg(
               name = "topic",
-              description = "The topic to provide information about",
+              description =
+                  "The topic to look up. Only \"MCP\" returns curated content; other topics return a"
+                      + " not-found response. Example values: MCP, springai, tools.",
               required = true)
           String topic) {
     if ("MCP".equalsIgnoreCase(topic)) {

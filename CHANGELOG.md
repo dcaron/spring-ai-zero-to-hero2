@@ -1,5 +1,138 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.0] — 2026-04-17: Stage 6 MCP Dashboard UI & Coordinated Lifecycle
+
+Stage 6 (Model Context Protocol) moves from CLI-only to a first-class dashboard chapter. Every MCP demo is now runnable, inspectable, and invokable from `http://localhost:8080/dashboard/stage/6`, backed by a new `./workshop.sh mcp` command family that manages the five demos' lifecycle from a single script.
+
+> 👉 **Attendee + trainer walkthrough:** [`WHATS_NEW_STAGE_06_MCP.md`](WHATS_NEW_STAGE_06_MCP.md) — recommended demo order, time budget, trainer notes, and troubleshooting.
+>
+> **Deep-dive reference:** [`docs/spring-ai/SPRING_AI_STAGE_6.md`](docs/spring-ai/SPRING_AI_STAGE_6.md) — per-demo flow diagrams, key code, MCP JSON-RPC endpoints, and curl equivalents.
+
+### Dashboard — Stage 6 page
+
+- **New `/dashboard/stage/6`** with five demo cards (01 STDIO, 02 HTTP, 03 Client, 04 Dynamic, 05 Full Capabilities). Live status pills poll every 3 seconds via a TCP port probe (not actuator health — 04's `CountDownLatch` blocks health readiness).
+- **Tool inspection modal** (Bootstrap-5, styled after the stages 1–5 gateway modal) opens from each card's **List tools** button. Each tool renders as a card with collapsible input schema and an **Invoke** button that expands a schema-driven argument form.
+- **Per-tool Invoke form** builds a live curl line below the submit button that updates as you type; one-click copy to clipboard, same UX as stages 1–5.
+- **Resource inspection** (05 only) merges `resources/list` + `resources/templates/list` into one list with `resource`/`template` badges, pre-fills each URI, and offers a **Read** button with live curl.
+- **Prompt inspection** (05 only) renders per-prompt argument forms with typed inputs, `@McpArg` descriptions as visible helper text, and live curl.
+- **Demo 03 Run** renders the LLM response as chat bubbles (user question → assistant answer with markdown rendering) and a `tools from: 01+02` badge indicating which MCP servers contributed tools. Raw envelope available via a `Raw response` collapsible.
+- **Demo 04 Dynamic registration** trigger button with a one-shot-latch-aware UX; list-tools re-invocation after registration shows the new math tools in a fresh modal.
+- **Docs button on every card** opens the corresponding Demo section of `SPRING_AI_STAGE_6.md` in a modal, with Mermaid diagrams rendered client-side (matching the stages 1–5 docs modal).
+
+### Backend — `components/config-dashboard/src/main/java/com/example/dashboard/mcp/`
+
+- **`McpDemoCatalog`** — static catalog of the five demos with id, title, one-liner, transport, port, module path, capabilities enum.
+- **`McpClientRegistry`** — long-lived `McpSyncClient` cache for 02/04/05, connected via `HttpClientStreamableHttpTransport` (Streamable HTTP — **no SSE** anywhere in this codebase). TCP port probe for `isUp`. Graceful eviction on errors; `@PreDestroy` closes all connections.
+- **`McpStdioInvoker`** — per-request subprocess spawn for 01 STDIO using `StdioClientTransport(ServerParameters, McpJsonDefaults.getMapper())`. Jar path resolved by walking up from the JVM cwd so the provider app (running from its module dir) still finds `mcp/01-mcp-stdio-server/target/*.jar`. Caller-managed `openClient()` API for multi-step flows (e.g. holding the STDIO client open across a ChatClient call).
+- **`McpInspectorController`** — REST endpoints under `/dashboard/mcp/`:
+  - `GET /{id}/status` — status + port + capabilities + transport + startCommand hint
+  - `GET /{id}/tools` — list tools (routes 01 → StdioInvoker, others → ClientRegistry)
+  - `POST /{id}/invoke` — call a tool with JSON args
+  - `GET /{id}/resources` — **merges** `listResources()` + `listResourceTemplates()`
+  - `GET /{id}/resources/read?uri=…` — read a specific resource
+  - `GET /{id}/prompts` — list prompts
+  - `POST /{id}/prompts/get` — get a prompt with args
+  - `POST /04/update-tools` — proxy to 04's `/updateTools` with cache reset
+  - `POST /03/run?mode=local` — build `SyncMcpToolCallbackProvider` on-demand from live 01+02 clients (with `DefaultMcpToolNamePrefixGenerator` to disambiguate duplicate tool names); external mode returns 400 pointing at the CLI
+- **Unit tests** — 23 new tests across `McpDemoCatalogTest`, `McpClientRegistryTest`, `McpStdioInvokerTest`, `McpInspectorControllerTest`, `McpDemoTest`.
+
+### `workshop.sh` — coordinated MCP lifecycle
+
+```bash
+./workshop.sh mcp start all          # build 01 jar + start 02/04/05
+./workshop.sh mcp start 02           # start just 02
+./workshop.sh mcp status             # table: id | port | pid | up?
+./workshop.sh mcp logs 04            # tail 04's log
+./workshop.sh mcp stop all           # stop them cleanly
+./workshop.sh mcp build-01           # build the STDIO jar
+```
+
+- PID + log files under `.workshop/mcp/` (gitignored).
+- Per-demo port probing via `nc -z`/`/dev/tcp` (not `/actuator/health` — works around 04's latch).
+- Process-group kill with `lsof -ti:<port> | xargs kill -9` fallback so Maven's forked JVM children are reaped cleanly.
+- Exit codes propagate correctly for CI use (invalid id → exit 1).
+- **Interactive TUI menu items 11–14** (Start MCP demo / Stop MCP demo / MCP status / Tail MCP logs) added to `draw_menu`.
+- **Status banner** (`services_status_line`) now shows `MCP: 02✓ 04✗ 05✓` alongside provider / spy / ui / pg / lgtm.
+- **Bash 3.2 compat preserved** — macOS bash 3.2 doesn't support `declare -A`, so lookups use case-helpers (`mcp_port_for`, `mcp_module_for`, `mcp_label_for`).
+
+### MCP module changes
+
+- **Module renames** (to match the canonical doc and remove the redundant "basic" word):
+  - `mcp/01-basic-stdio-mcp-server/` → `mcp/01-mcp-stdio-server/`
+  - `mcp/02-basic-http-mcp-server/` → `mcp/02-mcp-http-server/`
+  - `mcp/03-basic-mcp-client/` → `mcp/03-mcp-client/`
+  - 04, 05 dir names unchanged
+  - Artifact IDs and parent pom module list updated in lockstep
+- **Port allocation** — HTTP demos pinned to distinct ports: 02 → `:8081`, 04 → `:8082`, 05 → `:8083`. Each exposes `/actuator/health` (new `spring-boot-starter-actuator` dependency).
+- **04 client URL fix** — `http://localhost:8080/updateTools` → `http://localhost:8082/updateTools` so the demo client actually reaches its paired server instead of the provider app.
+- **01/02 weather tool rework** — `getTemperature` now accepts city OR coordinates (or both). Missing args no longer NPE; city-only path geocodes via Open-Meteo before fetching the forecast. Returns a `TemperatureResult` record; not-found cases return a friendly `note` field instead of throwing.
+- **04/05 tool parameters annotated** — every `@Tool` method has `@ToolParam` descriptions with concrete examples. `getAlerts` parameter description enumerates all 50 US state codes + DC + PR. 04's `MathTools` has example invocations per tool.
+- **05 resources, prompts annotated** — `@McpResource` descriptions list known demo usernames (`john`, `jane`, `bob`, `alice`); `@McpArg` descriptions on every prompt argument carry example values.
+
+### Demo 03 — dual-config refactor
+
+- Extracted `McpClientDemoRunner` bean from the inline `CommandLineRunner`; CLI now delegates, dashboard's `/03/run` uses its own path.
+- `mcp-servers-config.json` split into `mcp-servers-local.json` (01 STDIO jar + 02 HTTP) and `mcp-servers-external.json` (Brave Search + filesystem via `npx`).
+- `application.yaml` split into default (local) + `mcp-external` profile.
+- Local mode is the default and closes the 01→02→03 pedagogical arc; external mode preserved for attendees who want the full MCP ecosystem experience.
+
+### Dashboard backend dependency
+
+- `spring-ai-starter-mcp-client` is now a non-optional dependency of `components/config-dashboard`. Optional blocked `spring-ai-mcp` (home of `SyncMcpToolCallbackProvider`) from transitively reaching provider apps, which broke `/03/run` at runtime. Making it required propagates the client starter to every provider app; the MCP client autoconfig is a no-op when no connections are configured.
+- `spring-boot-webmvc-test` added (Spring Boot 4 moved `@WebMvcTest` to this artifact; no longer transitive via `spring-boot-starter-test`).
+
+### Documentation
+
+- **New root-level [`WHATS_NEW_STAGE_06_MCP.md`](WHATS_NEW_STAGE_06_MCP.md)** — 7-step walkthrough, time budget, trainer notes, FAQ, and implementation highlights. Linked from `README.md`, `docs/README.md`, `docs/spring-ai/README.md`, `docs/guide.md`, and `docs/spring-ai/SPRING_AI_STAGE_6.md`.
+- **Rewritten [`docs/spring-ai/SPRING_AI_STAGE_6.md`](docs/spring-ai/SPRING_AI_STAGE_6.md)** — UI + CLI workflows, port allocation table, dashboard endpoint bullets per demo, curl equivalents under each Demo, Demo 05 resource catalog (9 URI templates), MCP JSON-RPC server-endpoint table, concrete-vs-template explainer, dual-config section for 03, spy-gateway exclusion note.
+- **Rewritten Stage 6 section in [`docs/guide.md`](docs/guide.md)** — dashboard as primary entry point, `./workshop.sh mcp` commands as canonical, module table with new dir names + ports, walkthrough link.
+- **"New in Stage 6 UI" intro boxes** on every `mcp/*/README.md` pointing at the dashboard page.
+- **Minor wording appends** on `README.md`, `docs/README.md`, `docs/spring-ai/README.md`, `docs/spring-ai/SPRING_AI_INTRODUCTION.md`, and `CLAUDE.md` to reflect the UI integration + directory renames.
+- **New "Stage 6 / MCP" troubleshooting section** in `docs/troubleshooting.md` (port in use, workshop.sh mcp start timeouts, dashboard offline, 01 jar missing, 04 one-shot latch).
+
+### Design doc & plan
+
+Captured on branch for auditability (gitignored from main per workshop convention):
+
+- `docs/superpowers/specs/2026-04-17-stage6-mcp-enhancement-design.md`
+- `docs/superpowers/plans/2026-04-17-stage6-mcp-enhancement.md`
+
+---
+
+---
+
+## [2.2.2] — 2026-04-15: Dashboard Light/Dark Mode Toggle
+
+Adds a persistent theme toggle to the workshop dashboard topbar, available on every page (overview + all stage detail pages).
+
+### Dashboard Theme Toggle
+
+- **Sun/moon button in the topbar** — switches between the existing dark theme (default) and a new light theme on click
+- **Persistent preference** — `localStorage` key `theme` stores the user's choice; survives refreshes and browser restarts with no expiration
+- **Flash prevention** — `theme.js` runs as an IIFE in `<head>` before first paint, reading `localStorage` synchronously so the correct theme renders from the initial page load
+- **Light theme uses darker green tones** (`#3d7a1c`) for WCAG AA contrast against the light background
+- **Highlight.js colors** adapted to a GitHub-style palette when light mode is active
+- **Smooth 200ms transitions** between themes, disabled on initial page load to avoid a flash animation
+- **Mermaid diagrams re-render** with matching theme on toggle — existing diagrams have their original markdown restored and re-processed
+- **Bootstrap `data-bs-theme` kept in sync** so form controls, close buttons, and other Bootstrap components follow the theme automatically
+
+### CSS Architecture Refactor
+
+- **50+ CSS custom properties** defined in `:root`, with `[data-theme="light"]` overrides — covers all UI colors, JSON syntax highlighting, highlight.js tokens, code blocks, modals, gateway panel, and component-specific elements
+- **All hardcoded color literals removed** from stylesheets and templates in favour of theme-aware `var(--spring-*)` references
+- **Bootstrap `text-light` utility replaced** with `var(--spring-text)` inline styles on endpoint paths, stage card titles, doc modal title, similarity labels, and card values
+- **`btn-close-white` removed** from gateway modal — Bootstrap's `data-bs-theme` now handles close-button contrast
+
+### Files
+
+- New: `components/config-dashboard/src/main/resources/static/js/theme.js` (toggle logic, persistence, Mermaid re-init)
+- Modified: `workshop.css` (+200 lines: variables + light overrides + toggle button + transitions)
+- Modified: `layout.html` (theme.js in `<head>`, toggle button in topbar, dynamic Mermaid theme init)
+- Modified: `response.js` (theme-aware error bubbles and dynamic HTML)
+- Modified: `stage/detail.html`, `dashboard/index.html` (theme-aware text + modal close styling)
+
+---
+
 ## [2.2.1] — 2026-04-11: Anthropic Provider Fix & Gateway Spy UI Improvements
 
 Bug fixes for the Anthropic provider and visual improvements to the gateway spy panel in the workshop dashboard.

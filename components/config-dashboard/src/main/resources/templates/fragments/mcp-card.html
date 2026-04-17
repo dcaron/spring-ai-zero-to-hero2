@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="card(demo)"
+     class="stage-card"
+     th:id="'mcp-card-' + ${demo.id()}"
+     th:data-demo-id="${demo.id()}"
+     th:data-demo-port="${demo.port()}"
+     th:data-demo-transport="${demo.transport().name()}"
+     style="border-left-color: #0277bd;">
+
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge" style="background:#0277bd" th:text="${demo.id()}">NN</span>
+            <h5 class="mb-0" style="color: var(--spring-text);" th:text="${demo.title()}">Title</h5>
+            <span class="badge-profile" th:text="${demo.transport().name()}">HTTP</span>
+            <span class="badge-profile" th:if="${demo.port() != null}" th:text="':' + ${demo.port()}">:8081</span>
+        </div>
+        <div class="mcp-status d-flex align-items-center gap-2">
+            <span class="mcp-status-pill" th:id="'mcp-status-' + ${demo.id()}"
+                  style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--spring-border);"></span>
+            <span class="mcp-status-text text-muted small" th:id="'mcp-status-text-' + ${demo.id()}">checking…</span>
+        </div>
+    </div>
+
+    <p class="text-muted small mb-2" th:text="${demo.oneLiner()}">One-liner</p>
+
+    <!-- Offline hint -->
+    <div th:id="'mcp-offline-hint-' + ${demo.id()}" class="curl-line mb-2" style="display:none">
+        <code th:id="'mcp-offline-cmd-' + ${demo.id()}">./workshop.sh mcp start NN</code>
+        <button class="btn btn-sm btn-outline-secondary btn-copy"
+                th:data-demo-id="${demo.id()}"
+                onclick="copyMcpCommand(this.dataset.demoId)">
+            <i class="bi bi-clipboard"></i> Copy
+        </button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex flex-wrap gap-2">
+        <button th:if="${demo.capabilities().contains(T(com.example.dashboard.mcp.McpDemo.Capability).TOOLS)}"
+                class="btn btn-sm btn-spring-green mcp-action-btn" disabled
+                th:data-action="'tools'" th:data-demo-id="${demo.id()}"
+                onclick="mcpListTools(this)">
+            <i class="bi bi-tools"></i> List tools
+        </button>
+        <button th:if="${demo.capabilities().contains(T(com.example.dashboard.mcp.McpDemo.Capability).RESOURCES)}"
+                class="btn btn-sm btn-outline-secondary mcp-action-btn" disabled
+                th:data-action="'resources'" th:data-demo-id="${demo.id()}"
+                onclick="mcpListResources(this)">
+            <i class="bi bi-files"></i> List resources
+        </button>
+        <button th:if="${demo.capabilities().contains(T(com.example.dashboard.mcp.McpDemo.Capability).PROMPTS)}"
+                class="btn btn-sm btn-outline-secondary mcp-action-btn" disabled
+                th:data-action="'prompts'" th:data-demo-id="${demo.id()}"
+                onclick="mcpListPrompts(this)">
+            <i class="bi bi-chat-left-dots"></i> List prompts
+        </button>
+        <button th:if="${demo.id() == '04'}"
+                class="btn btn-sm btn-warning mcp-action-btn" disabled
+                th:data-action="'update-tools'" th:data-demo-id="'04'"
+                onclick="mcp04Trigger(this)">
+            <i class="bi bi-lightning"></i> Trigger dynamic registration
+        </button>
+        <button th:if="${demo.id() == '03'}"
+                class="btn btn-sm btn-spring-green"
+                onclick="mcp03Run('local')">
+            <i class="bi bi-play-fill"></i> Run demo (local)
+        </button>
+        <button th:if="${demo.id() == '03'}"
+                class="btn btn-sm btn-outline-secondary"
+                onclick="mcp03Run('external')">
+            <i class="bi bi-play-fill"></i> Run demo (external)
+        </button>
+        <button class="btn btn-sm btn-outline-secondary"
+                th:data-demo-id="${demo.id()}"
+                onclick="mcpShowDocs(this.dataset.demoId)">
+            <i class="bi bi-info-circle"></i> Docs
+        </button>
+    </div>
+
+</div>
+
+</body>
+</html>

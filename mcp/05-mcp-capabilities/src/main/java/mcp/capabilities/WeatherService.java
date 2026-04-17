@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -94,8 +95,16 @@ public class WeatherService {
    * @return The forecast for the given location
    * @throws RestClientException if the request fails
    */
-  @Tool(description = "Get weather forecast for a specific latitude/longitude")
-  public String getWeatherForecastByLocation(double latitude, double longitude) {
+  @Tool(
+      description =
+          "Get the current weather forecast for a US latitude/longitude (api.weather.gov — US"
+              + " coverage only). Examples: Seattle 47.6062/-122.3321, New York 40.7128/-74.0060,"
+              + " Miami 25.7617/-80.1918.")
+  public String getWeatherForecastByLocation(
+      @ToolParam(description = "US latitude, e.g. 47.6062 (Seattle) or 40.7128 (New York)")
+          double latitude,
+      @ToolParam(description = "US longitude, e.g. -122.3321 (Seattle) or -74.0060 (New York)")
+          double longitude) {
 
     var points =
         restClient
@@ -139,8 +148,17 @@ public class WeatherService {
    */
   @Tool(
       description =
-          "Get weather alerts for a US state. Input is Two-letter US state code (e.g. CA, NY)")
-  public String getAlerts(String state) {
+          "Get active weather alerts for a US state. Input MUST be a two-letter US state or"
+              + " territory code. Examples: CA (California), NY (New York), TX (Texas), FL"
+              + " (Florida), WA (Washington), HI (Hawaii), AK (Alaska), PR (Puerto Rico).")
+  public String getAlerts(
+      @ToolParam(
+              description =
+                  "Two-letter US state or territory code. Valid values include AL, AK, AZ, AR, CA,"
+                      + " CO, CT, DE, FL, GA, HI, ID, IL, IN, IA, KS, KY, LA, ME, MD, MA, MI, MN,"
+                      + " MS, MO, MT, NE, NV, NH, NJ, NM, NY, NC, ND, OH, OK, OR, PA, RI, SC, SD,"
+                      + " TN, TX, UT, VT, VA, WA, WV, WI, WY, DC, PR.")
+          String state) {
     Alert alert =
         restClient.get().uri("/alerts/active/area/{state}", state).retrieve().body(Alert.class);
 

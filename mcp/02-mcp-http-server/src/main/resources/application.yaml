@@ -1,0 +1,21 @@
+server:
+  port: 8081
+
+spring:
+  ai:
+    mcp:
+      server:
+        name: basic-http-mcp-server
+        version: 1.0.0
+        type: SYNC
+        protocol: STREAMABLE
+        streamable-http:
+          mcp-endpoint: /mcp
+  main:
+    banner-mode: off
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

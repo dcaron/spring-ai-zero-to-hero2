@@ -1,6 +1,8 @@
 # Stage 6: Model Context Protocol (MCP)
 
-**Modules:** `mcp/01-mcp-stdio-server/`, `02-mcp-http-server/`, `03-mcp-client/`, `04-dynamic-tool-calling/`, `05-mcp-capabilities/`
+> 👉 **Looking for the attendee walkthrough?** See [`WHATS_NEW_STAGE_06_MCP.md`](../../WHATS_NEW_STAGE_06_MCP.md) — a concise tour covering the recommended demo order, trainer notes, and what to click when. This document is the deep-dive reference; the walkthrough is the quickstart.
+
+**Modules:** `mcp/01-mcp-stdio-server/`, `mcp/02-mcp-http-server/`, `mcp/03-mcp-client/`, `mcp/04-dynamic-tool-calling/`, `mcp/05-mcp-capabilities/`
 **Maven Artifacts:** `spring-ai-starter-mcp-server`, `spring-ai-starter-mcp-server-webmvc`, `spring-ai-starter-mcp-client`, `spring-ai-mcp-annotations`
 **Package Base:** `com.example`, `org.springframework.ai.mcp.sample.server`, `org.springframework.ai.mcp.samples.client`, `mcp.capabilities`
 
@@ -13,7 +15,43 @@ Stage 6 introduces the **Model Context Protocol (MCP)** — an open standard for
 - **MCP Servers** expose tools, resources, and prompts via a standardized protocol
 - **MCP Clients** discover and invoke these capabilities at runtime
 
-Spring AI provides first-class MCP support through auto-configured starters for both servers and clients, with two transport options (STDIO and Streamable HTTP). The demos progress from basic servers to dynamic tool registration and the full MCP capabilities showcase.
+Spring AI provides first-class MCP support through auto-configured starters for both servers and clients, using two transport options: **STDIO** (subprocess-based) and **Streamable HTTP** (network-based).
+
+### Run from the UI
+
+Navigate to **http://localhost:8080/dashboard/stage/6**. The page shows five demo cards with live status pills. For HTTP demos (02, 04, 05), start the servers first via:
+
+```bash
+./workshop.sh mcp start all      # builds 01 jar + starts 02/04/05
+./workshop.sh mcp status         # check which demos are up
+./workshop.sh mcp stop all       # stop when done
+```
+
+Each card has **List tools**, **Invoke**, and (for 05) **List resources / List prompts** buttons that call the servers through the dashboard's built-in MCP client. The **Docs** button on each card opens this document.
+
+### Run from the CLI
+
+Classic one-demo-at-a-time workflow:
+
+```bash
+./mvnw spring-boot:run -pl mcp/02-mcp-http-server
+./mvnw spring-boot:run -pl mcp/04-dynamic-tool-calling/server
+./mvnw spring-boot:run -pl mcp/05-mcp-capabilities
+./mvnw spring-boot:run -pl mcp/03-mcp-client                       # local mode (default)
+./mvnw spring-boot:run -pl mcp/03-mcp-client \
+    -Dspring-boot.run.profiles=mcp-external                        # Brave + filesystem
+```
+
+### Port Allocation
+
+| Module | Port | Notes |
+|---|---|---|
+| provider app | 8080 | main dashboard |
+| gateway (spy) | 7777 | MCP traffic does NOT flow through the spy gateway |
+| MCP 01 stdio | — | stdio transport |
+| MCP 02 http | 8081 | `/mcp` |
+| MCP 04 server | 8082 | `/mcp` + `/updateTools` |
+| MCP 05 capabilities | 8083 | `/mcp` |
 
 ### Learning Objectives
 
@@ -27,11 +65,14 @@ After completing this stage, developers will be able to:
 
 ### Prerequisites
 
-> **Background reading:** See [SPRING_AI_INTRODUCTION.md](SPRING_AI_INTRODUCTION.md) for Spring AI fundamentals and [SPRING_AI_STAGE_1.md](SPRING_AI_STAGE_1.md) for the `@Tool` annotation basics.
+> Background: see [SPRING_AI_INTRODUCTION.md](SPRING_AI_INTRODUCTION.md) and [Stage 1 §Tool calling](SPRING_AI_STAGE_1.md#tool-calling).
 
-- For STDIO server: Java runtime
-- For HTTP server: available port (default 8080)
-- For MCP client (module 03): OpenAI API key, Node.js/npx for external MCP servers
+- Java 25 + Maven wrapper
+- For HTTP demos: ports 8081/8082/8083 free
+- For Demo 03 local mode: the 01 STDIO jar must be built (`./workshop.sh mcp build-01`) and 02 running
+- For Demo 03 external mode: `BRAVE_API_KEY` + Node.js/npx
+
+> **Note on the `spy` profile:** The gateway at `:7777` only inspects chat/embedding traffic to provider APIs. MCP clients talk JSON-RPC over Streamable HTTP and are not routed through the gateway. Use the dashboard's inspector panel to observe MCP request/response bodies instead.
 
 ---
 
@@ -112,8 +153,13 @@ graph LR
 
 ## Demo 01 — MCP Server via STDIO
 
-**Module:** `mcp/01-basic-stdio-mcp-server/`
+**Module:** `mcp/01-mcp-stdio-server/`
 **Source:** `BasicStdioMcpServerApplication.java`, `WeatherTools.java`
+
+**Dashboard endpoints:**
+- `GET /dashboard/mcp/01/status` — status + build hint
+- `GET /dashboard/mcp/01/tools` — list tools (spawns subprocess per request)
+- `POST /dashboard/mcp/01/invoke` — call a tool
 
 ### Description
 
@@ -191,14 +237,41 @@ logging:
     console: ""                        # Suppress log output on stdout
 ```
 
+### Curl equivalents
+
+All 01 interactions go through the dashboard (which spawns the jar as a subprocess per request). There's no long-running port to hit directly.
+
+```bash
+# Status (shows jar-present + build hint)
+curl -s http://localhost:8080/dashboard/mcp/01/status
+
+# List tools — spawns the jar, lists, closes (~1–2s cold)
+curl -s http://localhost:8080/dashboard/mcp/01/tools
+
+# Invoke getTemperature (city-only geocodes; lat+lon goes straight to the weather API)
+curl -s -X POST http://localhost:8080/dashboard/mcp/01/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"city":"Berlin"}}'
+
+# Invoke with coordinates
+curl -s -X POST http://localhost:8080/dashboard/mcp/01/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"latitude":52.52,"longitude":13.41}}'
+```
+
 > **Takeaway:** STDIO MCP servers must keep stdout clean — only JSON-RPC messages. Disable Spring Boot banner and console logging. The client spawns the server as a subprocess and communicates via piped stdin/stdout.
 
 ---
 
 ## Demo 02 — MCP Server via HTTP
 
-**Module:** `mcp/02-basic-http-mcp-server/`
+**Module:** `mcp/02-mcp-http-server/`
 **Source:** `BasicHttpMcpServerApplication.java`, `WeatherTools.java`
+
+**Dashboard endpoints:**
+- `GET /dashboard/mcp/02/status`
+- `GET /dashboard/mcp/02/tools`
+- `POST /dashboard/mcp/02/invoke`
 
 ### Description
 
@@ -249,70 +322,172 @@ spring:
           mcp-endpoint: /mcp           # HTTP endpoint path
 ```
 
+### Curl equivalents
+
+02 is reachable two ways: through the dashboard's REST wrapper on `:8080`, OR directly as raw MCP JSON-RPC on `:8081/mcp`. The dashboard wrapper is easier to hand-roll; the raw protocol requires a session-aware Streamable HTTP handshake and is usually driven by an MCP client SDK.
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/02/status
+
+# List tools (via dashboard — uses the long-lived McpClient instance)
+curl -s http://localhost:8080/dashboard/mcp/02/tools
+
+# Invoke getTemperature (city auto-geocode)
+curl -s -X POST http://localhost:8080/dashboard/mcp/02/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"city":"Hamburg"}}'
+
+# Invoke with coordinates
+curl -s -X POST http://localhost:8080/dashboard/mcp/02/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getTemperature","args":{"latitude":35.6762,"longitude":139.6503,"city":"Tokyo"}}'
+
+# Spring Boot Actuator health (port 8081 directly)
+curl -s http://localhost:8081/actuator/health
+```
+
 > **Takeaway:** Switching from STDIO to HTTP requires changing the starter dependency (`spring-ai-starter-mcp-server` → `spring-ai-starter-mcp-server-webmvc`) and the config (`stdio: true` → `protocol: STREAMABLE`). The tool code stays identical.
 
 ---
 
 ## Demo 03 — MCP Client
 
-**Module:** `mcp/03-basic-mcp-client/`
-**Source:** `BasicMcpClientApplication.java`
+**Module:** `mcp/03-mcp-client/`
+**Source:** `BasicMcpClientApplication.java`, `McpClientDemoRunner.java`
+
+**Dashboard endpoints:**
+- `POST /dashboard/mcp/03/run?mode=local` — runs the demo against whichever of 01 (STDIO) and 02 (HTTP) are currently live. Tool callbacks are assembled on-demand from those servers.
+- `GET /dashboard/mcp/03/status` — informational only (03 is a CLI, not a server).
+
+> **External mode is CLI-only.** The dashboard's `/03/run` endpoint accepts only `mode=local`. Running against external MCP servers (Brave Search + filesystem, via `npx` subprocesses) is not supported from the UI and returns HTTP 400 pointing at the CLI command. See [External mode (CLI)](#external-mode-cli) below.
 
 ### Description
 
-An MCP client that connects to external MCP servers (Brave Search, filesystem) via STDIO, discovers their tools, and makes them available to `ChatClient`. The client uses `ToolCallbackProvider` to inject discovered tools into the AI conversation — the model can then call these remote tools.
+An MCP client that connects to MCP servers, discovers their tools, and exposes them to a `ChatClient` via `ToolCallbackProvider`. From the model's perspective the tools look like local Java methods — MCP is the transport.
+
+Demo 03 ships two configurations:
+
+| Mode | Servers | Config file | Runnable from |
+|------|---------|-------------|---------------|
+| **local** (default) | 01 STDIO jar + 02 HTTP :8081 | `mcp-servers-local.json` | CLI + Dashboard |
+| **external** | Brave Search + filesystem (via `npx`) | `mcp-servers-external.json` | CLI only (profile `mcp-external`) |
 
 ### Spring AI Components
 
-- `ChatClient` — fluent API with `.toolCallbacks()` for MCP tool injection
-- `ToolCallbackProvider` — auto-configured with tools from connected MCP servers
-- MCP server connections configured via `mcp-servers-config.json`
+- `ChatClient` — fluent API with `.toolCallbacks(...)` for MCP tool injection
+- `ToolCallbackProvider` — auto-configured from classpath MCP client connections (CLI) **or** constructed on-demand from live `McpSyncClient` instances via `SyncMcpToolCallbackProvider` (Dashboard)
+- `McpClientDemoRunner` — reusable bean extracted from the CLI's `CommandLineRunner`, called by either the CLI runner or the dashboard handler
 
-### Flow Diagram
+### Flow Diagram — local mode (default)
 
 ```mermaid
 sequenceDiagram
-    participant App as MCP Client App
-    participant MCP as MCP Server<br/>(Brave Search via STDIO)
+    participant App as 03 MCP Client
+    participant Stdio as 01 STDIO Server<br/>(subprocess)
+    participant Http as 02 HTTP Server<br/>(:8081)
     participant ChatClient as ChatClient
-    participant LLM as OpenAI
+    participant LLM as Provider (OpenAI/Ollama/…)
 
-    Note over App,MCP: Startup: auto-connect to MCP servers
-    App->>MCP: initialize (via subprocess stdin)
-    MCP-->>App: capabilities + tools list
-    App->>App: ToolCallbackProvider populated with remote tools
+    Note over App,Http: Startup: auto-connect to local MCP servers
+    App->>Stdio: spawn jar, initialize (stdin/stdout)
+    Stdio-->>App: tools list (getTemperature)
+    App->>Http: POST /mcp initialize
+    Http-->>App: tools list (getTemperature)
 
-    Note over App,LLM: Runtime: use remote tools in chat
-    App->>ChatClient: .prompt().system("...").user("Does Spring IO 2025 have MCP sessions?")
-    App->>ChatClient: .toolCallbacks(tools.getToolCallbacks())
-    ChatClient->>LLM: Send prompt + tool definitions
-
-    LLM-->>ChatClient: Tool call: brave_web_search({query: "Spring IO 2025 MCP"})
-    ChatClient->>MCP: Forward tool call to MCP server
-    MCP-->>ChatClient: Search results
-    ChatClient->>LLM: Tool result
-    LLM-->>ChatClient: "Yes, Spring IO 2025 has MCP sessions about..."
+    Note over App,LLM: Runtime
+    App->>ChatClient: .prompt().system("…").user("Temperature in Berlin?")
+    App->>ChatClient: .toolCallbacks(provider)
+    ChatClient->>LLM: prompt + merged tool definitions
+    LLM-->>ChatClient: tool call: getTemperature(lat, lon)
+    ChatClient->>Http: forward tool call
+    Http-->>ChatClient: { temperatureCelsius: 8.9, … }
+    ChatClient->>LLM: tool result
+    LLM-->>ChatClient: "Berlin is currently 8.9°C"
     ChatClient-->>App: response
 ```
 
-### Key Code
+### Key Code — the reusable runner
 
 ```java
-@Bean
-CommandLineRunner chatbot(ChatClient.Builder chatClientBuilder, ToolCallbackProvider tools) {
-    return args -> {
-        var chatClient = chatClientBuilder.build();
-        String response = chatClient.prompt()
-            .system("You are useful assistant and can perform web searches")
-            .user("Does Spring IO 2025 have MCP sessions?")
-            .toolCallbacks(tools.getToolCallbacks())
-            .call().content();
-        logger.info("Response: {}", response);
-    };
+@Component
+public class McpClientDemoRunner {
+  private final ChatClient.Builder chatClientBuilder;
+  private final ToolCallbackProvider tools;
+
+  public Result run(String mode) {
+    String question = "external".equals(mode) ? "Does Spring IO 2026 have MCP sessions?"
+                                              : "Temperature in Berlin?";
+    String response = chatClientBuilder.build().prompt()
+        .system("You are a useful assistant that can call MCP tools.")
+        .user(question)
+        .toolCallbacks(tools)
+        .call().content();
+    return new Result(mode, question, response);
+  }
 }
 ```
 
-**MCP servers configuration** (`mcp-servers-config.json`):
+**CLI entry point** (`BasicMcpClientApplication.java`) — thin `CommandLineRunner` that reads `MCP_DEMO_MODE` env var and delegates:
+
+```java
+@Bean
+public CommandLineRunner chatbot(McpClientDemoRunner runner) {
+  return args -> {
+    String mode = System.getenv("MCP_DEMO_MODE");
+    if (mode == null || mode.isBlank()) mode = "local";
+    runner.run(mode);
+  };
+}
+```
+
+**Dashboard path** (`McpInspectorController#run03`) — does NOT rely on the autowired `ToolCallbackProvider`. Instead it inspects which MCP servers are live via `McpClientRegistry` + `McpStdioInvoker`, assembles a `List<McpSyncClient>`, and constructs a `SyncMcpToolCallbackProvider` fresh per request. STDIO subprocess is closed in `finally`.
+
+### Local config — `mcp-servers-local.json`
+
+```json
+{
+  "mcpServers": {
+    "local-stdio": {
+      "command": "java",
+      "args": [
+        "-Dspring.ai.mcp.server.stdio=true",
+        "-Dspring.main.web-application-type=none",
+        "-Dlogging.pattern.console=",
+        "-jar", "mcp/01-mcp-stdio-server/target/01-mcp-stdio-server-0.0.1-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
+```
+
+Plus a Streamable HTTP connection to 02 in `application.yaml`:
+
+```yaml
+spring:
+  ai:
+    mcp:
+      client:
+        stdio:
+          servers-configuration: classpath:/mcp-servers-local.json
+        http:
+          connections:
+            local-http:
+              url: http://localhost:8081
+```
+
+### External mode (CLI)
+
+For the full MCP ecosystem experience (Brave Search, filesystem), activate the `mcp-external` profile:
+
+```bash
+export BRAVE_API_KEY=...         # required
+./mvnw spring-boot:run -pl mcp/03-mcp-client \
+    -Dspring-boot.run.profiles=mcp-external
+```
+
+Config (`mcp-servers-external.json`):
+
 ```json
 {
   "mcpServers": {
@@ -322,13 +497,32 @@ CommandLineRunner chatbot(ChatClient.Builder chatClientBuilder, ToolCallbackProv
     },
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./mcp/03-basic-mcp-client/target"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./mcp/03-mcp-client/target"]
     }
   }
 }
 ```
 
-> **Takeaway:** MCP clients treat remote tools the same as local tools. `ToolCallbackProvider` abstracts the source — the `ChatClient` doesn't know whether a tool runs locally or on a remote MCP server. This is the power of MCP: plug any tool ecosystem into any AI application.
+This mode is CLI-only: the dashboard can't spawn `npx` subprocesses for arbitrary external servers, and reaching those servers requires creds (`BRAVE_API_KEY`) the dashboard doesn't manage.
+
+### Curl equivalents
+
+03 is a client, not a server. The dashboard's `/03/run` endpoint runs the ChatClient demo against whichever of 01/02 are live.
+
+```bash
+# Status (informational — 03 is a CLI, not a bound port)
+curl -s http://localhost:8080/dashboard/mcp/03/status
+
+# Run demo in local mode (uses 01 STDIO subprocess + 02 HTTP)
+# Response contains { mode, question, response, toolsFrom }
+curl -s -X POST 'http://localhost:8080/dashboard/mcp/03/run?mode=local'
+
+# External mode is rejected from the dashboard — returns 400 pointing at the CLI
+curl -s -X POST 'http://localhost:8080/dashboard/mcp/03/run?mode=external'
+# → {"error":"external mode not available from the dashboard","hint":"./mvnw spring-boot:run -pl mcp/03-mcp-client -Dspring-boot.run.profiles=mcp-external",...}
+```
+
+> **Takeaway:** MCP clients treat tools from any server the same way — the `ChatClient.toolCallbacks(...)` API doesn't care whether a tool lives in a local STDIO subprocess, a local HTTP server, or an external npx-spawned service. Swapping between local and external is purely a config change. This is the power of MCP: plug any tool ecosystem into any AI application.
 
 ---
 
@@ -336,6 +530,12 @@ CommandLineRunner chatbot(ChatClient.Builder chatClientBuilder, ToolCallbackProv
 
 **Modules:** `mcp/04-dynamic-tool-calling/server/`, `mcp/04-dynamic-tool-calling/client/`
 **Source:** `ServerApplication.java`, `ClientApplication.java`, `WeatherService.java`, `MathTools.java`
+
+**Dashboard endpoints:**
+- `GET /dashboard/mcp/04/status`
+- `GET /dashboard/mcp/04/tools`
+- `POST /dashboard/mcp/04/invoke`
+- `POST /dashboard/mcp/04/update-tools` — triggers `McpSyncServer.addTool()` registration (one-shot per process)
 
 ### Description
 
@@ -436,6 +636,37 @@ McpClientCustomizer<?> customizeMcpClient() {
 }
 ```
 
+### Curl equivalents
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/04/status
+
+# List tools — initially shows only weatherForecast
+curl -s http://localhost:8080/dashboard/mcp/04/tools
+
+# Trigger dynamic registration (one-shot per server process)
+# After this call, MathTools (sumNumbers, multiplyNumbers, divideNumbers) are registered
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/update-tools
+# → {"signal":"Update signal received!"}
+
+# List tools again — now shows 4 tools
+curl -s http://localhost:8080/dashboard/mcp/04/tools
+
+# Invoke the weather forecast (Berlin)
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"weatherForecast","args":{"latitude":52.52,"longitude":13.41}}'
+
+# Invoke the newly-registered math tool
+curl -s -X POST http://localhost:8080/dashboard/mcp/04/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"sumNumbers","args":{"number1":3,"number2":5}}'
+
+# Call the server's own /updateTools endpoint directly (bypass the dashboard)
+curl -s http://localhost:8082/updateTools
+```
+
 > **Takeaway:** `McpSyncServer.addTool()` enables runtime tool registration without restarting the server. `McpToolUtils.toSyncToolSpecifications()` bridges Spring AI's `ToolCallback` abstraction to MCP's protocol format. This supports plugin architectures where tools are loaded dynamically.
 
 ---
@@ -445,6 +676,27 @@ McpClientCustomizer<?> customizeMcpClient() {
 **Module:** `mcp/05-mcp-capabilities/`
 **Source:** `McpServerApplication.java`, `WeatherService.java`, `PromptProvider.java`, `UserProfileResourceProvider.java`, `AutocompleteProvider.java`
 
+**Dashboard endpoints:**
+- `GET /dashboard/mcp/05/status`
+- `GET /dashboard/mcp/05/tools`, `POST /dashboard/mcp/05/invoke`
+- `GET /dashboard/mcp/05/resources` — calls BOTH `resources/list` (concrete URIs) and `resources/templates/list` (templated URIs) against the server and merges them. The 05 server ships only templates, so a naive `resources/list` alone would return an empty list — the dashboard's **List resources** button papers over this split.
+- `GET /dashboard/mcp/05/resources/read?uri=user-profile://alice`
+- `GET /dashboard/mcp/05/prompts`, `POST /dashboard/mcp/05/prompts/get`
+
+**Server endpoints (MCP JSON-RPC on `:8083/mcp`):**
+
+| MCP Method | Purpose | Spring AI binding |
+|------------|---------|-------------------|
+| `initialize` | Handshake + capability negotiation | auto |
+| `tools/list` | Enumerate callable tools | `@Tool` methods |
+| `tools/call` | Invoke a tool by name + args | `@Tool` method dispatch |
+| `resources/list` | Fixed-URI resources (none in 05) | `@McpResource` without `{}` placeholders |
+| `resources/templates/list` | Parameterized URIs advertised as templates | `@McpResource(uri = "…/{x}")` |
+| `resources/read` | Read a (possibly template-instantiated) URI | `@McpResource` method dispatch |
+| `prompts/list` | Enumerate reusable prompts | `@McpPrompt` methods |
+| `prompts/get` | Render a prompt with supplied args | `@McpPrompt` method dispatch |
+| `completion/complete` | Autocomplete suggestions for resource args | `@McpComplete` methods |
+
 ### Description
 
 A comprehensive showcase of all four MCP capabilities: **Tools**, **Resources**, **Prompts**, and **Completions**. Uses Spring AI MCP annotations (`@McpResource`, `@McpPrompt`, `@McpComplete`) to declaratively define each capability, registered via `SyncMcpAnnotationProviders`.
@@ -452,7 +704,7 @@ A comprehensive showcase of all four MCP capabilities: **Tools**, **Resources**,
 ### Spring AI Components
 
 - `@Tool` — weather forecast and alerts
-- `@McpResource` — user profile data with URI templates (`user-profile://{username}`)
+- `@McpResource` — user data exposed as URI templates (`user-profile://{username}`)
 - `@McpPrompt` — reusable prompt templates with `@McpArg` parameters
 - `@McpComplete` — autocomplete suggestions for resource URIs and prompt arguments
 - `SyncMcpAnnotationProviders` — collects annotated methods into MCP specifications
@@ -498,21 +750,63 @@ sequenceDiagram
     Server-->>Client: completion suggestions
 ```
 
+### Resource Catalog
+
+`UserProfileResourceProvider` registers **nine** `@McpResource` URI templates. All of them accept the demo usernames `john`, `jane`, `bob`, `alice` (everything else returns a default/empty response). The dashboard's **List resources** button renders them with a `template` badge; clicking **Read** fills in the selected username and calls `resources/read`.
+
+| URI template | Purpose | Example | Return type |
+|---|---|---|---|
+| `user-profile://{username}` | Formatted profile (name/email/age/location) | `user-profile://alice` | `ReadResourceResult` with text |
+| `user-profile://{username}` (variant) | Same URI, URI-variable-only method signature | `user-profile://bob` | `ReadResourceResult` |
+| `user-attribute://{username}/{attribute}` | One field from a profile (name, email, age, location) | `user-attribute://alice/email` | `ReadResourceResult` |
+| `user-profile-exchange://{username}` | Profile with `McpSyncServerExchange` context (used for logging) | `user-profile-exchange://john` | `ReadResourceResult` |
+| `user-connections://{username}` | Synthetic connections list (any username) | `user-connections://alice` | `List<String>` |
+| `user-notifications://{username}` | Synthetic notification list | `user-notifications://bob` | `List<ResourceContents>` |
+| `user-status://{username}` | Icon-style status (🟢 Online, 🟠 Away, ⚪ Offline, 🔴 Busy) | `user-status://jane` | `ResourceContents` |
+| `user-location://{username}` | City only | `user-location://bob` → `"Tokyo"` | `String` |
+| `user-avatar://{username}` | Placeholder "base64 avatar" (mimeType `image/png`) | `user-avatar://alice` | `String` |
+
+> **Concrete vs template:** The MCP spec exposes these through two different JSON-RPC methods. Concrete resources (fixed URIs, no placeholders) are advertised via `resources/list`; templates with `{placeholders}` live in `resources/templates/list`. Demo 05 only has templates — the concrete list is empty. The dashboard calls both and merges the results for the UI.
+
 ### Key Code — Resources
 
 ```java
 @Service
 public class UserProfileResourceProvider {
 
-    @McpResource(uri = "user-profile://{username}", name = "User Profile",
-                 description = "Returns user profile information", mimeType = "text/plain")
+    // URI with {username} placeholder → advertised as a TEMPLATE via resources/templates/list
+    @McpResource(uri = "user-profile://{username}",
+                 name = "User Profile",
+                 description = "Provides user profile information. Valid usernames: john, jane, "
+                             + "bob, alice. Example URI: user-profile://alice")
     public ReadResourceResult getUserProfile(ReadResourceRequest request, String username) {
-        String content = "Profile for " + username + ": software engineer, AI enthusiast";
+        String content = formatProfileInfo(userProfiles.get(username.toLowerCase()));
         return new ReadResourceResult(List.of(
             new TextResourceContents(request.uri(), "text/plain", content)));
     }
+
+    // Multiple URI variables — Spring AI binds them by parameter name
+    @McpResource(uri = "user-attribute://{username}/{attribute}",
+                 name = "User Attribute",
+                 description = "One attribute (name, email, age, location) from a user's profile")
+    public ReadResourceResult getUserAttribute(String username, String attribute) { /* … */ }
+
+    // Returns a richer type (ResourceContents) for an icon-scale status
+    @McpResource(uri = "user-status://{username}",
+                 name = "User Status",
+                 description = "Current status icon (john=🟢, jane=🟠, bob=⚪, alice=🔴)")
+    public ResourceContents getUserStatus(ReadResourceRequest request, String username) { /* … */ }
+
+    // BLOB mimeType — treats the returned String as base64-encoded image data
+    @McpResource(uri = "user-avatar://{username}",
+                 name = "User Avatar",
+                 description = "Placeholder base64 avatar (any username)",
+                 mimeType = "image/png")
+    public String getUserAvatar(ReadResourceRequest request, String username) { /* … */ }
 }
 ```
+
+Spring AI supports multiple method signatures for `@McpResource`: return type can be `ReadResourceResult`, `ResourceContents`, `List<ResourceContents>`, `List<String>`, or plain `String`. Parameters can include `ReadResourceRequest`, `McpSyncServerExchange` (for logging/progress), the URI variables themselves, or any combination.
 
 ### Key Code — Prompts
 
@@ -564,6 +858,55 @@ List<SyncCompletionSpecification> completionSpecs() {
     return SyncMcpAnnotationProviders.completeSpecifications(
         List.of(new AutocompleteProvider()));
 }
+```
+
+### Curl equivalents
+
+```bash
+# Status
+curl -s http://localhost:8080/dashboard/mcp/05/status
+
+# ── TOOLS ──────────────────────────────────────────
+curl -s http://localhost:8080/dashboard/mcp/05/tools
+
+# Invoke getAlerts (valid two-letter US code; returns active NWS alerts)
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getAlerts","args":{"state":"CA"}}'
+
+# Invoke getWeatherForecastByLocation (US coordinates — api.weather.gov is US-only)
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"getWeatherForecastByLocation","args":{"latitude":47.6062,"longitude":-122.3321}}'
+
+# ── RESOURCES ──────────────────────────────────────
+# The dashboard merges resources/list (concrete) and resources/templates/list
+curl -s http://localhost:8080/dashboard/mcp/05/resources
+
+# Read a templated URI — substitute a known username: john, jane, bob, alice
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-profile://alice'
+
+# Specific attribute (name, email, age, location)
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-attribute://alice/email'
+
+# Status icon (🟢 🟠 ⚪ 🔴)
+curl -s --get 'http://localhost:8080/dashboard/mcp/05/resources/read' \
+  --data-urlencode 'uri=user-status://jane'
+
+# ── PROMPTS ────────────────────────────────────────
+curl -s http://localhost:8080/dashboard/mcp/05/prompts
+
+# Get a rendered prompt with arguments
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/prompts/get \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"personalized-message","args":{"name":"Alice","age":28,"interests":"AI, hiking"}}'
+
+# Get a simpler prompt
+curl -s -X POST http://localhost:8080/dashboard/mcp/05/prompts/get \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"greeting","args":{"name":"Bob"}}'
 ```
 
 > **Takeaway:** MCP is more than just tools. Resources expose data, prompts provide reusable templates, and completions enable IDE-like autocomplete. Spring AI's `@Mcp*` annotations make all four capabilities declarative — annotate methods and register the providers as beans.

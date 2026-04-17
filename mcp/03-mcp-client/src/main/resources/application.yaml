@@ -1,0 +1,26 @@
+spring:
+  main:
+    web-application-type: none
+  ai:
+    mcp:
+      client:
+        stdio:
+          servers-configuration: classpath:/mcp-servers-local.json
+        http:
+          connections:
+            local-http:
+              url: http://localhost:8081
+  config:
+    import: "optional:classpath:/creds.yaml"
+---
+spring:
+  config:
+    activate:
+      on-profile: mcp-external
+  ai:
+    mcp:
+      client:
+        stdio:
+          servers-configuration: classpath:/mcp-servers-external.json
+        http:
+          connections: {}

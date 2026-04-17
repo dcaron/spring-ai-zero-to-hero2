@@ -16,23 +16,30 @@
 package org.springframework.ai.mcp.sample.server;
 
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 
 public class MathTools {
 
   public MathTools() {}
 
-  @Tool(description = "Adds two numbers")
-  public int sumNumbers(int number1, int number2) {
+  @Tool(description = "Adds two numbers. Example: sumNumbers(3, 5) returns 8.")
+  public int sumNumbers(
+      @ToolParam(description = "First integer addend, e.g. 3") int number1,
+      @ToolParam(description = "Second integer addend, e.g. 5") int number2) {
     return number1 + number2;
   }
 
-  @Tool(description = "Multiplies two numbers")
-  public int multiplyNumbers(int number1, int number2) {
+  @Tool(description = "Multiplies two numbers. Example: multiplyNumbers(4, 6) returns 24.")
+  public int multiplyNumbers(
+      @ToolParam(description = "First integer factor, e.g. 4") int number1,
+      @ToolParam(description = "Second integer factor, e.g. 6") int number2) {
     return number1 * number2;
   }
 
-  @Tool(description = "Divide two numbers")
-  public double divideNumbers(double number1, double number2) {
+  @Tool(description = "Divides two numbers. Example: divideNumbers(10, 4) returns 2.5.")
+  public double divideNumbers(
+      @ToolParam(description = "Dividend (number to divide), e.g. 10") double number1,
+      @ToolParam(description = "Divisor (must be non-zero), e.g. 4") double number2) {
     return number1 / number2;
   }
 }

@@ -387,7 +387,7 @@ The same `ChatClient.prompt().user("...").call().content()` code runs against an
 | **3** | Vector Stores | `components/apis/vector-store/` | VectorStore, similarity search, PgVector |
 | **4** | AI Patterns | `components/patterns/` | Stuff-the-prompt, RAG, advisors, chat memory |
 | **5** | Advanced Patterns | `components/patterns/` | Chain-of-Thought, self-reflection, critic loops |
-| **6** | Model Context Protocol | `mcp/` | MCP servers (stdio, HTTP), clients, dynamic tools |
+| **6** | Model Context Protocol | `mcp/` | MCP servers (stdio, HTTP), clients, dynamic tools + dashboard UI |
 | **7** | Agentic Systems | `agentic-system/` | Inner monologue, model-directed loops, CLI agents |
 | **8** | Observability | Docker + config | Tracing (Tempo), metrics (Prometheus), logs (Loki), Grafana |
 
