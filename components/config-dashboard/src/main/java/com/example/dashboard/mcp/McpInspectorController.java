@@ -20,6 +20,12 @@ public class McpInspectorController {
   private final org.springframework.web.client.RestClient restClient =
       org.springframework.web.client.RestClient.create();
 
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private org.springframework.ai.chat.client.ChatClient.Builder chatClientBuilder;
+
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private org.springframework.ai.tool.ToolCallbackProvider toolCallbackProvider;
+
   public McpInspectorController(
       McpDemoCatalog catalog, McpClientRegistry registry, McpStdioInvoker stdio) {
     this.catalog = catalog;
@@ -145,6 +151,44 @@ public class McpInspectorController {
     } catch (Exception e) {
       return offlineResponse(id, demo, e);
     }
+  }
+
+  @org.springframework.web.bind.annotation.PostMapping("/03/run")
+  public ResponseEntity<?> run03(
+      @org.springframework.web.bind.annotation.RequestParam(defaultValue = "local") String mode) {
+    if (chatClientBuilder == null || toolCallbackProvider == null) {
+      return ResponseEntity.ok(
+          Map.of(
+              "mode",
+              mode,
+              "response",
+              "ChatClient or ToolCallbackProvider not available — run the CLI demo with"
+                  + " ./mvnw spring-boot:run -pl mcp/03-mcp-client",
+              "degraded",
+              true));
+    }
+    if ("external".equals(mode) && System.getenv("BRAVE_API_KEY") == null) {
+      return ResponseEntity.status(400)
+          .body(
+              Map.of(
+                  "error", "missing BRAVE_API_KEY",
+                  "hint", "./workshop.sh creds",
+                  "mode", mode));
+    }
+    String question =
+        "external".equals(mode)
+            ? McpClientDemoPrompts.EXTERNAL_DEMO_QUESTION
+            : McpClientDemoPrompts.LOCAL_DEMO_QUESTION;
+    String response =
+        chatClientBuilder
+            .build()
+            .prompt()
+            .system(McpClientDemoPrompts.SYSTEM)
+            .user(question)
+            .toolCallbacks(toolCallbackProvider)
+            .call()
+            .content();
+    return ResponseEntity.ok(Map.of("mode", mode, "question", question, "response", response));
   }
 
   @org.springframework.web.bind.annotation.PostMapping("/04/update-tools")

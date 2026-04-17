@@ -124,6 +124,17 @@ class McpInspectorControllerTest {
   }
 
   @Test
+  void run03ReturnsDegradedWhenBeansMissing() throws Exception {
+    mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                    "/dashboard/mcp/03/run")
+                .param("mode", "local"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.mode").value("local"));
+  }
+
+  @Test
   void updateTools04EndpointExists() throws Exception {
     // Accept any status — verifies routing only. Full proxy semantics require a live :8082.
     mockMvc.perform(
