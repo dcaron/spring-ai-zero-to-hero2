@@ -582,8 +582,23 @@ McpClientCustomizer<?> customizeMcpClient() {
 **Dashboard endpoints:**
 - `GET /dashboard/mcp/05/status`
 - `GET /dashboard/mcp/05/tools`, `POST /dashboard/mcp/05/invoke`
-- `GET /dashboard/mcp/05/resources`, `GET /dashboard/mcp/05/resources/read?uri=...`
+- `GET /dashboard/mcp/05/resources` — calls BOTH `resources/list` (concrete URIs) and `resources/templates/list` (templated URIs) against the server and merges them. The 05 server ships only templates, so a naive `resources/list` alone would return an empty list — the dashboard's **List resources** button papers over this split.
+- `GET /dashboard/mcp/05/resources/read?uri=user-profile://alice`
 - `GET /dashboard/mcp/05/prompts`, `POST /dashboard/mcp/05/prompts/get`
+
+**Server endpoints (MCP JSON-RPC on `:8083/mcp`):**
+
+| MCP Method | Purpose | Spring AI binding |
+|------------|---------|-------------------|
+| `initialize` | Handshake + capability negotiation | auto |
+| `tools/list` | Enumerate callable tools | `@Tool` methods |
+| `tools/call` | Invoke a tool by name + args | `@Tool` method dispatch |
+| `resources/list` | Fixed-URI resources (none in 05) | `@McpResource` without `{}` placeholders |
+| `resources/templates/list` | Parameterized URIs advertised as templates | `@McpResource(uri = "…/{x}")` |
+| `resources/read` | Read a (possibly template-instantiated) URI | `@McpResource` method dispatch |
+| `prompts/list` | Enumerate reusable prompts | `@McpPrompt` methods |
+| `prompts/get` | Render a prompt with supplied args | `@McpPrompt` method dispatch |
+| `completion/complete` | Autocomplete suggestions for resource args | `@McpComplete` methods |
 
 ### Description
 
@@ -592,7 +607,7 @@ A comprehensive showcase of all four MCP capabilities: **Tools**, **Resources**,
 ### Spring AI Components
 
 - `@Tool` — weather forecast and alerts
-- `@McpResource` — user profile data with URI templates (`user-profile://{username}`)
+- `@McpResource` — user data exposed as URI templates (`user-profile://{username}`)
 - `@McpPrompt` — reusable prompt templates with `@McpArg` parameters
 - `@McpComplete` — autocomplete suggestions for resource URIs and prompt arguments
 - `SyncMcpAnnotationProviders` — collects annotated methods into MCP specifications
@@ -638,21 +653,63 @@ sequenceDiagram
     Server-->>Client: completion suggestions
 ```
 
+### Resource Catalog
+
+`UserProfileResourceProvider` registers **nine** `@McpResource` URI templates. All of them accept the demo usernames `john`, `jane`, `bob`, `alice` (everything else returns a default/empty response). The dashboard's **List resources** button renders them with a `template` badge; clicking **Read** fills in the selected username and calls `resources/read`.
+
+| URI template | Purpose | Example | Return type |
+|---|---|---|---|
+| `user-profile://{username}` | Formatted profile (name/email/age/location) | `user-profile://alice` | `ReadResourceResult` with text |
+| `user-profile://{username}` (variant) | Same URI, URI-variable-only method signature | `user-profile://bob` | `ReadResourceResult` |
+| `user-attribute://{username}/{attribute}` | One field from a profile (name, email, age, location) | `user-attribute://alice/email` | `ReadResourceResult` |
+| `user-profile-exchange://{username}` | Profile with `McpSyncServerExchange` context (used for logging) | `user-profile-exchange://john` | `ReadResourceResult` |
+| `user-connections://{username}` | Synthetic connections list (any username) | `user-connections://alice` | `List<String>` |
+| `user-notifications://{username}` | Synthetic notification list | `user-notifications://bob` | `List<ResourceContents>` |
+| `user-status://{username}` | Icon-style status (🟢 Online, 🟠 Away, ⚪ Offline, 🔴 Busy) | `user-status://jane` | `ResourceContents` |
+| `user-location://{username}` | City only | `user-location://bob` → `"Tokyo"` | `String` |
+| `user-avatar://{username}` | Placeholder "base64 avatar" (mimeType `image/png`) | `user-avatar://alice` | `String` |
+
+> **Concrete vs template:** The MCP spec exposes these through two different JSON-RPC methods. Concrete resources (fixed URIs, no placeholders) are advertised via `resources/list`; templates with `{placeholders}` live in `resources/templates/list`. Demo 05 only has templates — the concrete list is empty. The dashboard calls both and merges the results for the UI.
+
 ### Key Code — Resources
 
 ```java
 @Service
 public class UserProfileResourceProvider {
 
-    @McpResource(uri = "user-profile://{username}", name = "User Profile",
-                 description = "Returns user profile information", mimeType = "text/plain")
+    // URI with {username} placeholder → advertised as a TEMPLATE via resources/templates/list
+    @McpResource(uri = "user-profile://{username}",
+                 name = "User Profile",
+                 description = "Provides user profile information. Valid usernames: john, jane, "
+                             + "bob, alice. Example URI: user-profile://alice")
     public ReadResourceResult getUserProfile(ReadResourceRequest request, String username) {
-        String content = "Profile for " + username + ": software engineer, AI enthusiast";
+        String content = formatProfileInfo(userProfiles.get(username.toLowerCase()));
         return new ReadResourceResult(List.of(
             new TextResourceContents(request.uri(), "text/plain", content)));
     }
+
+    // Multiple URI variables — Spring AI binds them by parameter name
+    @McpResource(uri = "user-attribute://{username}/{attribute}",
+                 name = "User Attribute",
+                 description = "One attribute (name, email, age, location) from a user's profile")
+    public ReadResourceResult getUserAttribute(String username, String attribute) { /* … */ }
+
+    // Returns a richer type (ResourceContents) for an icon-scale status
+    @McpResource(uri = "user-status://{username}",
+                 name = "User Status",
+                 description = "Current status icon (john=🟢, jane=🟠, bob=⚪, alice=🔴)")
+    public ResourceContents getUserStatus(ReadResourceRequest request, String username) { /* … */ }
+
+    // BLOB mimeType — treats the returned String as base64-encoded image data
+    @McpResource(uri = "user-avatar://{username}",
+                 name = "User Avatar",
+                 description = "Placeholder base64 avatar (any username)",
+                 mimeType = "image/png")
+    public String getUserAvatar(ReadResourceRequest request, String username) { /* … */ }
 }
 ```
+
+Spring AI supports multiple method signatures for `@McpResource`: return type can be `ReadResourceResult`, `ResourceContents`, `List<ResourceContents>`, `List<String>`, or plain `String`. Parameters can include `ReadResourceRequest`, `McpSyncServerExchange` (for logging/progress), the URI variables themselves, or any combination.
 
 ### Key Code — Prompts
 
