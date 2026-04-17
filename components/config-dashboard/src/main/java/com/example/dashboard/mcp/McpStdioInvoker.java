@@ -80,20 +80,41 @@ public class McpStdioInvoker {
     return withClient(c -> c.callTool(new CallToolRequest(name, args)));
   }
 
+  /**
+   * Open an initialized STDIO client that the caller owns. The caller MUST call {@code
+   * closeGracefully()} on the returned client to terminate the subprocess. Prefer {@link
+   * #withClient(Function)} for single-shot calls; this escape hatch is for multi-step flows (e.g.
+   * passing the client to a {@code SyncMcpToolCallbackProvider} used across a ChatClient call).
+   */
+  public McpSyncClient openClient() {
+    Path resolved = resolveJar();
+    if (resolved == null) {
+      throw new IllegalStateException("STDIO jar not built at " + jarPath);
+    }
+    var params = buildServerParameters(resolved);
+    var transport = new StdioClientTransport(params, McpJsonDefaults.getMapper());
+    McpSyncClient client = McpClient.sync(transport).requestTimeout(REQUEST_TIMEOUT).build();
+    client.initialize();
+    return client;
+  }
+
+  private ServerParameters buildServerParameters(Path resolved) {
+    return ServerParameters.builder("java")
+        .args(
+            "-Dspring.ai.mcp.server.stdio=true",
+            "-Dspring.main.web-application-type=none",
+            "-Dlogging.pattern.console=",
+            "-jar",
+            resolved.toString())
+        .build();
+  }
+
   <T> T withClient(Function<McpSyncClient, T> fn) {
     Path resolved = resolveJar();
     if (resolved == null) {
       throw new IllegalStateException("STDIO jar not built at " + jarPath);
     }
-    var params =
-        ServerParameters.builder("java")
-            .args(
-                "-Dspring.ai.mcp.server.stdio=true",
-                "-Dspring.main.web-application-type=none",
-                "-Dlogging.pattern.console=",
-                "-jar",
-                resolved.toString())
-            .build();
+    var params = buildServerParameters(resolved);
     var transport = new StdioClientTransport(params, McpJsonDefaults.getMapper());
     McpSyncClient client = McpClient.sync(transport).requestTimeout(REQUEST_TIMEOUT).build();
     try {

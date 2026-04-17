@@ -23,9 +23,6 @@ public class McpInspectorController {
   @org.springframework.beans.factory.annotation.Autowired(required = false)
   private org.springframework.ai.chat.client.ChatClient.Builder chatClientBuilder;
 
-  @org.springframework.beans.factory.annotation.Autowired(required = false)
-  private org.springframework.ai.tool.ToolCallbackProvider toolCallbackProvider;
-
   public McpInspectorController(
       McpDemoCatalog catalog, McpClientRegistry registry, McpStdioInvoker stdio) {
     this.catalog = catalog;
@@ -156,39 +153,93 @@ public class McpInspectorController {
   @org.springframework.web.bind.annotation.PostMapping("/03/run")
   public ResponseEntity<?> run03(
       @org.springframework.web.bind.annotation.RequestParam(defaultValue = "local") String mode) {
-    if (chatClientBuilder == null || toolCallbackProvider == null) {
+    if (chatClientBuilder == null) {
       return ResponseEntity.ok(
           Map.of(
               "mode",
               mode,
               "response",
-              "ChatClient or ToolCallbackProvider not available — run the CLI demo with"
-                  + " ./mvnw spring-boot:run -pl mcp/03-mcp-client",
+              "ChatClient not available — run the CLI demo with ./mvnw spring-boot:run -pl"
+                  + " mcp/03-mcp-client",
               "degraded",
               true));
     }
-    if ("external".equals(mode) && System.getenv("BRAVE_API_KEY") == null) {
+    if ("external".equals(mode)) {
       return ResponseEntity.status(400)
           .body(
               Map.of(
-                  "error", "missing BRAVE_API_KEY",
-                  "hint", "./workshop.sh creds",
+                  "error", "external mode not available from the dashboard",
+                  "hint",
+                      "./mvnw spring-boot:run -pl mcp/03-mcp-client -Dspring-boot.run.profiles=mcp-external",
                   "mode", mode));
     }
-    String question =
-        "external".equals(mode)
-            ? McpClientDemoPrompts.EXTERNAL_DEMO_QUESTION
-            : McpClientDemoPrompts.LOCAL_DEMO_QUESTION;
-    String response =
-        chatClientBuilder
-            .build()
-            .prompt()
-            .system(McpClientDemoPrompts.SYSTEM)
-            .user(question)
-            .toolCallbacks(toolCallbackProvider)
-            .call()
-            .content();
-    return ResponseEntity.ok(Map.of("mode", mode, "question", question, "response", response));
+
+    // Local mode: assemble tool callbacks on-demand from whichever MCP servers are live.
+    // 01 STDIO is spawned as a subprocess for the duration of the ChatClient call.
+    // 02 HTTP uses the long-lived client from McpClientRegistry.
+    java.util.List<io.modelcontextprotocol.client.McpSyncClient> clients =
+        new java.util.ArrayList<>();
+    io.modelcontextprotocol.client.McpSyncClient stdioClient = null;
+    try {
+      if (stdio.jarPresent()) {
+        stdioClient = stdio.openClient();
+        clients.add(stdioClient);
+      }
+      if (registry.isUp("02")) {
+        clients.add(registry.getOrConnect("02"));
+      }
+      if (clients.isEmpty()) {
+        return ResponseEntity.status(503)
+            .body(
+                Map.of(
+                    "error", "no local MCP servers available",
+                    "hint", "./workshop.sh mcp start all",
+                    "mode", mode));
+      }
+
+      org.springframework.ai.tool.ToolCallbackProvider provider =
+          new org.springframework.ai.mcp.SyncMcpToolCallbackProvider(clients);
+
+      String question = McpClientDemoPrompts.LOCAL_DEMO_QUESTION;
+      String response =
+          chatClientBuilder
+              .build()
+              .prompt()
+              .system(McpClientDemoPrompts.SYSTEM)
+              .user(question)
+              .toolCallbacks(provider)
+              .call()
+              .content();
+
+      String toolsFrom =
+          (stdioClient != null && clients.size() == 2)
+              ? "01+02"
+              : (stdioClient != null ? "01" : "02");
+      return ResponseEntity.ok(
+          Map.of(
+              "mode", mode,
+              "question", question,
+              "response", response,
+              "toolsFrom", toolsFrom));
+    } catch (Exception e) {
+      return ResponseEntity.status(500)
+          .body(
+              Map.of(
+                  "error",
+                  "MCP demo run failed",
+                  "detail",
+                  e.getMessage() == null ? "" : e.getMessage(),
+                  "mode",
+                  mode));
+    } finally {
+      if (stdioClient != null) {
+        try {
+          stdioClient.closeGracefully();
+        } catch (Exception ignored) {
+          // best-effort cleanup
+        }
+      }
+    }
   }
 
   @org.springframework.web.bind.annotation.PostMapping("/04/update-tools")
