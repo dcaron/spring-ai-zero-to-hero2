@@ -1,5 +1,6 @@
 package com.example.dashboard;
 
+import com.example.dashboard.mcp.McpDemoCatalog;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.Arrays;
@@ -28,17 +29,21 @@ public class DashboardController {
   private final Environment environment;
   private final RestClient restClient;
   private final DocMappingService docMappingService;
+  private final McpDemoCatalog mcpCatalog;
 
   public DashboardController(
       OpenApiSpecReader specReader,
       Environment environment,
       RestClient.Builder restClientBuilder,
       DocMappingService docMappingService,
+      @org.springframework.beans.factory.annotation.Autowired(required = false)
+          com.example.dashboard.mcp.McpDemoCatalog mcpCatalog,
       @Value("${server.port:8080}") int port) {
     this.specReader = specReader;
     this.environment = environment;
     this.restClient = restClientBuilder.baseUrl("http://localhost:" + port).build();
     this.docMappingService = docMappingService;
+    this.mcpCatalog = mcpCatalog;
   }
 
   @GetMapping
@@ -54,7 +59,19 @@ public class DashboardController {
     return "dashboard/index";
   }
 
-  @GetMapping("/stage/{number}")
+  @GetMapping("/stage/6")
+  public String stageMcp(Model model) {
+    List<StageDefinition> stages = specReader.getStages();
+    model.addAttribute("stage", StageDefinition.mcpStage());
+    model.addAttribute("stages", stages);
+    model.addAttribute("demos", mcpCatalog == null ? List.of() : mcpCatalog.all());
+    model.addAttribute("activePage", "stage-6");
+    model.addAttribute("providerName", detectProvider());
+    model.addAttribute("activeProfiles", List.of(environment.getActiveProfiles()));
+    return "stage/mcp";
+  }
+
+  @GetMapping("/stage/{number:[1-5]}")
   public String stage(@PathVariable int number, Model model) {
     List<StageDefinition> stages = specReader.getStages();
     StageDefinition stage =
