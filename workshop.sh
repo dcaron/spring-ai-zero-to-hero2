@@ -1299,6 +1299,10 @@ draw_menu() {
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN} 8)${NC} Open Grafana                                        ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN} 9)${NC} Open Swagger UI                                     ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}10)${NC} Open Dashboard                                      ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}11)${NC} Start MCP demo (01|02|04|05|all)                    ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}12)${NC} Stop MCP demo                                       ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}13)${NC} MCP status                                          ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}14)${NC} Tail MCP logs                                       ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${YELLOW} c)${NC} Configure credentials                               ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${RED} q)${NC} Quit                                                ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}                                                          ${BOLD}${CYAN}│${NC}"
@@ -1454,6 +1458,69 @@ interactive_start() {
     cmd_start "${SELECTED_PROVIDER}" "${SELECTED_PROFILES}"
 }
 
+interactive_mcp_start() {
+    echo ""
+    echo -e "${BOLD}Start MCP demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 01 (build STDIO jar)"
+    echo -e "  ${GREEN}2)${NC} 02 (HTTP server :8081)"
+    echo -e "  ${GREEN}3)${NC} 04 (Dynamic Tool Calling :8082)"
+    echo -e "  ${GREEN}4)${NC} 05 (Full Capabilities :8083)"
+    echo -e "  ${GREEN}5)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp start 01 ;;
+        2) cmd_mcp start 02 ;;
+        3) cmd_mcp start 04 ;;
+        4) cmd_mcp start 05 ;;
+        5) cmd_mcp start all ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_mcp_stop() {
+    echo ""
+    echo -e "${BOLD}Stop MCP demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 02"
+    echo -e "  ${GREEN}2)${NC} 04"
+    echo -e "  ${GREEN}3)${NC} 05"
+    echo -e "  ${GREEN}4)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp stop 02 ;;
+        2) cmd_mcp stop 04 ;;
+        3) cmd_mcp stop 05 ;;
+        4) cmd_mcp stop all ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_mcp_logs() {
+    echo ""
+    echo -e "${BOLD}Tail MCP logs:${NC}"
+    echo -e "  ${GREEN}1)${NC} 02"
+    echo -e "  ${GREEN}2)${NC} 04"
+    echo -e "  ${GREEN}3)${NC} 05"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_mcp logs 02 ;;
+        2) cmd_mcp logs 04 ;;
+        3) cmd_mcp logs 05 ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
 run_menu() {
     while true; do
         draw_menu
@@ -1470,6 +1537,10 @@ run_menu() {
             8) open_url "http://localhost:3000"; info "Opening Grafana..."; read -r -p "  Press Enter to continue..." _ ;;
             9) open_url "http://localhost:8080/swagger-ui.html"; info "Opening Swagger UI..."; read -r -p "  Press Enter to continue..." _ ;;
             10) open_url "http://localhost:8080/dashboard"; info "Opening Dashboard..."; read -r -p "  Press Enter to continue..." _ ;;
+            11) interactive_mcp_start; read -r -p "  Press Enter to continue..." _ ;;
+            12) interactive_mcp_stop; read -r -p "  Press Enter to continue..." _ ;;
+            13) cmd_mcp status; read -r -p "  Press Enter to continue..." _ ;;
+            14) interactive_mcp_logs ;;
             c|C) cmd_creds; read -r -p "  Press Enter to continue..." _ ;;
             q|Q) echo ""; info "Goodbye!"; echo ""; exit 0 ;;
             *) warn "Invalid option: ${choice}" ;;
