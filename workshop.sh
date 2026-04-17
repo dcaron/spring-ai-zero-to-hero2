@@ -787,6 +787,12 @@ cmd_stop() {
 
     ok "Provider stopped"
 
+    # Stop all MCP demos
+    header "Stopping MCP demos"
+    for id in "${MCP_DEMOS[@]}"; do
+        mcp_stop_demo "${id}"
+    done
+
     # Stop gateway if running
     if [ -f "${GATEWAY_PID_FILE}" ]; then
         local gw_pid
