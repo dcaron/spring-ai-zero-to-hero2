@@ -1,5 +1,26 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [Unreleased]
+
+### Added
+- Stage 6 (MCP) dashboard UI at `/dashboard/stage/6` with live status pills, tool/resource/prompt inspection, and dynamic tool registration trigger.
+- `./workshop.sh mcp {start|stop|status|logs|build-01}` for coordinated MCP server lifecycle, with PID/log files under `.workshop/mcp/`.
+- Menu items 11–14 in the workshop TUI for interactive MCP control.
+- New `McpInspectorController` in `components/config-dashboard` with `McpClientRegistry` (long-lived HTTP clients) and `McpStdioInvoker` (per-request subprocess spawn for 01).
+- Demo 03 dual-config: default local mode uses the just-built 01 STDIO jar + 02 HTTP server; `mcp-external` profile preserves Brave + filesystem.
+
+### Changed
+- Renamed `mcp/01-basic-stdio-mcp-server` → `mcp/01-mcp-stdio-server`, `mcp/02-basic-http-mcp-server` → `mcp/02-mcp-http-server`, `mcp/03-basic-mcp-client` → `mcp/03-mcp-client` to match `SPRING_AI_STAGE_6.md`.
+- Pinned MCP HTTP server ports: 02 → `:8081`, 04 → `:8082`, 05 → `:8083`; exposed `/actuator/health` on each (added `spring-boot-starter-actuator` dependency).
+- Updated 04 client to point at `:8082` instead of `:8080`.
+
+### Docs
+- Rewrote Stage 6 sections in `SPRING_AI_STAGE_6.md` and `guide.md` with UI-first workflow, port table, and dashboard endpoint bullets.
+- Added "New in Stage 6 UI" intro boxes to each `mcp/*/README.md`.
+- New "Stage 6 / MCP" troubleshooting section.
+
+---
+
 ## [2.2.1] — 2026-04-11: Anthropic Provider Fix & Gateway Spy UI Improvements
 
 Bug fixes for the Anthropic provider and visual improvements to the gateway spy panel in the workshop dashboard.
