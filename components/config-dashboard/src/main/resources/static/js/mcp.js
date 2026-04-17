@@ -1,4 +1,4 @@
-// Stage 6 MCP dashboard — status polling, action dispatch, inspector rendering.
+// Stage 6 MCP dashboard — status polling, action dispatch, modal + inline invoke forms.
 
 (function() {
     var POLL_MS = 3000;
@@ -48,32 +48,309 @@
         navigator.clipboard.writeText(cmd.textContent);
     };
 
+    // ===== Modal-based list handlers =====
+
+    function openModal(title, iconClass) {
+        document.getElementById('mcp-modal-title').textContent = title;
+        var icon = document.getElementById('mcp-modal-icon');
+        if (icon) icon.className = 'bi ' + iconClass;
+        var modalEl = document.getElementById('mcp-inspector-modal');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    function setModalLoading(msg) {
+        document.getElementById('mcp-modal-body').innerHTML =
+            '<div class="text-muted text-center mt-4"><div class="spinner-border spinner-border-sm" role="status"></div> ' +
+            escapeHtml(msg) + '</div>';
+    }
+
+    function renderModalError(res) {
+        var body = res && res.body || {};
+        var html = '<div class="alert alert-warning" role="alert">';
+        html += '<div><strong>' + escapeHtml(body.error || 'Error') + '</strong></div>';
+        if (body.hint) html += '<div class="mt-1"><code>' + escapeHtml(body.hint) + '</code></div>';
+        if (body.detail) html += '<div class="mt-2 small text-muted">' + escapeHtml(body.detail) + '</div>';
+        html += '</div>';
+        html += '<pre class="response-json mt-2"><code>' +
+            escapeHtml(JSON.stringify(body, null, 2)) + '</code></pre>';
+        document.getElementById('mcp-modal-body').innerHTML = html;
+    }
+
     window.mcpListTools = function(btn) {
         var id = btn.dataset.demoId;
-        setInspectorLoading('Listing tools for MCP ' + id + '…');
+        openModal('Tools — MCP ' + id, 'bi-tools');
+        setModalLoading('Listing tools for MCP ' + id + '…');
         fetch('/dashboard/mcp/' + id + '/tools')
             .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
-            .then(function(res) { renderInspector(res, 'Tools'); })
-            .catch(function(e) { renderInspector({ ok: false, body: { error: String(e && e.message || e) } }, 'Tools'); });
+            .then(function(res) {
+                if (!res.ok) { renderModalError(res); return; }
+                renderToolsList(id, res.body);
+            })
+            .catch(function(e) { renderModalError({ body: { error: String(e && e.message || e) } }); });
     };
 
     window.mcpListResources = function(btn) {
         var id = btn.dataset.demoId;
-        setInspectorLoading('Listing resources for MCP ' + id + '…');
+        openModal('Resources — MCP ' + id, 'bi-files');
+        setModalLoading('Listing resources for MCP ' + id + '…');
         fetch('/dashboard/mcp/' + id + '/resources')
             .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
-            .then(function(res) { renderInspector(res, 'Resources'); })
-            .catch(function(e) { renderInspector({ ok: false, body: { error: String(e && e.message || e) } }, 'Resources'); });
+            .then(function(res) {
+                if (!res.ok) { renderModalError(res); return; }
+                renderResourcesList(id, res.body);
+            })
+            .catch(function(e) { renderModalError({ body: { error: String(e && e.message || e) } }); });
     };
 
     window.mcpListPrompts = function(btn) {
         var id = btn.dataset.demoId;
-        setInspectorLoading('Listing prompts for MCP ' + id + '…');
+        openModal('Prompts — MCP ' + id, 'bi-chat-left-dots');
+        setModalLoading('Listing prompts for MCP ' + id + '…');
         fetch('/dashboard/mcp/' + id + '/prompts')
             .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
-            .then(function(res) { renderInspector(res, 'Prompts'); })
-            .catch(function(e) { renderInspector({ ok: false, body: { error: String(e && e.message || e) } }, 'Prompts'); });
+            .then(function(res) {
+                if (!res.ok) { renderModalError(res); return; }
+                renderPromptsList(id, res.body);
+            })
+            .catch(function(e) { renderModalError({ body: { error: String(e && e.message || e) } }); });
     };
+
+    // ===== Modal content renderers =====
+
+    function cardOpen() {
+        return '<div class="mb-3 p-3" style="background:var(--spring-card);border:1px solid var(--spring-border);border-radius:6px">';
+    }
+    function cardClose() { return '</div>'; }
+
+    function renderToolsList(demoId, body) {
+        var tools = (body && body.tools) || [];
+        if (!tools.length) {
+            document.getElementById('mcp-modal-body').innerHTML = '<p class="text-muted">No tools reported by this server.</p>';
+            return;
+        }
+        var html = '<p class="text-muted small mb-3">' + tools.length + ' tool' + (tools.length === 1 ? '' : 's') +
+            ' advertised by MCP ' + escapeHtml(demoId) + '. Click <strong>Invoke</strong> to call a tool from the UI.</p>';
+        tools.forEach(function(tool, idx) {
+            var uid = 'tool-' + demoId + '-' + idx;
+            html += cardOpen();
+            html += '<div class="d-flex justify-content-between align-items-start gap-3 mb-2">';
+            html += '<div class="flex-grow-1">';
+            html += '<h6 class="mb-1" style="color:var(--spring-text)"><code>' + escapeHtml(tool.name || '') + '</code></h6>';
+            html += '<p class="text-muted small mb-0">' + escapeHtml(tool.description || '') + '</p>';
+            html += '</div>';
+            html += '<button class="btn btn-sm btn-spring-green" data-uid="' + uid + '" onclick="mcpToggleInvoke(this)">' +
+                '<i class="bi bi-play-fill"></i> Invoke</button>';
+            html += '</div>';
+
+            var schema = tool.inputSchema;
+            if (schema) {
+                html += '<details class="mt-2">';
+                html += '<summary class="text-muted small" style="cursor:pointer">Input schema</summary>';
+                html += '<pre class="response-json mt-2 mb-0" style="font-size:11px"><code>' +
+                    escapeHtml(JSON.stringify(schema, null, 2)) + '</code></pre>';
+                html += '</details>';
+            }
+
+            html += '<div id="' + uid + '" class="mcp-invoke-form mt-3" style="display:none">' +
+                renderInvokeForm(demoId, tool.name || '', schema, uid) + '</div>';
+            html += cardClose();
+        });
+        document.getElementById('mcp-modal-body').innerHTML = html;
+    }
+
+    function renderInvokeForm(demoId, toolName, schema, uid) {
+        var properties = (schema && schema.properties) || {};
+        var required = (schema && schema.required) || [];
+        var html = '<div class="mb-2 text-muted small">Arguments</div>';
+        var keys = Object.keys(properties);
+        if (!keys.length) {
+            html += '<div class="text-muted small mb-2">No arguments required.</div>';
+        }
+        keys.forEach(function(key) {
+            var prop = properties[key] || {};
+            var isRequired = required.indexOf(key) >= 0;
+            var type = prop.type || 'string';
+            html += '<div class="mb-2">';
+            html += '<label class="form-label small text-muted mb-1">' + escapeHtml(key) +
+                (isRequired ? ' <span class="text-danger">*</span>' : '') +
+                ' <span style="font-size:11px">' + escapeHtml(type) + '</span></label>';
+            html += '<input type="text" class="form-control form-control-sm" ' +
+                'data-arg-name="' + escapeHtml(key) + '" ' +
+                'data-arg-type="' + escapeHtml(type) + '" ' +
+                'placeholder="' + escapeHtml(prop.description || key) + '">';
+            html += '</div>';
+        });
+        html += '<button class="btn btn-sm btn-spring-green" ' +
+            'data-demo-id="' + escapeHtml(demoId) + '" ' +
+            'data-tool-name="' + escapeHtml(toolName) + '" ' +
+            'data-uid="' + uid + '" ' +
+            'onclick="mcpSubmitInvoke(this)">Submit</button>';
+        html += '<div class="mcp-invoke-result mt-2"></div>';
+        return html;
+    }
+
+    window.mcpToggleInvoke = function(btn) {
+        var uid = btn.dataset.uid;
+        var form = document.getElementById(uid);
+        if (!form) return;
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+
+    window.mcpSubmitInvoke = function(btn) {
+        var demoId = btn.dataset.demoId;
+        var toolName = btn.dataset.toolName;
+        var uid = btn.dataset.uid;
+        var form = document.getElementById(uid);
+        if (!form) return;
+        var resultEl = form.querySelector('.mcp-invoke-result');
+        var args = {};
+        form.querySelectorAll('input[data-arg-name]').forEach(function(inp) {
+            var name = inp.dataset.argName;
+            var type = inp.dataset.argType;
+            var val = inp.value;
+            if (!val) return;
+            if (type === 'number' || type === 'integer') args[name] = Number(val);
+            else if (type === 'boolean') args[name] = val === 'true';
+            else args[name] = val;
+        });
+        resultEl.innerHTML = '<div class="text-muted small"><div class="spinner-border spinner-border-sm" role="status"></div> Invoking…</div>';
+        fetch('/dashboard/mcp/' + demoId + '/invoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tool: toolName, args: args })
+        })
+            .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
+            .then(function(res) {
+                var label = res.ok ? '<span class="text-success small">OK</span>'
+                                   : '<span class="text-danger small">Error</span>';
+                resultEl.innerHTML = '<div class="mb-1">' + label + '</div>' +
+                    '<pre class="response-json mb-0"><code>' +
+                    escapeHtml(JSON.stringify(res.body, null, 2)) + '</code></pre>';
+            })
+            .catch(function(e) {
+                resultEl.innerHTML = '<div class="text-danger small">Error: ' + escapeHtml(String(e && e.message || e)) + '</div>';
+            });
+    };
+
+    function renderResourcesList(demoId, body) {
+        var items = (body && (body.resources || body.resourceTemplates)) || [];
+        if (!items.length) {
+            document.getElementById('mcp-modal-body').innerHTML = '<p class="text-muted">No resources reported.</p>';
+            return;
+        }
+        var html = '<p class="text-muted small mb-3">' + items.length + ' resource' +
+            (items.length === 1 ? '' : 's') + ' advertised by MCP ' + escapeHtml(demoId) +
+            '. Fill in a URI to read one.</p>';
+        items.forEach(function(item, idx) {
+            var uid = 'res-' + demoId + '-' + idx;
+            var uri = item.uriTemplate || item.uri || '';
+            html += cardOpen();
+            html += '<h6 class="mb-1" style="color:var(--spring-text)"><code>' + escapeHtml(uri) + '</code></h6>';
+            html += '<p class="text-muted small mb-2">' + escapeHtml(item.name || '') +
+                (item.description ? ' — ' + escapeHtml(item.description) : '') + '</p>';
+            html += '<div class="input-group input-group-sm mb-2">';
+            html += '<span class="input-group-text">uri</span>';
+            html += '<input type="text" class="form-control" id="' + uid + '-uri" value="' + escapeHtml(uri) + '">';
+            html += '<button class="btn btn-spring-green" data-demo-id="' + escapeHtml(demoId) +
+                '" data-uid="' + uid + '" onclick="mcpReadResource(this)">Read</button>';
+            html += '</div>';
+            html += '<div id="' + uid + '-result"></div>';
+            html += cardClose();
+        });
+        document.getElementById('mcp-modal-body').innerHTML = html;
+    }
+
+    window.mcpReadResource = function(btn) {
+        var demoId = btn.dataset.demoId;
+        var uid = btn.dataset.uid;
+        var uriInput = document.getElementById(uid + '-uri');
+        var resultEl = document.getElementById(uid + '-result');
+        if (!uriInput || !resultEl) return;
+        var uri = uriInput.value;
+        resultEl.innerHTML = '<div class="text-muted small"><div class="spinner-border spinner-border-sm" role="status"></div> Reading…</div>';
+        fetch('/dashboard/mcp/' + demoId + '/resources/read?uri=' + encodeURIComponent(uri))
+            .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
+            .then(function(res) {
+                var label = res.ok ? '<span class="text-success small">OK</span>'
+                                   : '<span class="text-danger small">Error</span>';
+                resultEl.innerHTML = '<div class="mb-1">' + label + '</div>' +
+                    '<pre class="response-json mb-0"><code>' +
+                    escapeHtml(JSON.stringify(res.body, null, 2)) + '</code></pre>';
+            })
+            .catch(function(e) {
+                resultEl.innerHTML = '<div class="text-danger small">Error: ' + escapeHtml(String(e && e.message || e)) + '</div>';
+            });
+    };
+
+    function renderPromptsList(demoId, body) {
+        var prompts = (body && body.prompts) || [];
+        if (!prompts.length) {
+            document.getElementById('mcp-modal-body').innerHTML = '<p class="text-muted">No prompts reported.</p>';
+            return;
+        }
+        var html = '<p class="text-muted small mb-3">' + prompts.length + ' prompt' +
+            (prompts.length === 1 ? '' : 's') + ' advertised by MCP ' + escapeHtml(demoId) + '.</p>';
+        prompts.forEach(function(prompt, idx) {
+            var uid = 'prm-' + demoId + '-' + idx;
+            html += cardOpen();
+            html += '<h6 class="mb-1" style="color:var(--spring-text)"><code>' + escapeHtml(prompt.name || '') + '</code></h6>';
+            html += '<p class="text-muted small mb-2">' + escapeHtml(prompt.description || '') + '</p>';
+            var args = prompt.arguments || [];
+            if (args.length) {
+                html += '<div class="mb-2 text-muted small">Arguments</div>';
+                args.forEach(function(arg) {
+                    html += '<div class="mb-2">';
+                    html += '<label class="form-label small text-muted mb-1">' + escapeHtml(arg.name || '') +
+                        (arg.required ? ' <span class="text-danger">*</span>' : '') + '</label>';
+                    html += '<input type="text" class="form-control form-control-sm" ' +
+                        'data-arg-name="' + escapeHtml(arg.name || '') + '" ' +
+                        'placeholder="' + escapeHtml(arg.description || arg.name || '') + '">';
+                    html += '</div>';
+                });
+            } else {
+                html += '<div class="text-muted small mb-2">No arguments.</div>';
+            }
+            html += '<button class="btn btn-sm btn-spring-green" ' +
+                'data-demo-id="' + escapeHtml(demoId) + '" ' +
+                'data-prompt-name="' + escapeHtml(prompt.name || '') + '" ' +
+                'data-uid="' + uid + '" onclick="mcpGetPrompt(this)">Get prompt</button>';
+            html += '<div id="' + uid + '-result" class="mt-2"></div>';
+            html += cardClose();
+        });
+        document.getElementById('mcp-modal-body').innerHTML = html;
+    }
+
+    window.mcpGetPrompt = function(btn) {
+        var demoId = btn.dataset.demoId;
+        var name = btn.dataset.promptName;
+        var uid = btn.dataset.uid;
+        var card = btn.closest('.mb-3');
+        var resultEl = document.getElementById(uid + '-result');
+        var args = {};
+        card.querySelectorAll('input[data-arg-name]').forEach(function(inp) {
+            if (inp.value) args[inp.dataset.argName] = inp.value;
+        });
+        resultEl.innerHTML = '<div class="text-muted small"><div class="spinner-border spinner-border-sm" role="status"></div> Getting prompt…</div>';
+        fetch('/dashboard/mcp/' + demoId + '/prompts/get', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, args: args })
+        })
+            .then(function(r) { return r.json().then(function(body) { return { ok: r.ok, body: body }; }); })
+            .then(function(res) {
+                var label = res.ok ? '<span class="text-success small">OK</span>'
+                                   : '<span class="text-danger small">Error</span>';
+                resultEl.innerHTML = '<div class="mb-1">' + label + '</div>' +
+                    '<pre class="response-json mb-0"><code>' +
+                    escapeHtml(JSON.stringify(res.body, null, 2)) + '</code></pre>';
+            })
+            .catch(function(e) {
+                resultEl.innerHTML = '<div class="text-danger small">Error: ' + escapeHtml(String(e && e.message || e)) + '</div>';
+            });
+    };
+
+    // ===== Inspector-panel handlers (for 03 run + 04 trigger) =====
 
     window.mcp04Trigger = function(btn) {
         setInspectorLoading('Triggering dynamic registration on MCP 04…');
