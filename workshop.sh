@@ -46,25 +46,35 @@ MCP_STATE_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/.wor
 MCP_DEMOS=(02 04 05)           # long-running demos; 01 is jar-build only
 MCP_ALL_DEMOS=(01 02 04 05)    # 03 is a CLI runner, not a server
 
-declare -A MCP_PORTS=(
-    [02]=8081
-    [04]=8082
-    [05]=8083
-)
+# bash 3.2 compatibility: no associative arrays — use case-based lookup helpers
+mcp_port_for() {
+    case "$1" in
+        02) echo 8081 ;;
+        04) echo 8082 ;;
+        05) echo 8083 ;;
+        *)  echo "" ;;
+    esac
+}
 
-declare -A MCP_MODULES=(
-    [01]="mcp/01-mcp-stdio-server"
-    [02]="mcp/02-mcp-http-server"
-    [04]="mcp/04-dynamic-tool-calling/server"
-    [05]="mcp/05-mcp-capabilities"
-)
+mcp_module_for() {
+    case "$1" in
+        01) echo "mcp/01-mcp-stdio-server" ;;
+        02) echo "mcp/02-mcp-http-server" ;;
+        04) echo "mcp/04-dynamic-tool-calling/server" ;;
+        05) echo "mcp/05-mcp-capabilities" ;;
+        *)  echo "" ;;
+    esac
+}
 
-declare -A MCP_LABELS=(
-    [01]="STDIO Server"
-    [02]="HTTP Server"
-    [04]="Dynamic Tool Calling (server)"
-    [05]="Full Capabilities"
-)
+mcp_label_for() {
+    case "$1" in
+        01) echo "STDIO Server" ;;
+        02) echo "HTTP Server" ;;
+        04) echo "Dynamic Tool Calling (server)" ;;
+        05) echo "Full Capabilities" ;;
+        *)  echo "?" ;;
+    esac
+}
 
 MCP_STDIO_JAR="mcp/01-mcp-stdio-server/target/01-mcp-stdio-server-0.0.1-SNAPSHOT.jar"
 
@@ -77,7 +87,8 @@ mcp_ensure_state_dir() {
 
 mcp_is_up() {
     local id="$1"
-    local port="${MCP_PORTS[$id]:-}"
+    local port
+    port=$(mcp_port_for "${id}")
     [ -z "${port}" ] && return 1
     # TCP port-bound probe (not /actuator/health — 04 returns 503 until latch fires)
     if command -v nc &>/dev/null; then
@@ -115,9 +126,10 @@ mcp_port_in_use() {
 
 mcp_start_demo() {
     local id="$1"
-    local port="${MCP_PORTS[$id]:-}"
-    local module="${MCP_MODULES[$id]:-}"
-    local label="${MCP_LABELS[$id]:-}"
+    local port module label
+    port=$(mcp_port_for "${id}")
+    module=$(mcp_module_for "${id}")
+    label=$(mcp_label_for "${id}")
 
     if [ -z "${port}" ] || [ -z "${module}" ]; then
         fail "Unknown MCP demo: ${id}"
@@ -178,8 +190,9 @@ mcp_stop_demo() {
     if [ ! -f "${pid_file}" ]; then
         if mcp_is_up "${id}"; then
             warn "MCP ${id} is up but no PID file — kill via lsof"
-            local orphan
-            orphan=$(lsof -ti:"${MCP_PORTS[$id]}" 2>/dev/null | head -1)
+            local orphan orphan_port
+            orphan_port=$(mcp_port_for "${id}")
+            orphan=$(lsof -ti:"${orphan_port}" 2>/dev/null | head -1)
             [ -n "${orphan}" ] && kill "${orphan}" 2>/dev/null && ok "MCP ${id} stopped (PID ${orphan})"
         else
             info "MCP ${id} not running"
@@ -204,8 +217,10 @@ mcp_status_table() {
     printf "  %-4s %-34s %-6s %-7s %s\n" "ID" "Demo" "Port" "Up?" "PID"
     printf "  %-4s %-34s %-6s %-7s %s\n" "──" "──────────────────────────────" "────" "───" "─────"
     for id in "${MCP_ALL_DEMOS[@]}"; do
-        local port="${MCP_PORTS[$id]:-n/a}"
-        local label="${MCP_LABELS[$id]:-?}"
+        local port label
+        port=$(mcp_port_for "${id}")
+        [ -z "${port}" ] && port="n/a"
+        label=$(mcp_label_for "${id}")
         local pid_file
         pid_file=$(mcp_pid_file "${id}")
         local pid="—"
