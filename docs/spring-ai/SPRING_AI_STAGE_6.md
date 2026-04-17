@@ -367,7 +367,7 @@ public class McpClientDemoRunner {
   private final ToolCallbackProvider tools;
 
   public Result run(String mode) {
-    String question = "external".equals(mode) ? "Does Spring IO 2025 have MCP sessions?"
+    String question = "external".equals(mode) ? "Does Spring IO 2026 have MCP sessions?"
                                               : "Temperature in Berlin?";
     String response = chatClientBuilder.build().prompt()
         .system("You are a useful assistant that can call MCP tools.")

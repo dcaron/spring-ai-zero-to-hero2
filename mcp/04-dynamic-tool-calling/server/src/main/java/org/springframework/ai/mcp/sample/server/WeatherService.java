@@ -45,10 +45,15 @@ public class WeatherService {
         @JsonProperty("temperature_2m") double temperature_2m) {}
   } // @formatter:on
 
-  @Tool(description = "Get the temperature (in celsius) for a specific location") // @formatter:off
+  @Tool(
+      description =
+          "Get the current temperature (in celsius) for a latitude/longitude via open-meteo.com."
+              + " Examples: Berlin 52.52/13.41, Seattle 47.6062/-122.3321, Tokyo"
+              + " 35.6762/139.6503.") // @formatter:off
   public WeatherResponse weatherForecast(
-      @ToolParam(description = "The location latitude") double latitude,
-      @ToolParam(description = "The location longitude") double longitude,
+      @ToolParam(description = "Latitude, e.g. 52.52 (Berlin) or 35.6762 (Tokyo)") double latitude,
+      @ToolParam(description = "Longitude, e.g. 13.41 (Berlin) or 139.6503 (Tokyo)")
+          double longitude,
       ToolContext toolContext) { // @formatter:on
 
     WeatherResponse weatherResponse =

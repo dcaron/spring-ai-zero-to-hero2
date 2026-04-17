@@ -169,14 +169,36 @@
             var prop = properties[key] || {};
             var isRequired = required.indexOf(key) >= 0;
             var type = prop.type || 'string';
+            // Pull a first example from JSON Schema fields if the server provides any
+            var examples = Array.isArray(prop.examples) ? prop.examples : [];
+            var defaultVal = prop.default != null ? String(prop.default) : '';
+            var firstExample = examples.length ? String(examples[0]) : defaultVal;
+            var enumValues = Array.isArray(prop.enum) ? prop.enum : null;
+
             html += '<div class="mb-2">';
             html += '<label class="form-label small text-muted mb-1">' + escapeHtml(key) +
                 (isRequired ? ' <span class="text-danger">*</span>' : '') +
                 ' <span style="font-size:11px">' + escapeHtml(type) + '</span></label>';
-            html += '<input type="text" class="form-control form-control-sm" ' +
-                'data-arg-name="' + escapeHtml(key) + '" ' +
-                'data-arg-type="' + escapeHtml(type) + '" ' +
-                'placeholder="' + escapeHtml(prop.description || key) + '">';
+            if (enumValues) {
+                html += '<select class="form-select form-select-sm" ' +
+                    'data-arg-name="' + escapeHtml(key) + '" ' +
+                    'data-arg-type="' + escapeHtml(type) + '">';
+                if (!isRequired) html += '<option value="">(leave empty)</option>';
+                enumValues.forEach(function(v) {
+                    html += '<option value="' + escapeHtml(String(v)) + '">' + escapeHtml(String(v)) + '</option>';
+                });
+                html += '</select>';
+            } else {
+                html += '<input type="text" class="form-control form-control-sm" ' +
+                    'data-arg-name="' + escapeHtml(key) + '" ' +
+                    'data-arg-type="' + escapeHtml(type) + '" ' +
+                    'value="' + escapeHtml(firstExample) + '" ' +
+                    'placeholder="' + escapeHtml(prop.description || key) + '">';
+            }
+            if (prop.description) {
+                html += '<div class="form-text text-muted" style="font-size:11px">' +
+                    escapeHtml(prop.description) + '</div>';
+            }
             html += '</div>';
         });
         html += '<button class="btn btn-sm btn-spring-green" ' +

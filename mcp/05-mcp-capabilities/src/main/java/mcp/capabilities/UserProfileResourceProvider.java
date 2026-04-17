@@ -70,7 +70,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-profile://{username}",
       name = "User Profile",
-      description = "Provides user profile information for a specific user")
+      description =
+          "Provides user profile information for a specific user. Valid usernames: john, jane, bob,"
+              + " alice. Example URI: user-profile://alice")
   public ReadResourceResult getUserProfile(ReadResourceRequest request, String username) {
     String profileInfo =
         formatProfileInfo(userProfiles.getOrDefault(username.toLowerCase(), new HashMap<>()));
@@ -86,7 +88,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-profile://{username}",
       name = "User Details",
-      description = "Provides user details for a specific user using URI variables")
+      description =
+          "Provides user details via URI variables. Valid usernames: john, jane, bob, alice."
+              + " Example URI: user-profile://bob")
   public ReadResourceResult getUserDetails(String username) {
     String profileInfo =
         formatProfileInfo(userProfiles.getOrDefault(username.toLowerCase(), new HashMap<>()));
@@ -99,7 +103,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-attribute://{username}/{attribute}",
       name = "User Attribute",
-      description = "Provides a specific attribute from a user's profile")
+      description =
+          "Provides a specific attribute (name, email, age, location) for a user. Valid usernames:"
+              + " john, jane, bob, alice. Example URI: user-attribute://alice/email")
   public ReadResourceResult getUserAttribute(String username, String attribute) {
     Map<String, String> profile =
         userProfiles.getOrDefault(username.toLowerCase(), new HashMap<>());
@@ -117,7 +123,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-profile-exchange://{username}",
       name = "User Profile with Exchange",
-      description = "Provides user profile information with server exchange context")
+      description =
+          "Provides user profile info with server-exchange context. Valid usernames: john, jane,"
+              + " bob, alice. Example URI: user-profile-exchange://john")
   public ReadResourceResult getProfileWithExchange(
       McpSyncServerExchange exchange, String username) {
     String profileInfo =
@@ -135,7 +143,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-connections://{username}",
       name = "User Connections",
-      description = "Provides a list of connections for a specific user")
+      description =
+          "Provides a synthetic connections list for any username. Example URI:"
+              + " user-connections://alice")
   public List<String> getUserConnections(String username) {
     // Generate a simple list of connections based on username
     return List.of(
@@ -151,7 +161,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-notifications://{username}",
       name = "User Notifications",
-      description = "Provides notifications for a specific user")
+      description =
+          "Provides synthetic notifications for any username. Example URI:"
+              + " user-notifications://bob")
   public List<ResourceContents> getUserNotifications(
       McpSyncServerExchange exchange, ReadResourceRequest request, String username) {
     // Generate notifications based on username
@@ -164,7 +176,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-status://{username}",
       name = "User Status",
-      description = "Provides the current status for a specific user")
+      description =
+          "Provides an icon-style status for a user. Known usernames (john=🟢, jane=🟠, bob=⚪,"
+              + " alice=🔴); others default to ⚪. Example URI: user-status://jane")
   public ResourceContents getUserStatus(ReadResourceRequest request, String username) {
     // Generate a simple status based on username
     String status = generateUserStatus(username);
@@ -176,7 +190,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-location://{username}",
       name = "User Location",
-      description = "Provides the current location for a specific user")
+      description =
+          "Returns the user's location string. Known: john=New York, jane=London, bob=Tokyo,"
+              + " alice=Sydney. Example URI: user-location://bob")
   public String getUserLocation(String username) {
     Map<String, String> profile =
         userProfiles.getOrDefault(username.toLowerCase(), new HashMap<>());
@@ -192,7 +208,9 @@ public class UserProfileResourceProvider {
   @McpResource(
       uri = "user-avatar://{username}",
       name = "User Avatar",
-      description = "Provides a base64-encoded avatar image for a specific user",
+      description =
+          "Returns a placeholder \"base64 avatar\" string for a user (any username accepted)."
+              + " Example URI: user-avatar://alice",
       mimeType = "image/png")
   public String getUserAvatar(ReadResourceRequest request, String username) {
     // In a real implementation, this would be a base64-encoded image
