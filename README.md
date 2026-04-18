@@ -64,8 +64,20 @@ Then open:
 - **Docker** — for PostgreSQL/pgvector and Grafana LGTM
 - **Ollama** *(optional)* — only needed for local provider: `ollama pull qwen3 && ollama pull nomic-embed-text && ollama pull llava`
 - **Cloud provider** *(alternative to Ollama)* — configure API keys with `./workshop.sh creds`
+- **tmux** *(optional)* — enables a split-pane TUI with live logs on the right: `brew install tmux` (macOS), `sudo apt-get install tmux` (Debian/Ubuntu), `sudo dnf install tmux` (Fedora/RHEL). If not installed, the plain menu works identically.
 
 16 GB macOS with Ollama: qwen3 + nomic-embed-text = ~10 GB active RAM. llava loads on-demand.
+
+### Interactive mode: split-pane TUI (optional)
+
+If `tmux` is installed, `./workshop.sh` auto-launches a split layout:
+
+- **Left pane (50%)**: the menu you already know.
+- **Right pane (50%)**: live tail of every provider/gateway/MCP/agentic log — cleared on each launch.
+
+Press `q` in the menu to tear down both panes cleanly. Opt out with `WORKSHOP_NO_TMUX=1 ./workshop.sh`.
+
+Without tmux, everything still works — provider/gateway output appears inline in the terminal as before, and MCP/agentic logs are always file-backed (view them via menu options 14/18).
 
 ## Workshop Stages
 

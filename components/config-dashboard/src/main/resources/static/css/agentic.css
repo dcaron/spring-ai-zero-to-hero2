@@ -1,0 +1,386 @@
+/* Stage 7 — Agentic Systems dashboard */
+
+.agentic-agent-list {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.agentic-agent-list li {
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--spring-text);
+}
+
+.agentic-agent-list li:hover {
+  background: var(--spring-hover, rgba(255, 255, 255, 0.04));
+}
+
+.agentic-agent-list li.active {
+  background: rgba(106, 27, 154, 0.2);
+  border-left: 2px solid #6a1b9a;
+}
+
+.agentic-bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-x: hidden; /* stop long bubbles from escaping the chat area horizontally */
+}
+
+.agentic-bubble {
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
+
+/* Right-align user bubbles (own messages), left-align agent bubbles. Explicit `align-self`
+   is more reliable than relying on Bootstrap's `ms-auto`/`me-auto` margin hack, which fails
+   in narrow viewports (e.g. DevTools docked) and lets bubbles overflow off-screen. */
+.agentic-bubble.ms-auto {
+  align-self: flex-end;
+  background: #0d6efd !important;
+  color: #fff;
+}
+
+.agentic-bubble.me-auto {
+  align-self: flex-start;
+  background: var(--spring-bg);
+  border: 1px solid var(--spring-border);
+}
+
+.agentic-bubble .bubble-message {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agentic-bubble .bubble-thoughts summary {
+  user-select: none;
+  outline: none;
+}
+
+.agentic-bubble .bubble-thoughts summary:focus-visible {
+  outline: 1px dashed currentColor;
+  outline-offset: 2px;
+}
+
+.agentic-bubble .thoughts-body {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--spring-border);
+  margin-top: 0.25rem;
+}
+
+.agentic-status-pill {
+  transition: background 0.2s ease;
+}
+
+.agentic-provider-pill,
+.agentic-model-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+}
+
+/* Toast container (injected by agentic.js) */
+.toast-container-agentic {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 360px;
+}
+
+.toast-agentic {
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  background: var(--spring-bg);
+  border: 1px solid var(--spring-border);
+  color: var(--spring-text);
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  animation: toast-in 0.2s ease;
+}
+
+.toast-agentic.toast-warning {
+  border-color: #f0ad4e;
+  color: #f0ad4e;
+}
+
+.toast-agentic.toast-danger {
+  border-color: #d9534f;
+  color: #d9534f;
+}
+
+.toast-agentic.toast-success {
+  border-color: #5cb85c;
+  color: #5cb85c;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Step + fallback + max-steps badges reuse Bootstrap's .badge — extra spacing */
+.bubble-badges .badge {
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+
+/* ── Message input row ──────────────────────────────────────
+ * Textarea gets all the horizontal room but can't push the Send button out
+ * of the viewport. Long text wraps into multi-line within a fixed-size box
+ * (with an internal scrollbar if the content exceeds max-height).
+ *
+ * !important is used to beat Bootstrap's .form-control defaults and the
+ * inline `rows="2"` attribute's baseline height; without it, a pasted
+ * multi-line prompt can force Safari/Chrome to grow the textarea and push
+ * the Send button off-screen in the fullscreen grid layout.
+ */
+/* CSS Grid on the form (not flex) — guarantees the Send button column is
+ * always laid out, even when the textarea would otherwise push it out of
+ * the flex row. `1fr auto` = textarea fills remaining space, button sized
+ * by content. `min-width: 0` on the form lets it shrink inside its own
+ * grid cell in fullscreen mode instead of overflowing horizontally. */
+[data-role='message-form'] {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  column-gap: 0.25rem !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+[data-role='message-form'] textarea {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  resize: none !important;
+  height: 4.5rem !important; /* fixed 2 rows visible; longer content scrolls internally */
+  max-height: 4.5rem !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+[data-role='message-form'] button[type='submit'] {
+  align-self: stretch !important;
+  white-space: nowrap !important;
+  min-width: max-content !important;
+}
+
+/* ── Fullscreen console ───────────────────────────────────── */
+/*
+ * Pure CSS-grid layout. In fullscreen we completely override Bootstrap's
+ * .row / .col-* grid to avoid gutter-arithmetic collisions that were pushing
+ * bubbles past the right edge and the message form offscreen.
+ *
+ * Outer:  flex-column with header (auto) + row (1fr)
+ * Row:    2D grid — 2 cols on demo 01 (no login rail), 3 cols on demo 02
+ * Center: nested grid — auto header / 1fr bubbles / auto form / auto hint
+ *         / auto curl.  The 1fr track is the ONLY scrollable one.
+ */
+.agentic-fullscreen {
+  position: fixed !important;
+  inset: 0;
+  z-index: 1055;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-left-width: 0 !important;
+  padding: 0.75rem 1.25rem !important;
+  background: var(--spring-bg, #1e1e1e);
+
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The row becomes the main layout grid — replaces Bootstrap's .row entirely. */
+.agentic-fullscreen > .row {
+  display: grid !important;
+  grid-template-columns: 220px minmax(0, 1fr); /* default: no login rail */
+  gap: 1rem;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0 !important;
+  --bs-gutter-x: 0;
+  --bs-gutter-y: 0;
+}
+
+/* Demo 02 has a login rail → 3 columns. */
+.agentic-fullscreen[data-demo-id='02'] > .row {
+  grid-template-columns: 220px minmax(0, 1fr) 220px;
+}
+
+/* Reset Bootstrap's width/flex/padding on every column inside fullscreen —
+   grid assigns widths, gap handles spacing. `min-width: 0` is critical:
+   without it, grid items default to `min-width: auto` (min-content) which
+   lets a long textarea value blow the column out to ~6000px and push the
+   Send button off-screen. */
+.agentic-fullscreen > .row > [class*='col-'] {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  padding: 0 !important;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left rail & right rail stack internally with overflow so they can scroll
+   when the agent list or form grows. */
+.agentic-fullscreen > .row > [class*='col-md-3'] {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Center column: nested grid with one 1fr scroll track for the bubbles.
+ * `grid-template-columns: minmax(0, 1fr)` is required — without it, the
+ * implicit single column defaults to `auto` and grows to fit its widest
+ * child (e.g. a pasted long prompt in the textarea), which pushes the
+ * Send button off-screen despite the outer column having `overflow: hidden`. */
+.agentic-fullscreen > .row > .col-md-6,
+.agentic-fullscreen > .row > .col-md-9 {
+  display: grid !important;
+  grid-template-rows: auto 1fr auto auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 0.25rem;
+}
+
+/* Bubble pane: occupy the 1fr track, scroll internally. */
+.agentic-fullscreen .agentic-bubbles {
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Individual bubble: make sure long unbreakable words never push the bubble
+   past its max-width (prevents the blue bubbles from escaping to the right). */
+.agentic-bubble {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+body.agentic-fullscreen-lock {
+  overflow: hidden;
+}
+
+/* ── Bubble markdown content ────────────────────────────────
+ * Tighten the default .markdown-body spacing so rendered markdown (bullets,
+ * headings, paragraphs) fits naturally inside a chat bubble.
+ */
+.agentic-bubble .markdown-body {
+  font-size: inherit;
+  line-height: 1.45;
+}
+
+.agentic-bubble .markdown-body > *:first-child {
+  margin-top: 0;
+}
+
+.agentic-bubble .markdown-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.agentic-bubble .markdown-body p {
+  margin: 0.35rem 0;
+}
+
+.agentic-bubble .markdown-body ul,
+.agentic-bubble .markdown-body ol {
+  padding-left: 1.2rem;
+  margin: 0.35rem 0;
+}
+
+.agentic-bubble .markdown-body li {
+  margin: 0.1rem 0;
+}
+
+.agentic-bubble .markdown-body code {
+  font-size: 0.85em;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.agentic-bubble .markdown-body pre {
+  margin: 0.4rem 0;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.agentic-bubble .markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.agentic-bubble .markdown-body h1,
+.agentic-bubble .markdown-body h2,
+.agentic-bubble .markdown-body h3,
+.agentic-bubble .markdown-body h4 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+/* ── "Thinking" bubble ──────────────────────────────────────
+ * Shown while the dashboard is awaiting an agent response. Three dots fade
+ * in/out in a staggered wave; the bubble is removed as soon as the real
+ * response (or an error) arrives.
+ */
+.agentic-thinking {
+  opacity: 0.92;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.thinking-dots > span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: thinking-dot 1.2s infinite ease-in-out;
+}
+
+.thinking-dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking-dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thinking-dot {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 0.95;
+  }
+}

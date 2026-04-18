@@ -352,6 +352,262 @@ cmd_mcp() {
     esac
 }
 
+# ─────────────────────────────────────────────────────────────
+# Agentic helpers — process lifecycle for agentic-system/ demos
+# ─────────────────────────────────────────────────────────────
+AGENTIC_STATE_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/.workshop/agentic"
+AGENTIC_DEMOS=(01 02)
+
+# bash 3.2 compatibility: no associative arrays — use case-based lookup helpers
+agentic_port_for() {
+    case "$1" in
+        01) echo 8091 ;;
+        02) echo 8092 ;;
+        *)  echo "" ;;
+    esac
+}
+
+agentic_module_for() {
+    case "$1" in
+        01) echo "agentic-system/01-inner-monologue/inner-monologue-agent" ;;
+        02) echo "agentic-system/02-model-directed-loop/model-directed-loop-agent" ;;
+        *)  echo "" ;;
+    esac
+}
+
+agentic_label_for() {
+    case "$1" in
+        01) echo "Inner Monologue" ;;
+        02) echo "Model-Directed Loop" ;;
+        *)  echo "?" ;;
+    esac
+}
+
+agentic_pid_file() { echo "${AGENTIC_STATE_DIR}/${1}.pid"; }
+agentic_log_file() { echo "${AGENTIC_STATE_DIR}/${1}.log"; }
+
+agentic_ensure_state_dir() {
+    mkdir -p "${AGENTIC_STATE_DIR}"
+}
+
+agentic_is_up() {
+    local port="$1"
+    [ -z "${port}" ] && return 1
+    if command -v nc &>/dev/null; then
+        nc -z localhost "${port}" &>/dev/null
+    else
+        (echo > "/dev/tcp/localhost/${port}") &>/dev/null
+    fi
+}
+
+agentic_port_in_use() {
+    local port="$1"
+    if command -v lsof &>/dev/null; then
+        lsof -ti:"${port}" &>/dev/null
+    elif command -v ss &>/dev/null; then
+        ss -tlnp 2>/dev/null | grep -q ":${port} "
+    else
+        return 1
+    fi
+}
+
+# Pick a sensible default profile: openai, plus observation if OTel is reachable
+agentic_default_profile() {
+    if (echo > /dev/tcp/localhost/4318) >/dev/null 2>&1; then
+        echo "openai,observation"
+    else
+        echo "openai"
+    fi
+}
+
+agentic_start_demo() {
+    local id="$1"
+    local profile="${2:-}"
+    [ -z "${profile}" ] && profile="$(agentic_default_profile)"
+
+    local port module label
+    port=$(agentic_port_for "${id}")
+    module=$(agentic_module_for "${id}")
+    label=$(agentic_label_for "${id}")
+
+    if [ -z "${port}" ] || [ -z "${module}" ]; then
+        fail "Unknown agentic demo: ${id}"
+        return 1
+    fi
+
+    agentic_ensure_state_dir
+
+    if agentic_is_up "${port}"; then
+        warn "Agentic ${id} (${label}) already up on :${port}"
+        return 0
+    fi
+
+    if agentic_port_in_use "${port}"; then
+        fail "Port ${port} already in use — investigate with 'lsof -ti:${port}'"
+        return 1
+    fi
+
+    local log_file pid_file
+    log_file=$(agentic_log_file "${id}")
+    pid_file=$(agentic_pid_file "${id}")
+
+    header "Starting agentic ${id} (${label}) on :${port} with profile=${profile}"
+    echo -e "  ${CYAN}→${NC} ./mvnw spring-boot:run -pl ${module} -Dspring-boot.run.profiles=${profile}"
+    echo -e "  ${CYAN}→${NC} logs: ${log_file}"
+
+    (
+        "${SCRIPT_DIR}/mvnw" spring-boot:run \
+            -pl "${module}" \
+            -Dspring-boot.run.profiles="${profile}" \
+            -f "${SCRIPT_DIR}/pom.xml" \
+            > "${log_file}" 2>&1
+    ) &
+    local pid=$!
+    echo "${pid}" > "${pid_file}"
+
+    echo -e "  ${CYAN}→${NC} Waiting for agentic ${id} on :${port}..."
+    local attempts=0
+    while [ "${attempts}" -lt 60 ]; do
+        if agentic_is_up "${port}"; then
+            ok "Agentic ${id} ready on :${port} (PID ${pid})"
+            return 0
+        fi
+        if ! kill -0 "${pid}" 2>/dev/null; then
+            fail "Agentic ${id} process exited unexpectedly — see ${log_file}"
+            rm -f "${pid_file}"
+            return 1
+        fi
+        sleep 2
+        attempts=$((attempts + 1))
+    done
+    fail "Agentic ${id} did not come up within 120s — see ${log_file}"
+    return 1
+}
+
+agentic_stop_demo() {
+    local id="$1"
+    local pid_file port
+    pid_file=$(agentic_pid_file "${id}")
+    port=$(agentic_port_for "${id}")
+
+    # Port is the stable identity — only kill whatever is actually listening on the
+    # agent's port. Never trust the PID file blindly: the recorded PID was the mvnw
+    # subshell wrapper, which often exits early, and then the OS reassigns that PID
+    # number to an unrelated process (killing that number would take down the provider).
+    rm -f "${pid_file}"
+    if [ -z "${port}" ] || ! command -v lsof &>/dev/null; then
+        ok "Agentic ${id} stopped"
+        return 0
+    fi
+
+    local port_pids
+    port_pids=$(lsof -ti:"${port}" 2>/dev/null || true)
+    if [ -z "${port_pids}" ]; then
+        ok "Agentic ${id} already stopped (port ${port} free)"
+        return 0
+    fi
+
+    info "Stopping agentic ${id} on :${port} (PIDs: ${port_pids})"
+    echo "${port_pids}" | xargs kill 2>/dev/null || true
+    local waited=0
+    while lsof -ti:"${port}" >/dev/null 2>&1 && [ "${waited}" -lt 10 ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    if lsof -ti:"${port}" >/dev/null 2>&1; then
+        lsof -ti:"${port}" 2>/dev/null | xargs kill -9 2>/dev/null || true
+    fi
+    ok "Agentic ${id} stopped"
+}
+
+agentic_status_all() {
+    header "Agentic demos"
+    printf "  %-4s %-24s %-6s %-7s %-10s %s\n" "ID" "Demo" "Port" "Up?" "PID" "Log"
+    printf "  %-4s %-24s %-6s %-7s %-10s %s\n" "──" "────────────────────" "────" "───" "─────" "───"
+    for id in "${AGENTIC_DEMOS[@]}"; do
+        local port label pid_file log_file pid up
+        port=$(agentic_port_for "${id}")
+        label=$(agentic_label_for "${id}")
+        pid_file=$(agentic_pid_file "${id}")
+        log_file=$(agentic_log_file "${id}")
+        pid="—"
+        [ -f "${pid_file}" ] && pid=$(cat "${pid_file}")
+        up="✗"
+        agentic_is_up "${port}" && up="✓"
+        printf "  %-4s %-24s %-6s %-7s %-10s %s\n" "${id}" "${label}" "${port}" "${up}" "${pid}" "${log_file}"
+    done
+    echo ""
+}
+
+agentic_logs() {
+    local id="$1"
+    if [ -z "${id}" ]; then
+        fail "Usage: ./workshop.sh agentic logs <01|02>"
+        return 1
+    fi
+    local f
+    f=$(agentic_log_file "${id}")
+    if [ ! -f "${f}" ]; then
+        fail "No log file for agentic ${id} at ${f}"
+        return 1
+    fi
+    tail -f "${f}"
+}
+
+cmd_agentic() {
+    local subcmd="${1:-}"
+    shift || true
+
+    local profile=""
+    local target=""
+    local arg
+    for arg in "$@"; do
+        case "${arg}" in
+            --provider=*) profile="${arg#*=}" ;;
+            --profile=*)  profile="${arg#*=}" ;;
+            *)            target="${arg}" ;;
+        esac
+    done
+
+    # Auto-append observation if OTel collector is reachable and profile doesn't already include it
+    if [ -n "${profile}" ] && [[ "${profile}" != *,* ]]; then
+        if (echo > /dev/tcp/localhost/4318) >/dev/null 2>&1; then
+            profile="${profile},observation"
+        fi
+    fi
+
+    case "${subcmd}" in
+        start)
+            if [ "${target}" = "all" ] || [ -z "${target}" ]; then
+                for id in "${AGENTIC_DEMOS[@]}"; do
+                    agentic_start_demo "${id}" "${profile}" || true
+                done
+            else
+                agentic_start_demo "${target}" "${profile}"
+            fi
+            ;;
+        stop)
+            if [ "${target}" = "all" ] || [ -z "${target}" ]; then
+                for id in "${AGENTIC_DEMOS[@]}"; do
+                    agentic_stop_demo "${id}"
+                done
+            else
+                agentic_stop_demo "${target}"
+            fi
+            ;;
+        status)
+            agentic_status_all
+            ;;
+        logs)
+            agentic_logs "${target}"
+            ;;
+        *)
+            echo "Usage: ./workshop.sh agentic <start|stop|status|logs> [all|01|02] [--provider=openai|ollama]"
+            return 1
+            ;;
+    esac
+}
+
 # ── Credential check helpers ────────────────────────────────
 # Returns 0 if provider has a configured (non-placeholder) creds.yaml
 provider_has_creds() {
@@ -443,20 +699,43 @@ services_status_line() {
         line+="lgtm:${RED}off${NC}"
     fi
 
-    local mcp_parts=()
+    echo -e "${line}"
+}
+
+# ── MCP demos status line ───────────────────────────────────
+mcp_status_line() {
+    local parts=()
     for id in "${MCP_DEMOS[@]}"; do
         if mcp_is_up "${id}"; then
-            mcp_parts+=("${id}${GREEN}✓${NC}")
+            parts+=("${id}: ${GREEN}✓${NC}")
         else
-            mcp_parts+=("${id}${RED}✗${NC}")
+            parts+=("${id}: ${RED}✗${NC}")
         fi
     done
-    local mcp_summary=""
-    if [ "${#mcp_parts[@]}" -gt 0 ]; then
-        mcp_summary=" | MCP: $(IFS=' '; echo "${mcp_parts[*]}")"
+    if [ "${#parts[@]}" -gt 0 ]; then
+        echo -e "$(IFS=' '; echo "${parts[*]}")"
+    else
+        echo -e "(none configured)"
     fi
+}
 
-    echo -e "${line}${mcp_summary}"
+# ── Agentic demos status line ───────────────────────────────
+agentic_status_line() {
+    local parts=()
+    for id in "${AGENTIC_DEMOS[@]}"; do
+        local port
+        port="$(agentic_port_for "${id}")"
+        if agentic_is_up "${port}"; then
+            parts+=("${id}: ${GREEN}✓${NC}")
+        else
+            parts+=("${id}: ${RED}✗${NC}")
+        fi
+    done
+    if [ "${#parts[@]}" -gt 0 ]; then
+        echo -e "$(IFS=' '; echo "${parts[*]}")"
+    else
+        echo -e "(none configured)"
+    fi
 }
 
 # ── Constants ────────────────────────────────────────────────
@@ -464,6 +743,77 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="${SCRIPT_DIR}/.workshop.pid"
 PROVIDER_PID_FILE="${SCRIPT_DIR}/.workshop-provider.pid"
 GATEWAY_PID_FILE="${SCRIPT_DIR}/.workshop-gateway.pid"
+PROVIDER_LOG_FILE="${SCRIPT_DIR}/.workshop/provider.log"
+GATEWAY_LOG_FILE="${SCRIPT_DIR}/.workshop/gateway.log"
+WORKSHOP_VERSION="$(cat "${SCRIPT_DIR}/VERSION" 2>/dev/null || echo "dev")"
+
+# ── tmux support helpers ────────────────────────────────────
+# Returns the OS-appropriate install hint for tmux.
+tmux_install_hint() {
+    case "$(uname -s)" in
+        Darwin) echo "brew install tmux" ;;
+        Linux)
+            if command -v apt-get &>/dev/null; then echo "sudo apt-get install tmux"
+            elif command -v dnf &>/dev/null; then echo "sudo dnf install tmux"
+            elif command -v pacman &>/dev/null; then echo "sudo pacman -S tmux"
+            elif command -v zypper &>/dev/null; then echo "sudo zypper install tmux"
+            elif command -v apk &>/dev/null; then echo "sudo apk add tmux"
+            else echo "install tmux via your package manager"
+            fi
+            ;;
+        *) echo "install tmux via your package manager" ;;
+    esac
+}
+
+# True if tmux is installed, we're not already inside a tmux session, stdin is a tty,
+# and the user hasn't opted out via WORKSHOP_NO_TMUX=1.
+should_launch_tmux() {
+    command -v tmux &>/dev/null \
+        && [ -z "${TMUX:-}" ] \
+        && [ -t 0 ] \
+        && [ "${WORKSHOP_NO_TMUX:-}" != "1" ]
+}
+
+# Launch workshop.sh inside a tmux session with a left pane (menu) and a right pane
+# (live-tailing every known log file). On exit, detach leaves the session running.
+launch_in_tmux() {
+    local session="workshop"
+    mkdir -p "${SCRIPT_DIR}/.workshop/mcp" "${SCRIPT_DIR}/.workshop/agentic"
+
+    # Clean slate on every tmux launch: truncate any existing log files so the right pane
+    # starts empty and only shows output from the current session. Files that don't exist
+    # yet (e.g. agent logs before the agent is started) are fine — `tail -F` picks them up
+    # as soon as they appear.
+    : > "${PROVIDER_LOG_FILE}"
+    : > "${GATEWAY_LOG_FILE}"
+    find "${SCRIPT_DIR}/.workshop/mcp" "${SCRIPT_DIR}/.workshop/agentic" \
+        -maxdepth 1 -type f -name '*.log' 2>/dev/null \
+        | while read -r f; do : > "${f}"; done
+
+    # Kill any stale session of the same name so our layout is reproducible.
+    tmux has-session -t "${session}" 2>/dev/null && tmux kill-session -t "${session}"
+
+    # Create session with the menu in the left pane (WORKSHOP_TUI_MODE=true tells cmd_start to
+    # log the provider to a file instead of this terminal).
+    tmux new-session -d -s "${session}" -x 220 -y 50 \
+        "WORKSHOP_TUI_MODE=true '${SCRIPT_DIR}/workshop.sh'"
+
+    # Enable mouse mode (session-scoped) so the user can scroll the log pane with the
+    # trackpad or mouse wheel on macOS/Linux. Also bump history-limit so the buffer
+    # retains more scrollback. Users can also enter copy-mode with Ctrl-b [ and navigate
+    # with PgUp/PgDn, then press q to exit copy-mode.
+    tmux set-option -t "${session}" mouse on
+    tmux set-option -t "${session}" history-limit 10000
+
+    # Right pane (50% — even split with the menu) tails every known log file. `tail -F`
+    # keeps following even if files are rotated / created later. The stderr redirect hides
+    # 'cannot open: no such file' warnings for logs that don't exist yet.
+    tmux split-window -h -p 50 -t "${session}" \
+        "printf '\033[1mWorkshop logs\033[0m — \`tail -F\` (cleared on launch)\nScroll: use trackpad/wheel, or Ctrl-b [ then PgUp/PgDn (q to exit).\n\n'; tail -F '${PROVIDER_LOG_FILE}' '${GATEWAY_LOG_FILE}' '${SCRIPT_DIR}'/.workshop/mcp/*.log '${SCRIPT_DIR}'/.workshop/agentic/*.log 2>/dev/null"
+
+    tmux select-pane -t "${session}.0"
+    tmux attach -t "${session}"
+}
 
 POSTGRES_COMPOSE="${SCRIPT_DIR}/docker/postgres/docker-compose.yaml"
 LGTM_COMPOSE="${SCRIPT_DIR}/docker/observability-stack/docker-compose.yaml"
@@ -563,6 +913,18 @@ cmd_check() {
     echo -e "  $(creds_status_line)"
     echo -e "  Run ${CYAN}./workshop.sh creds${NC} to configure API keys."
 
+    header "tmux (optional — enables split-pane TUI with live logs)"
+    if command -v tmux &>/dev/null; then
+        ok "tmux installed — $(tmux -V)"
+        info "Interactive mode (./workshop.sh) auto-launches a split layout:"
+        info "  • Left pane: menu"
+        info "  • Right pane: live tail of every provider/MCP/agentic log"
+        info "Opt out with: WORKSHOP_NO_TMUX=1 ./workshop.sh"
+    else
+        warn "tmux not installed — plain-menu mode will be used (no feature is blocked)"
+        info "Install via: $(tmux_install_hint)"
+    fi
+
     echo ""
     echo "──────────────────────────────────────────────"
     echo -e "Check complete. Fix any ${RED}❌${NC} items above."
@@ -578,32 +940,59 @@ cmd_setup() {
     echo -e "${BOLD}Spring AI Zero-to-Hero — Setup${NC}"
     echo "──────────────────────────────────────────────"
 
-    header "Pulling Ollama models (optional)"
-    if command -v ollama &>/dev/null; then
-        for model in "${OLLAMA_MODELS[@]}"; do
-            echo -e "  ${CYAN}→${NC} Pulling ${model}..."
-            ollama pull "${model}"
-            ok "${model} ready"
-        done
+    # ── Step 1: Ollama models ──────────────────────────────
+    echo ""
+    local pull_models
+    read -r -p "$(echo -e "${BOLD}[1/3]${NC} Pull/update Ollama models (${OLLAMA_MODELS[*]})? [Y/n] ")" pull_models
+    pull_models="${pull_models:-y}"
+    if [[ "${pull_models}" =~ ^[yY] ]]; then
+        if command -v ollama &>/dev/null; then
+            header "Pulling Ollama models"
+            for model in "${OLLAMA_MODELS[@]}"; do
+                echo -e "  ${CYAN}→${NC} Pulling ${model}..."
+                ollama pull "${model}"
+                ok "${model} ready"
+            done
+        else
+            warn "Ollama not installed — skipping model pull (install from https://ollama.com or use a cloud provider)"
+        fi
     else
-        info "Ollama not installed — skipping model pull (not needed for cloud providers)"
+        info "Skipped model pull."
     fi
 
-    header "Pulling Docker images"
-    if command -v docker &>/dev/null; then
-        echo -e "  ${CYAN}→${NC} Pulling PostgreSQL images..."
-        docker compose -f "${POSTGRES_COMPOSE}" pull
-        echo -e "  ${CYAN}→${NC} Pulling observability images..."
-        docker compose -f "${LGTM_COMPOSE}" pull
-        ok "Docker images ready"
+    # ── Step 2: Docker images ──────────────────────────────
+    echo ""
+    local pull_images
+    read -r -p "$(echo -e "${BOLD}[2/3]${NC} Pull/update Docker images (PostgreSQL + LGTM observability stack)? [Y/n] ")" pull_images
+    pull_images="${pull_images:-y}"
+    if [[ "${pull_images}" =~ ^[yY] ]]; then
+        if command -v docker &>/dev/null; then
+            header "Pulling Docker images"
+            echo -e "  ${CYAN}→${NC} Pulling PostgreSQL images..."
+            docker compose -f "${POSTGRES_COMPOSE}" pull
+            echo -e "  ${CYAN}→${NC} Pulling observability images..."
+            docker compose -f "${LGTM_COMPOSE}" pull
+            ok "Docker images ready"
+        else
+            fail "Docker not installed — skipping image pull"
+        fi
     else
-        fail "Docker not installed — skipping image pull"
+        info "Skipped image pull."
     fi
 
-    header "Building Maven project"
-    echo -e "  ${CYAN}→${NC} Running mvnw clean compile -T 4..."
-    "${SCRIPT_DIR}/mvnw" clean compile -T 4 -f "${SCRIPT_DIR}/pom.xml"
-    ok "Build complete"
+    # ── Step 3: Maven build ────────────────────────────────
+    echo ""
+    local build_jars
+    read -r -p "$(echo -e "${BOLD}[3/3]${NC} Compile all JARs (provider apps, MCP demos, agentic apps)? [Y/n] ")" build_jars
+    build_jars="${build_jars:-y}"
+    if [[ "${build_jars}" =~ ^[yY] ]]; then
+        header "Building Maven project"
+        echo -e "  ${CYAN}→${NC} Running mvnw clean install -DskipTests -T 4 (all modules)..."
+        "${SCRIPT_DIR}/mvnw" clean install -DskipTests -T 4 -f "${SCRIPT_DIR}/pom.xml"
+        ok "Build complete — all providers, MCP demos, and agentic apps compiled"
+    else
+        info "Skipped build. Run './mvnw clean install -DskipTests' later if you change code."
+    fi
 
     echo ""
     echo "──────────────────────────────────────────────"
@@ -692,7 +1081,14 @@ cmd_start() {
             if echo "${profiles}" | grep -q "observation"; then
                 gw_run_cmd+=("-Dspring-boot.run.profiles=observation")
             fi
-            "${gw_run_cmd[@]}" &
+            # Mirror the provider's TUI redirect: when running inside tmux, send the gateway's
+            # stdout/stderr to a log file instead of polluting the menu pane.
+            mkdir -p "$(dirname "${GATEWAY_LOG_FILE}")"
+            if [ "${WORKSHOP_TUI_MODE:-}" = "true" ]; then
+                "${gw_run_cmd[@]}" >"${GATEWAY_LOG_FILE}" 2>&1 &
+            else
+                "${gw_run_cmd[@]}" &
+            fi
             local gw_pid=$!
             echo "${gw_pid}" > "${GATEWAY_PID_FILE}"
             # Wait for gateway to be ready on port 7777
@@ -727,8 +1123,14 @@ cmd_start() {
     header "Starting provider-${provider}"
     echo -e "  ${CYAN}→${NC} ${run_cmd[*]}"
 
-    # Launch in background
-    "${run_cmd[@]}" &
+    # In TUI mode the provider's stdout/stderr goes to a log file so the tmux right pane
+    # can tail it. In plain-menu mode we keep the legacy behavior (output in the terminal).
+    mkdir -p "$(dirname "${PROVIDER_LOG_FILE}")"
+    if [ "${WORKSHOP_TUI_MODE:-}" = "true" ]; then
+        "${run_cmd[@]}" >"${PROVIDER_LOG_FILE}" 2>&1 &
+    else
+        "${run_cmd[@]}" &
+    fi
     local app_pid=$!
     echo "${app_pid}" > "${PROVIDER_PID_FILE}"
     ok "Provider started (PID ${app_pid})"
@@ -828,6 +1230,12 @@ cmd_stop() {
         mcp_stop_demo "${id}"
     done
 
+    # Stop all agentic demos
+    header "Stopping Agentic demos"
+    for id in "${AGENTIC_DEMOS[@]}"; do
+        agentic_stop_demo "${id}"
+    done
+
     # Stop gateway if running
     if [ -f "${GATEWAY_PID_FILE}" ]; then
         local gw_pid
@@ -874,6 +1282,16 @@ cmd_reset() {
     echo ""
     echo -e "${BOLD}Resetting demo databases${NC}"
     echo "──────────────────────────────────────────────"
+
+    # Pre-flight check — refuse early if Postgres isn't up, so users don't confirm a
+    # destructive action that can't actually happen.
+    if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
+        fail "PostgreSQL container (${POSTGRES_CONTAINER}) is not running — nothing to reset."
+        info "Start with: docker compose -f docker/postgres/docker-compose.yaml up -d"
+        echo ""
+        return 1
+    fi
+
     warn "This will DROP and recreate the public schema in: ${DATABASES[*]}"
     echo ""
 
@@ -882,13 +1300,6 @@ cmd_reset() {
     if [[ ! "${confirm}" =~ ^[Yy]$ ]]; then
         info "Reset cancelled"
         return
-    fi
-
-    # Check postgres container is running
-    if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${POSTGRES_CONTAINER}$"; then
-        fail "PostgreSQL container (${POSTGRES_CONTAINER}) is not running"
-        info "Start with: docker compose -f docker/postgres/docker-compose.yaml up -d"
-        exit 1
     fi
 
     echo ""
@@ -1019,7 +1430,7 @@ cmd_logs() {
 # ─────────────────────────────────────────────────────────────
 cmd_help() {
     echo ""
-    echo -e "${BOLD}Spring AI Zero-to-Hero Workshop${NC}"
+    echo -e "${BOLD}Spring AI Zero-to-Hero Workshop${NC} ${CYAN}v${WORKSHOP_VERSION}${NC}"
     echo -e "Boot 4.0.5 | AI 2.0.0-M4 | Java 25"
     echo ""
     echo -e "${BOLD}Usage:${NC}"
@@ -1336,11 +1747,13 @@ cmd_creds() {
 draw_menu() {
     clear
     echo -e "${BOLD}${CYAN}┌──────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${BOLD}${CYAN}│${NC}  ${BOLD}Spring AI Zero-to-Hero Workshop${NC}                         ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${BOLD}Spring AI Zero-to-Hero Workshop${NC}  ${CYAN}v${WORKSHOP_VERSION}${NC}                 ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  Boot 4.0.5 | AI 2.0.0-M4 | Java 25                      ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}├──────────────────────────────────────────────────────────┘${NC}"
-    echo -e "${BOLD}${CYAN}│${NC}  Creds: $(creds_status_line)"
-    echo -e "${BOLD}${CYAN}│${NC}  State: $(services_status_line)"
+    echo -e "${BOLD}${CYAN}│${NC}  Creds:   $(creds_status_line)"
+    echo -e "${BOLD}${CYAN}│${NC}  State:   $(services_status_line)"
+    echo -e "${BOLD}${CYAN}│${NC}  MCP:     $(mcp_status_line)"
+    echo -e "${BOLD}${CYAN}│${NC}  Agentic: $(agentic_status_line)"
     echo -e "${BOLD}${CYAN}├──────────────────────────────────────────────────────────┐${NC}"
     echo -e "${BOLD}${CYAN}│${NC}                                                          ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN} 1)${NC} Check prerequisites                                 ${BOLD}${CYAN}│${NC}"
@@ -1357,6 +1770,10 @@ draw_menu() {
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}12)${NC} Stop MCP demo                                       ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}13)${NC} MCP status                                          ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}14)${NC} Tail MCP logs                                       ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}15)${NC} Start agentic demo (01|02|all)                      ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}16)${NC} Stop agentic demo                                   ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}17)${NC} Agentic status                                      ${BOLD}${CYAN}│${NC}"
+    echo -e "${BOLD}${CYAN}│${NC}  ${GREEN}18)${NC} Tail agentic logs                                   ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${YELLOW} c)${NC} Configure credentials                               ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  ${RED} q)${NC} Quit                                                ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}│${NC}                                                          ${BOLD}${CYAN}│${NC}"
@@ -1575,6 +1992,74 @@ interactive_mcp_logs() {
     esac
 }
 
+interactive_agentic_start() {
+    echo ""
+    echo -e "${BOLD}Start agentic demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 01 (Inner Monologue :8091)"
+    echo -e "  ${GREEN}2)${NC} 02 (Model-Directed Loop :8092)"
+    echo -e "  ${GREEN}3)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local target provider
+    read -r -p "  Enter choice: " target
+    case "${target}" in
+        1) target=01 ;;
+        2) target=02 ;;
+        3) target=all ;;
+        a|A) info "Aborted"; return 0 ;;
+        *) warn "Invalid choice"; return 0 ;;
+    esac
+    echo ""
+    echo -e "${BOLD}Select provider:${NC}"
+    echo -e "  ${GREEN}1)${NC} ollama  (local, tool-capable models: qwen3, llama3.2:3b)"
+    echo -e "  ${GREEN}2)${NC} openai  (requires API key in creds.yaml)"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    read -r -p "  Enter choice: " provider
+    case "${provider}" in
+        1) cmd_agentic start "${target}" --provider=ollama ;;
+        2) cmd_agentic start "${target}" --provider=openai ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_agentic_stop() {
+    echo ""
+    echo -e "${BOLD}Stop agentic demo:${NC}"
+    echo -e "  ${GREEN}1)${NC} 01"
+    echo -e "  ${GREEN}2)${NC} 02"
+    echo -e "  ${GREEN}3)${NC} all"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_agentic stop 01 ;;
+        2) cmd_agentic stop 02 ;;
+        3) cmd_agentic stop all ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
+interactive_agentic_logs() {
+    echo ""
+    echo -e "${BOLD}Tail agentic logs:${NC}"
+    echo -e "  ${GREEN}1)${NC} 01"
+    echo -e "  ${GREEN}2)${NC} 02"
+    echo -e "  ${RED}a)${NC} Abort"
+    echo ""
+    local choice
+    read -r -p "  Enter choice: " choice
+    case "${choice}" in
+        1) cmd_agentic logs 01 ;;
+        2) cmd_agentic logs 02 ;;
+        a|A) info "Aborted" ;;
+        *) warn "Invalid choice" ;;
+    esac
+}
+
 run_menu() {
     while true; do
         draw_menu
@@ -1586,7 +2071,7 @@ run_menu() {
             3) interactive_infra || true; read -r -p "  Press Enter to continue..." _ ;;
             4) interactive_start || true; read -r -p "  Press Enter to continue..." _ ;;
             5) cmd_stop; read -r -p "  Press Enter to continue..." _ ;;
-            6) cmd_reset; read -r -p "  Press Enter to continue..." _ ;;
+            6) cmd_reset || true; read -r -p "  Press Enter to continue..." _ ;;
             7) cmd_status; read -r -p "  Press Enter to continue..." _ ;;
             8) open_url "http://localhost:3000"; info "Opening Grafana..."; read -r -p "  Press Enter to continue..." _ ;;
             9) open_url "http://localhost:8080/swagger-ui.html"; info "Opening Swagger UI..."; read -r -p "  Press Enter to continue..." _ ;;
@@ -1595,8 +2080,19 @@ run_menu() {
             12) interactive_mcp_stop; read -r -p "  Press Enter to continue..." _ ;;
             13) cmd_mcp status; read -r -p "  Press Enter to continue..." _ ;;
             14) interactive_mcp_logs ;;
+            15) interactive_agentic_start; read -r -p "  Press Enter to continue..." _ ;;
+            16) interactive_agentic_stop; read -r -p "  Press Enter to continue..." _ ;;
+            17) cmd_agentic status; read -r -p "  Press Enter to continue..." _ ;;
+            18) interactive_agentic_logs ;;
             c|C) cmd_creds; read -r -p "  Press Enter to continue..." _ ;;
-            q|Q) echo ""; info "Goodbye!"; echo ""; exit 0 ;;
+            q|Q)
+                echo ""; info "Goodbye!"; echo ""
+                # In TUI mode, also tear down the tmux session so the right log pane dies too.
+                if [ "${WORKSHOP_TUI_MODE:-}" = "true" ] && command -v tmux &>/dev/null; then
+                    tmux kill-session -t workshop 2>/dev/null || true
+                fi
+                exit 0
+                ;;
             *) warn "Invalid option: ${choice}" ;;
         esac
     done
@@ -1607,6 +2103,24 @@ run_menu() {
 # ─────────────────────────────────────────────────────────────
 main() {
     if [ $# -eq 0 ]; then
+        # If tmux is installed and we're on a real terminal, offer the split-pane layout.
+        # Answer 'n' (or Enter to accept default 'y') so you can stay in plain-menu mode
+        # without having to set WORKSHOP_NO_TMUX. If we're already inside tmux or stdin is
+        # not a TTY, skip the prompt entirely and use the plain menu.
+        if should_launch_tmux; then
+            echo ""
+            echo -e "  ${BOLD}tmux detected.${NC}  Split-pane TUI: menu on the left, live logs on the right."
+            echo -e "  Scroll the logs with trackpad/mouse, or with ${CYAN}Ctrl-b [${NC} then PgUp/PgDn."
+            echo ""
+            local ans
+            read -r -p "  Use tmux split layout? [Y/n] " ans
+            ans="${ans:-y}"
+            if [[ "${ans}" =~ ^[yY] ]]; then
+                launch_in_tmux
+                return
+            fi
+            info "Skipping tmux — running in plain-menu mode."
+        fi
         run_menu
         return
     fi
@@ -1651,6 +2165,9 @@ main() {
             ;;
         mcp)
             cmd_mcp "$@"
+            ;;
+        agentic)
+            cmd_agentic "$@"
             ;;
         start)
             local provider="${1:-}"

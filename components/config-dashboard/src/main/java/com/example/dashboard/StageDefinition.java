@@ -70,7 +70,8 @@ public record StageDefinition(
             "Chain of thought, self-reflection (writer + critic loop)",
             "#e06c75",
             List.of()),
-        mcpStage());
+        mcpStage(),
+        agenticStage());
   }
 
   public static StageDefinition mcpStage() {
@@ -81,6 +82,17 @@ public record StageDefinition(
         "Stage 6: MCP",
         "MCP servers (STDIO, Streamable HTTP), clients, dynamic tools, resources, prompts",
         "#0277bd",
+        List.of());
+  }
+
+  public static StageDefinition agenticStage() {
+    return new StageDefinition(
+        7,
+        "Agentic Systems",
+        "7. Agents",
+        "Stage 7: Agents",
+        "Inner monologue + model-directed loop; OpenAI + Ollama; observability + gateway spy",
+        "#6a1b9a",
         List.of());
   }
 }

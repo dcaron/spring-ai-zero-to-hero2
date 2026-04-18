@@ -1,0 +1,114 @@
+spring:
+  application:
+    name: inner-monologue-agent
+  profiles:
+    default: openai                            # activates when no explicit -Dspring-boot.run.profiles=... is passed
+    active:                                    # openai (default via above), ollama, spy, observation
+  config:
+    import: "optional:classpath:/creds.yaml"
+server:
+  port: 8091
+management:
+  tracing:
+    enabled: false
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: true
+info:
+  agent:
+    provider: ${agent.options-profile:openai}
+    ollama-model: ${agent.ollama.model:}
+    openai-model: ${spring.ai.openai.chat.options.model:gpt-4o-mini}
+---
+spring:
+  config:
+    activate:
+      on-profile: openai
+  ai:
+    openai:
+      chat:
+        options:
+          model: gpt-4o-mini
+  autoconfigure:
+    exclude: org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration
+agent:
+  options-profile: openai
+---
+spring:
+  config:
+    activate:
+      on-profile: ollama
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen3
+  autoconfigure:
+    exclude: org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+agent:
+  options-profile: ollama
+  ollama:
+    model: ${spring.ai.ollama.chat.options.model:qwen3}
+---
+spring:
+  config:
+    activate:
+      on-profile: spy
+  ai:
+    openai:
+      chat:
+        base-url: "http://localhost:7777/openai"
+    ollama:
+      base-url: "http://localhost:7777/ollama"
+---
+spring:
+  config:
+    activate:
+      on-profile: observation
+  ai:
+    chat:
+      client:
+        observation:
+          include-input: true
+      observations:
+        include-error-logging: true
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  opentelemetry:
+    resource-attributes:
+      "service.name": ${spring.application.name}
+      "service.version": 1.0.0
+      "deployment.environment": development
+    tracing:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/logs
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+        step: 10s
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

@@ -1,5 +1,6 @@
 package com.example.dashboard;
 
+import com.example.dashboard.agentic.AgenticDemoCatalog;
 import com.example.dashboard.mcp.McpDemoCatalog;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -31,6 +32,11 @@ public class DashboardController {
   private final RestClient restClient;
   private final DocMappingService docMappingService;
   private final McpDemoCatalog mcpCatalog;
+  private final AgenticDemoCatalog agenticCatalog;
+  private final String workshopVersion;
+  // JVM start-time snapshot used as a static-asset cache-busting key. Every provider restart
+  // changes this value, so browsers always fetch the latest JS/CSS.
+  private final String assetCacheKey = Long.toString(System.currentTimeMillis());
 
   public DashboardController(
       OpenApiSpecReader specReader,
@@ -38,12 +44,26 @@ public class DashboardController {
       RestClient.Builder restClientBuilder,
       DocMappingService docMappingService,
       @Autowired(required = false) McpDemoCatalog mcpCatalog,
-      @Value("${server.port:8080}") int port) {
+      @Autowired(required = false) AgenticDemoCatalog agenticCatalog,
+      @Value("${server.port:8080}") int port,
+      @Value("${workshop.version:dev}") String workshopVersion) {
     this.specReader = specReader;
     this.environment = environment;
     this.restClient = restClientBuilder.baseUrl("http://localhost:" + port).build();
     this.docMappingService = docMappingService;
     this.mcpCatalog = mcpCatalog;
+    this.agenticCatalog = agenticCatalog;
+    this.workshopVersion = workshopVersion;
+  }
+
+  @org.springframework.web.bind.annotation.ModelAttribute("workshopVersion")
+  public String workshopVersion() {
+    return workshopVersion;
+  }
+
+  @org.springframework.web.bind.annotation.ModelAttribute("assetCacheKey")
+  public String assetCacheKey() {
+    return assetCacheKey;
   }
 
   @GetMapping
@@ -69,6 +89,18 @@ public class DashboardController {
     model.addAttribute("providerName", detectProvider());
     model.addAttribute("activeProfiles", List.of(environment.getActiveProfiles()));
     return "stage/mcp";
+  }
+
+  @GetMapping("/stage/7")
+  public String stageAgentic(Model model) {
+    List<StageDefinition> stages = specReader.getStages();
+    model.addAttribute("stage", StageDefinition.agenticStage());
+    model.addAttribute("stages", stages);
+    model.addAttribute("demos", agenticCatalog == null ? List.of() : agenticCatalog.all());
+    model.addAttribute("activePage", "stage-7");
+    model.addAttribute("providerName", detectProvider());
+    model.addAttribute("activeProfiles", List.of(environment.getActiveProfiles()));
+    return "stage/agentic";
   }
 
   @GetMapping("/stage/{number:[1-5]}")

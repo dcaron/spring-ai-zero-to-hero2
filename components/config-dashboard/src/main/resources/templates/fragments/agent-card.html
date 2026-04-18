@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="card(demo)"
+     class="stage-card"
+     th:id="'agentic-card-' + ${demo.id()}"
+     th:data-demo-id="${demo.id()}"
+     th:data-demo-port="${demo.port()}"
+     th:data-demo-base-path="${demo.basePath()}"
+     th:data-demo-supports-login="${demo.supportsLogin()}"
+     th:data-demo-trace-kind="${demo.traceKind().name()}"
+     style="border-left-color: #6a1b9a;">
+
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge" style="background:#6a1b9a" th:text="${demo.id()}">NN</span>
+            <h5 class="mb-0" style="color: var(--spring-text);" th:text="${demo.title()}">Title</h5>
+            <span class="badge-profile" th:text="':' + ${demo.port()}">:8091</span>
+            <span class="badge-profile" th:if="${demo.supportsLogin()}">login</span>
+        </div>
+        <div class="agentic-status d-flex align-items-center gap-2">
+            <span class="agentic-status-pill" th:id="'agentic-status-' + ${demo.id()}"
+                  style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--spring-border);"></span>
+            <span class="agentic-status-text text-muted small" th:id="'agentic-status-text-' + ${demo.id()}">checking…</span>
+            <span class="badge-profile agentic-provider-pill" th:id="'agentic-provider-' + ${demo.id()}">—</span>
+            <span class="badge-profile agentic-model-pill" th:id="'agentic-model-' + ${demo.id()}">—</span>
+        </div>
+    </div>
+
+    <p class="text-muted small mb-2" th:text="${demo.oneLiner()}">One-liner</p>
+
+    <!-- Offline hint -->
+    <div th:id="'agentic-offline-hint-' + ${demo.id()}" class="curl-line mb-2" style="display:none">
+        <code th:id="'agentic-offline-cmd-' + ${demo.id()}" th:text="'./workshop.sh agentic start ' + ${demo.id()}">./workshop.sh agentic start NN</code>
+        <button class="btn btn-sm btn-outline-secondary btn-copy"
+                th:data-demo-id="${demo.id()}"
+                onclick="copyAgenticCommand(this.dataset.demoId)">
+            <i class="bi bi-clipboard"></i> Copy
+        </button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-sm btn-spring-green agentic-action-btn" disabled
+                th:data-action="'open-console'" th:data-demo-id="${demo.id()}"
+                onclick="agenticOpenConsole(this)">
+            <i class="bi bi-chat-dots"></i> Open console
+        </button>
+        <button class="btn btn-sm btn-outline-secondary agentic-action-btn" disabled
+                th:data-action="'list-agents'" th:data-demo-id="${demo.id()}"
+                onclick="agenticListAgents(this)">
+            <i class="bi bi-list-ul"></i> List agents
+        </button>
+        <button class="btn btn-sm btn-outline-secondary"
+                th:data-demo-id="${demo.id()}"
+                onclick="agenticShowDocs(this.dataset.demoId)">
+            <i class="bi bi-info-circle"></i> Docs
+        </button>
+    </div>
+
+</div>
+
+</body>
+</html>

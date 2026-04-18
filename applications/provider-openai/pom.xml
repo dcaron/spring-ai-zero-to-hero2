@@ -52,16 +52,12 @@
 			<artifactId>02-retrieval-augmented-generation</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.example</groupId>
-			<artifactId>inner-monologue-agent</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com.example</groupId>
-			<artifactId>model-directed-loop-agent</artifactId>
-			<version>${project.version}</version>
-		</dependency>
+		<!--
+      Stage 7 agents (inner-monologue-agent, model-directed-loop-agent) are standalone
+      Spring Boot apps running on :8091 / :8092 via './workshop.sh agentic start'.
+      They are NOT dependencies of the provider app — the dashboard proxies to them
+      through /dashboard/agentic/**.
+    -->
 		<dependency>
 			<groupId>com.example</groupId>
 			<artifactId>self-reflection-agent</artifactId>

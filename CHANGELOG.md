@@ -1,5 +1,31 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.1] - 2026-04-18
+
+### Added
+- Stage 7 dashboard UI at `/dashboard/stage/7` — two cards (Inner Monologue, Model-Directed Loop) with inline chat consoles, multi-step trace rendering, provider pills, live curl lines.
+- Ollama support for Stage 7 agents alongside OpenAI — one jar per agent, Spring profile selects provider.
+- `./workshop.sh agentic start|stop|status|logs` subcommand family managing agent apps on ports `:8091`/`:8092`.
+- Fallback handler in both agents for weak local models: wraps free-form / malformed responses with `[fallback: model replied without tool]` marker. Demo 02 forces `requestReinvocation=false` on fallback to stop the loop cleanly.
+- Gateway spy routing for Ollama: `ollama,spy` profile combo now actively routes through `:7777/ollama` (the gateway route pre-existed in `RouteConfig.java`).
+- New agent REST endpoints: `POST /{id}/reset` and `GET /{id}/log` for memory management and history inspection.
+- `WHATS_NEW_STAGE_07_AGENTIC.md` attendee + trainer walkthrough.
+- Stage 7 troubleshooting section in `docs/troubleshooting.md`.
+
+### Changed
+- `docs/spring-ai/SPRING_AI_STAGE_7.md` — added dashboard endpoint inventory, Ollama model compatibility matrix (incl. `llava` counter-example), fallback behavior anchor, observability + gateway spy notes.
+- `agentic-system/*/readme.md` — "New in Stage 7 UI" intro boxes.
+- `docs/guide.md` — Stage 7 section with `workshop.sh agentic` commands.
+
+### Fixed
+- Stage 7 fullscreen console — long pasted prompts no longer push the **Send** button out of view. The message form uses CSS Grid (`minmax(0, 1fr) auto`) and the center column is explicitly constrained with `grid-template-columns: minmax(0, 1fr)`, so a large textarea value wraps internally instead of blowing the column out.
+- Stage 7 fullscreen exit — topbar icons (theme toggle, provider/profile pills, UI entry) re-enter the viewport. JS now remembers `window.scrollY` on fullscreen enter and restores it on exit, so the page no longer sits at a stale scroll offset after the fixed-positioned console returns to normal flow.
+
+### Breaking
+- Removed `inner-monologue-agent` and `model-directed-loop-agent` dependencies from `applications/provider-openai/pom.xml` (commit `c0759a6`) — Stage 7 agents now exclusively run as **standalone Spring Boot processes** on `:8091`/`:8092`, launched via `./workshop.sh agentic start all`. The legacy "all-in-one on :8080" mode (where the agent REST controllers were served from the provider app's JVM) is no longer supported. The dashboard at `:8080` proxies to the standalone agents over HTTP.
+
+---
+
 ## [2.3.0] — 2026-04-17: Stage 6 MCP Dashboard UI & Coordinated Lifecycle
 
 Stage 6 (Model Context Protocol) moves from CLI-only to a first-class dashboard chapter. Every MCP demo is now runnable, inspectable, and invokable from `http://localhost:8080/dashboard/stage/6`, backed by a new `./workshop.sh mcp` command family that manages the five demos' lifecycle from a single script.

@@ -13,6 +13,7 @@ Check that you have these installed before the workshop starts:
 [ ] Maven wrapper — ./mvnw --version should show 3.9.14
 [ ] Docker — docker --version and docker compose version
 [ ] Ollama — ollama --version
+[ ] tmux (optional) — tmux -V  (enables the split-pane TUI described below)
 ```
 
 **Java 25 via SDKMAN:**
@@ -28,6 +29,21 @@ sdk use java 25.0.2-librca
 brew install openjdk@25
 export JAVA_HOME=$(/usr/libexec/java_home -v 25)
 ```
+
+**tmux (optional — enables split-pane TUI with live logs):**
+
+| OS | Install command |
+|---|---|
+| macOS | `brew install tmux` |
+| Debian / Ubuntu | `sudo apt-get install tmux` |
+| Fedora / RHEL | `sudo dnf install tmux` |
+| Arch | `sudo pacman -S tmux` |
+| openSUSE | `sudo zypper install tmux` |
+| Alpine | `sudo apk add tmux` |
+
+When present, `./workshop.sh` (no args) auto-launches a 50/50 split: the menu on the left, live-tailed logs of every running workshop process on the right. Logs are cleared on each launch for a clean session. Press `q` in the menu to tear everything down.
+
+Opt out with `WORKSHOP_NO_TMUX=1 ./workshop.sh`. Without tmux, the plain menu works the same way — only the split-view convenience is missing.
 
 If any of these are missing, see [Provider Setup](providers.md) for detailed installation instructions.
 

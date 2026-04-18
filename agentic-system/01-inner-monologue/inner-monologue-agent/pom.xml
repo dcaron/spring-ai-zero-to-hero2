@@ -17,12 +17,47 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-client-chat</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-openai</artifactId>
+			<artifactId>spring-ai-client-chat</artifactId>
+		</dependency>
+		<!-- Use the *starter* artifacts so each provider's auto-configuration (ChatModel bean,
+		     OpenAiApi client, OllamaApi client) is on the classpath. Using the plain library
+		     (spring-ai-openai) would have no auto-config and leave ChatClient.Builder without
+		     a ChatModel, which crashes bean wiring with "No qualifying bean of type ChatModel". -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-openai</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-ollama</artifactId>
+		</dependency>
+		<!-- Observability: OpenTelemetry exporter for traces/metrics/logs. Activated by the
+		     `observation` profile in application.yaml. Without this starter, the OTel config in
+		     application.yaml has no effect and no traces reach LGTM. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
+		<!-- Bring in SpanLoggingObservationHandler for consistent AI-call logs in agent output. -->
+		<dependency>
+			<groupId>com.example</groupId>
+			<artifactId>04-distributed-tracing</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-webmvc-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

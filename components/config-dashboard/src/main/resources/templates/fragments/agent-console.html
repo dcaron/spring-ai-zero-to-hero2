@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="console(demo)"
+     class="stage-card mt-3"
+     th:id="'agentic-console-' + ${demo.id()}"
+     th:data-demo-id="${demo.id()}"
+     style="border-left-color: #6a1b9a; display:none;">
+
+    <div class="row">
+        <!-- Left rail: agents + lifecycle -->
+        <div class="col-md-3 border-end pe-3" style="border-color: var(--spring-border) !important;">
+            <h6 class="mb-2" style="color: var(--spring-text);">
+                <i class="bi bi-people"></i> Agents
+            </h6>
+            <ul class="list-unstyled agentic-agent-list small mb-2" data-role="agent-list"></ul>
+            <form class="d-flex gap-1 mb-2" data-role="create-form">
+                <input type="text" name="id" class="form-control form-control-sm" placeholder="agent id" required/>
+                <button type="submit" class="btn btn-sm btn-spring-green">Create</button>
+            </form>
+            <div class="d-flex flex-column gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-action="reset-memory">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset memory
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-agent">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+
+        <!-- Center: chat bubbles + input -->
+        <div class="col-md-6 px-3">
+            <div class="agentic-bubbles mb-2" data-role="bubbles"
+                 style="min-height:200px; max-height:400px; overflow-y:auto; background:var(--spring-bg-alt); padding:0.5rem; border-radius:6px;"></div>
+            <form class="d-flex gap-1 mb-1" data-role="message-form">
+                <textarea name="text" rows="2" class="form-control form-control-sm" placeholder="Message the agent…" required></textarea>
+                <button type="submit" class="btn btn-sm btn-spring-green">Send</button>
+            </form>
+            <div class="curl-line small text-muted">
+                <code data-role="curl" style="word-break:break-all"></code>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-1 copy-curl">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right rail: login (demo 02 only) -->
+        <div class="col-md-3 border-start ps-3" style="border-color: var(--spring-border) !important;"
+             th:if="${demo.supportsLogin()}">
+            <h6 class="mb-2" style="color: var(--spring-text);">
+                <i class="bi bi-person-badge"></i> ACME Login
+            </h6>
+            <form class="d-flex flex-column gap-1" data-role="login-form">
+                <input type="email" name="email" class="form-control form-control-sm" placeholder="email" required/>
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Login</button>
+            </form>
+            <div class="mt-2 small text-muted" data-role="login-status"></div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

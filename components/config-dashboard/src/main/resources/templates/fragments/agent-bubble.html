@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<template th:fragment="bubbleTemplate" id="agentic-bubble-template">
+    <div class="agentic-bubble mb-2 p-2" style="background:var(--spring-bg);border:1px solid var(--spring-border);border-radius:6px;">
+        <div class="bubble-message small" style="white-space:pre-wrap;"></div>
+        <details class="bubble-thoughts mt-1">
+            <summary class="text-muted small" style="cursor:pointer;">inner thoughts</summary>
+            <div class="thoughts-body small text-muted mt-1" style="white-space:pre-wrap;"></div>
+        </details>
+        <div class="bubble-badges d-flex gap-1 mt-1">
+            <span class="badge bg-info badge-step" hidden></span>
+            <span class="badge bg-warning text-dark badge-fallback" hidden
+                  title="Model replied without calling the tool — see SPRING_AI_STAGE_7.md#ollama-fallback-behavior">
+                ⚠ fallback
+            </span>
+            <span class="badge bg-danger badge-max-steps" hidden>⚠ max steps</span>
+        </div>
+    </div>
+</template>
+
+</body>
+</html>

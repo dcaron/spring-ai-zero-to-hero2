@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,15 +23,18 @@ import org.springframework.web.server.ResponseStatusException;
 public class InnerMonologueAgentController {
 
   private final ChatClient.Builder builder;
+  private final org.springframework.ai.chat.prompt.ChatOptions chatOptions;
   private Map<String, Agent> agents = new HashMap<>();
 
-  public InnerMonologueAgentController(ChatClient.Builder builder) {
+  public InnerMonologueAgentController(
+      ChatClient.Builder builder, org.springframework.ai.chat.prompt.ChatOptions chatOptions) {
     this.builder = builder;
+    this.chatOptions = chatOptions;
   }
 
   @PostMapping("/{id}")
   public AgentJson createAgent(@PathVariable(name = "id") String agentId) {
-    Agent agent = new Agent(this.builder, agentId);
+    Agent agent = new Agent(this.builder, agentId, this.chatOptions);
     agents.put(agentId, agent);
     return toAgentJson(agent);
   }
@@ -62,5 +66,32 @@ public class InnerMonologueAgentController {
 
   public AgentJson toAgentJson(Agent agent) {
     return new AgentJson(agent.getId(), agent.getSystemPrompt());
+  }
+
+  @PostMapping("/{id}/reset")
+  public void resetAgent(@PathVariable(name = "id") String agentId) {
+    Agent agent = this.agents.get(agentId);
+    if (agent == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found");
+    }
+    agent.resetMemory();
+  }
+
+  @DeleteMapping("/{id}")
+  public void deleteAgent(@PathVariable(name = "id") String agentId) {
+    Agent agent = this.agents.remove(agentId);
+    if (agent == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found");
+    }
+    agent.resetMemory();
+  }
+
+  @GetMapping("/{id}/log")
+  public List<Map<String, Object>> getLog(@PathVariable(name = "id") String agentId) {
+    Agent agent = this.agents.get(agentId);
+    if (agent == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Agent not found");
+    }
+    return agent.getLog();
   }
 }

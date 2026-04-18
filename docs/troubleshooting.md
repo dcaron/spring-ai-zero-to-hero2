@@ -233,3 +233,21 @@ Dashboard shows `./workshop.sh mcp build-01`. Run that command — it builds `mc
 ### 04 "Trigger dynamic registration" has no further effect
 
 04's server uses a one-shot `CountDownLatch`. To repeat the demo, restart the server: `./workshop.sh mcp stop 04 && ./workshop.sh mcp start 04`, then click Trigger again on a fresh server process.
+
+---
+
+## Stage 7 / Agentic
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Card status pill stays gray | Agent process not running | `./workshop.sh agentic start 01\|02` |
+| `Port 8091 already in use` | Stale process from previous run | `lsof -ti:8091 \| xargs kill` |
+| `Port 8080 already in use` | That's the provider app / dashboard — **not** a Stage 7 concern. Stage 7 agents listen on `:8091` and `:8092` only | Free `:8080` for the provider app; agent apps are unaffected |
+| Send returns `provider-error` | OpenAI 401 or Ollama unreachable | Check `creds.yaml` or `ollama serve` |
+| Fallback ⚠ badge on every message | Model can't drive tool calls | Switch to `qwen3` (Ollama) or OpenAI |
+| Demo 02 loop stops on first fallback | By design (spec decision D7) | Use a stronger model, or accept as a teaching moment |
+| Traces missing from Grafana | `observation` profile not active, or OTel collector down on `:4318` | `./workshop.sh agentic start all --profile=openai,observation`; check LGTM stack |
+| Gateway `/ollama` route reachable but 404 downstream | Ollama itself not running | `ollama serve` + `ollama pull qwen3` |
+| `spy` + Ollama not capturing traffic | Profile not active | Use `--profile=ollama,spy,observation` |
+
+See also: `SPRING_AI_STAGE_7.md § Ollama fallback behavior`.

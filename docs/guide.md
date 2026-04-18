@@ -336,8 +336,31 @@ MCP servers are provider-independent. MCP clients (03, 04) are configured for Op
 ## Stage 7: Agentic Systems
 
 **Module:** `agentic-system/`
+**Dashboard:** http://localhost:8080/dashboard/stage/7
+**Walkthrough:** [What's New — Stage 7 (Agentic)](../WHATS_NEW_STAGE_07_AGENTIC.md) — attendee + trainer guide
+**Deep dive:** [`docs/spring-ai/SPRING_AI_STAGE_7.md`](spring-ai/SPRING_AI_STAGE_7.md) — canonical reference
 
-Each agentic module includes both a REST API application and a CLI application built with Spring Shell 4.
+### Stage 7 — Agentic Systems
+
+Two demos showing agentic patterns (model controls its own execution flow via forced tool calling):
+
+| Demo | Module | Port |
+|---|---|---|
+| 01 Inner Monologue | `agentic-system/01-inner-monologue/` | 8091 |
+| 02 Model-Directed Loop | `agentic-system/02-model-directed-loop/` | 8092 |
+
+> **Note:** The Stage 7 agent apps are **separate Spring Boot processes** (launched via `./workshop.sh agentic start all`) — they are not part of any provider app's JVM. The dashboard on `:8080` proxies to them over HTTP.
+
+Lifecycle:
+
+```bash
+./workshop.sh agentic start all                      # OpenAI default
+./workshop.sh agentic start all --provider=ollama    # or Ollama
+./workshop.sh agentic status
+./workshop.sh agentic stop all
+```
+
+UI at `http://localhost:8080/dashboard/stage/7`. See [`WHATS_NEW_STAGE_07_AGENTIC.md`](../WHATS_NEW_STAGE_07_AGENTIC.md) for the walkthrough and [`docs/spring-ai/SPRING_AI_STAGE_7.md`](spring-ai/SPRING_AI_STAGE_7.md) for the canonical deep dive.
 
 ### 7a: Inner Monologue Agent
 
@@ -347,11 +370,13 @@ The agent "thinks out loud" — reasoning steps are visible before the final res
 POST /agents/inner-monologue/{id}           Create agent
 POST /agents/inner-monologue/{id}/messages  Send message
 GET  /agents/inner-monologue/{id}           Get agent state
+POST /agents/inner-monologue/{id}/reset     Clear memory
+GET  /agents/inner-monologue/{id}/log       Inspect history
 ```
 
-Uses `OpenAiChatOptions.toolChoice("required")` to force the model to use tools, and `MessageChatMemoryAdvisor` for conversation persistence. The inner monologue reasoning appears as tool call intermediates.
+Uses forced tool calling to require the model to use `send_message`, and `MessageChatMemoryAdvisor` for conversation persistence. The inner monologue reasoning appears as tool call intermediates.
 
-CLI: `./mvnw spring-boot:run -pl agentic-system/01-inner-monologue` — then use shell commands
+Agent app runs on `:8091`. CLI: `./mvnw spring-boot:run -pl agentic-system/01-inner-monologue/inner-monologue-cli` — then use shell commands.
 
 ### 7b: Model-Directed Loop Agent
 
@@ -361,13 +386,15 @@ The agent decides at each iteration whether to continue processing or return a f
 POST /agents/model-directed-loop/{id}           Create agent
 POST /agents/model-directed-loop/{id}/messages  Send message
 GET  /agents/model-directed-loop/{id}           Get agent + trace
+POST /agents/model-directed-loop/{id}/reset     Clear memory
+GET  /agents/model-directed-loop/{id}/log       Inspect history
 ```
 
-Returns a `ChatTraceResponse` with all intermediate reasoning steps visible. Use the GET endpoint to inspect the full trace after sending a message.
+Returns a `ChatTraceResponse` with all intermediate reasoning steps visible. Use the GET endpoint to inspect the full trace after sending a message. The ACME login flow and multi-step trace rendering are both exercised from the dashboard UI.
 
-CLI: `./mvnw spring-boot:run -pl agentic-system/02-model-directed-loop`
+Agent app runs on `:8092`. CLI: `./mvnw spring-boot:run -pl agentic-system/02-model-directed-loop/model-directed-loop-cli`.
 
-**Note:** Both agent REST apps currently require OpenAI (`OpenAiChatOptions`). The CLI modules work with any provider. A future migration to `ToolCallingChatOptions` would make the agents provider-agnostic.
+**Provider support:** Both agents now support OpenAI (default) and Ollama via the `--provider=ollama` flag on `workshop.sh agentic start`. When a weak local model skips the `send_message` tool, the `AgentFallbackHandler` wraps the free-form reply with a `[fallback: …]` marker; demo 02 additionally forces `requestReinvocation=false` so the loop stops cleanly on a single bubble. See [`SPRING_AI_STAGE_7.md` § Ollama fallback behavior](spring-ai/SPRING_AI_STAGE_7.md#ollama-fallback-behavior).
 
 ---
 
@@ -462,7 +489,7 @@ Your App --> Gateway (:7777) --> AI Provider API
 | CoT / Reflection | No | No | Any (Profile.pdf included) |
 | MCP servers | No | No | None (standalone) |
 | MCP clients | No | No | OpenAI (configured) |
-| Agentic agents (REST) | No | No | OpenAI |
+| Agentic agents (REST) | No | No | OpenAI (default) or Ollama |
 | Agentic CLIs | No | No | Any |
 | Distributed tracing | No | Yes | Any |
 

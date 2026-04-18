@@ -69,6 +69,11 @@
         <i class="bi bi-plug"></i>
         <span class="nav-label">6. MCP</span>
     </a>
+    <a th:href="@{/dashboard/stage/7}" class="nav-item"
+       th:classappend="${activePage == 'stage-7'} ? 'active'">
+        <i class="bi bi-cpu"></i>
+        <span class="nav-label">7. Agents</span>
+    </a>
 
     <div class="nav-divider"></div>
     <div class="nav-section">
@@ -90,7 +95,8 @@
 
     <!-- Footer -->
     <div class="sidebar-footer">
-        Spring AI 2.0.0-M4
+        <div>Workshop <span th:text="'v' + ${workshopVersion}">v2.3.1</span></div>
+        <div class="text-muted small">Spring AI 2.0.0-M4</div>
     </div>
 
     <!-- Toggle button -->

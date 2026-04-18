@@ -1,5 +1,7 @@
 # 01 - Inner Monologue Agent
 
+> **Standalone Spring Boot app.** This module is a **separate Spring Boot application** that runs in its own JVM on port `:8091`. It is **not** embedded into any provider app (provider-openai, provider-ollama, etc.) and does not use port `:8080`. Launch it with `./workshop.sh agentic start 01` (recommended) or `./mvnw spring-boot:run -pl agentic-system/01-inner-monologue/inner-monologue-agent`. The dashboard at `http://localhost:8080/dashboard/stage/7` proxies to this app over HTTP.
+
 This project allows you to interact with an AI agent that uses private inner thoughts before responding with a message. All interactions go through a tool call named `send_message`.
 
 The agent server runs separately and manages the lifecycle of agents. The CLI connects to it and provides a stateful shell for creating and talking to agents.

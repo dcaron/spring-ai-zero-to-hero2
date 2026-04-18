@@ -5,7 +5,6 @@ import io.micrometer.observation.ObservationHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.observation.ChatModelObservationContext;
-import org.springframework.http.client.observation.ClientRequestObservationContext;
 import org.springframework.stereotype.Component;
 
 /**
@@ -28,8 +27,11 @@ public class SpanLoggingObservationHandler implements ObservationHandler<Observa
 
   @Override
   public boolean supportsContext(Observation.Context context) {
-    return context instanceof ChatModelObservationContext
-        || context instanceof ClientRequestObservationContext;
+    // Only log AI/chat model observations. HTTP client noise (probes, proxy forwarding, actuator,
+    // provider-app→agent hops, provider-app→OpenAI/Ollama hops) is filtered out entirely — see
+    // TracingObservationFilters which also drops those spans from the LGTM pipeline so attendees
+    // see only model-level activity.
+    return context instanceof ChatModelObservationContext;
   }
 
   @Override
@@ -45,12 +47,6 @@ public class SpanLoggingObservationHandler implements ObservationHandler<Observa
         promptContent = truncate(prompt.getContents());
       }
       logger.info("AI CALL START [provider={}]: {}", model, promptContent);
-
-    } else if (context instanceof ClientRequestObservationContext httpContext) {
-      var request = httpContext.getCarrier();
-      if (request != null) {
-        logger.info("HTTP CLIENT REQUEST: {} {}", request.getMethod(), request.getURI());
-      }
     }
   }
 
@@ -67,21 +63,6 @@ public class SpanLoggingObservationHandler implements ObservationHandler<Observa
         logger.info("AI CALL END [provider={}]: {}", model, content);
       } else {
         logger.info("AI CALL END [provider={}]: <no response>", model);
-      }
-
-    } else if (context instanceof ClientRequestObservationContext httpContext) {
-      var response = httpContext.getResponse();
-      if (response != null) {
-        try {
-          logger.info(
-              "HTTP CLIENT RESPONSE: {} (status={})",
-              httpContext.getCarrier() != null
-                  ? httpContext.getCarrier().getMethod() + " " + httpContext.getCarrier().getURI()
-                  : "unknown",
-              response.getStatusCode().value());
-        } catch (Exception e) {
-          logger.info("HTTP CLIENT RESPONSE: completed");
-        }
       }
     }
   }
