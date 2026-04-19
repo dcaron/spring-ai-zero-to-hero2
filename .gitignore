@@ -56,6 +56,10 @@ result.html
 ### Ollama model exports ###
 models/*.tar.gz
 
+### Dockerized Ollama models directory (multi-GB blobs) ###
+/models/ollama/*
+!/models/ollama/.gitkeep
+
 ### pptx temp file
 ai-content/~$spring-ai-workshop.pptx
 

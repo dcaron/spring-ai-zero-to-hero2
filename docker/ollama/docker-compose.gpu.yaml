@@ -1,0 +1,18 @@
+# ==============================================================================
+# NVIDIA GPU overlay for dockerized Ollama.
+# Requires the host to have NVIDIA drivers + NVIDIA Container Toolkit.
+# Compose it alongside the base file:
+#   docker compose -f docker/ollama/docker-compose.yaml \
+#                  -f docker/ollama/docker-compose.gpu.yaml up -d
+# Verify inside the container: docker exec ollama nvidia-smi
+# ==============================================================================
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

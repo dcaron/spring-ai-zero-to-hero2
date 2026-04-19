@@ -1,0 +1,33 @@
+# ==============================================================================
+# Spring AI Workshop — Dockerized Ollama (optional)
+# ==============================================================================
+# Alternative to a host-installed Ollama. Mounts ../../models/ollama as the
+# model store, so the tarball produced by models/ollama.sh export is portable
+# between native and dockerized installs.
+#
+# Start: docker compose -f docker/ollama/docker-compose.yaml up -d
+# Verify: curl http://localhost:11434/api/tags
+#
+# GPU (Linux + NVIDIA only): add the overlay:
+#   docker compose -f docker/ollama/docker-compose.yaml \
+#                  -f docker/ollama/docker-compose.gpu.yaml up -d
+#
+# See docs/ollama_dockerized.md for performance notes (macOS containers
+# cannot use Metal — always CPU-only; native Ollama.app is 3–10× faster).
+# ==============================================================================
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ../../models/ollama:/root/.ollama/models
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
