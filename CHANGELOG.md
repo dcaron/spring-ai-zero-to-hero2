@@ -1,5 +1,24 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.2] - 2026-04-19
+
+### Added
+- Dockerized Ollama as an optional, first-class alternative to a host install. New `docker/ollama/docker-compose.yaml` (CPU default) + `docker-compose.gpu.yaml` overlay for NVIDIA. Mounts `models/ollama/` into the container; same port 11434 so `provider-ollama` config is unchanged.
+- `models/ollama.sh import` target chooser: `--target=ollama` (native, tarball), `--target=docker` (dockerized models dir, tarball), `--target=docker-pull` (runs `docker exec ollama ollama pull` for every `WORKSHOP_MODELS` entry). Interactive prompt offers all three.
+- `models/containers.sh` `--with-ollama` flag and opt-in prompt for `ollama/ollama:latest` (~1.3 GB).
+- `workshop.sh`: new `infra ollama` target, new `--ollama-docker` flag on `start`, new `[3/4]` optional step in `setup` for the Ollama image, and a three-state runtime indicator (`ollama:docker` / `ollama:local` / `ollama:off`) in the menu header and `status` output.
+- `docs/ollama_dockerized.md` — canonical reference with performance notes (macOS CPU-only, x86 vs arm64, NVIDIA overlay), airgapped workflow, and commands.
+
+### Changed
+- `cmd_stop` now includes the dockerized Ollama in its single "stop Docker containers?" prompt when the container is up.
+- `cmd_check` and `cmd_status` distinguish native vs dockerized Ollama and surface actionable hints when neither is running.
+- `README.md`, `docs/quickstart.md`, `docs/guide.md`, `docs/providers.md`, `docs/troubleshooting.md` — cross-referenced to the new doc; quickstart gains a Section 3.5 airgapped recipe; troubleshooting gains three new entries.
+
+### Notes
+- macOS containers cannot access Metal — native `Ollama.app` remains preferred on Apple Silicon for performance. The dockerized path targets attendees without a local install and airgapped environments.
+
+---
+
 ## [2.3.1] - 2026-04-18
 
 ### Added
