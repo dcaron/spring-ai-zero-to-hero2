@@ -144,10 +144,10 @@ choose_import_target() {
   local choice
   read -rp "Choose [1/2/3]: " choice
   case "$choice" in
-    1) echo "ollama" ;;
-    2) echo "docker" ;;
-    3) echo "docker-pull" ;;
-    *) echo -e "${RED}Invalid choice.${RESET}" >&2; return 1 ;;
+    ""|1) echo "ollama" ;;
+    2)    echo "docker" ;;
+    3)    echo "docker-pull" ;;
+    *)    echo -e "${RED}Invalid choice.${RESET}" >&2; return 1 ;;
   esac
 }
 

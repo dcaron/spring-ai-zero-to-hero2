@@ -861,28 +861,25 @@ ollama_mode() {
     fi
 }
 
-# Emits the docker-compose command (as a single string) with the GPU overlay
-# appended when NVIDIA is detected (or forced via WORKSHOP_OLLAMA_GPU=1).
-# Disable with WORKSHOP_OLLAMA_GPU=0.
-ollama_compose_cmd() {
-    local base="docker compose -f ${OLLAMA_COMPOSE}"
+# Runs `docker compose` against the Ollama compose files, auto-appending the
+# GPU overlay when NVIDIA is detected (or forced via WORKSHOP_OLLAMA_GPU=1).
+# Disable with WORKSHOP_OLLAMA_GPU=0. Arguments after this function's name are
+# forwarded to `docker compose` (e.g. `ollama_up up -d`, `ollama_up down`,
+# `ollama_up pull`).
+ollama_up() {
+    local args=(-f "${OLLAMA_COMPOSE}")
     local force="${WORKSHOP_OLLAMA_GPU:-auto}"
-    if [ "${force}" = "0" ]; then
-        echo "${base}"
-        return
-    fi
     local gpu_ok=0
     if [ "${force}" = "1" ]; then
         gpu_ok=1
-    elif command -v nvidia-smi &>/dev/null && \
+    elif [ "${force}" != "0" ] && command -v nvidia-smi &>/dev/null && \
          docker info 2>/dev/null | grep -qi 'Runtimes:.*nvidia'; then
         gpu_ok=1
     fi
     if [ "${gpu_ok}" = "1" ] && [ -f "${OLLAMA_GPU_COMPOSE}" ]; then
-        echo "${base} -f ${OLLAMA_GPU_COMPOSE}"
-    else
-        echo "${base}"
+        args+=(-f "${OLLAMA_GPU_COMPOSE}")
     fi
+    docker compose "${args[@]}" "$@"
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -1159,7 +1156,7 @@ cmd_start() {
             return 1
         fi
         header "Starting dockerized Ollama"
-        eval "$(ollama_compose_cmd) up -d"
+        ollama_up up -d
         echo -e "  ${CYAN}→${NC} Waiting for Ollama on port 11434..."
         local wait_n=0
         while [ "${wait_n}" -lt 30 ]; do
@@ -1984,7 +1981,7 @@ interactive_infra() {
         4)
             [ "${has_ollama_compose}" = "1" ] || { warn "Invalid choice"; return 0; }
             header "Starting dockerized Ollama"
-            eval "$(ollama_compose_cmd) up -d"
+            ollama_up up -d
             ok "Ollama container started on port 11434"
             ;;
         5)
@@ -1996,7 +1993,7 @@ interactive_infra() {
             docker compose -f "${LGTM_COMPOSE}" up -d
             ok "LGTM started — Grafana on port 3000"
             header "Starting dockerized Ollama"
-            eval "$(ollama_compose_cmd) up -d"
+            ollama_up up -d
             ok "Ollama container started on port 11434"
             ;;
         *)
@@ -2344,7 +2341,7 @@ main() {
                         exit 1
                     fi
                     header "Starting dockerized Ollama"
-                    eval "$(ollama_compose_cmd) up -d"
+                    ollama_up up -d
                     ok "Ollama container started on port 11434"
                     ;;
                 all|both)
@@ -2356,7 +2353,7 @@ main() {
                     ok "LGTM started — Grafana on port 3000"
                     if [ -f "${OLLAMA_COMPOSE}" ]; then
                         header "Starting dockerized Ollama"
-                        eval "$(ollama_compose_cmd) up -d"
+                        ollama_up up -d
                         ok "Ollama container started on port 11434"
                     fi
                     ;;

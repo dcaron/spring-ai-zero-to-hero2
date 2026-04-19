@@ -192,3 +192,25 @@ Resources → Disk image size).
 **Switching between native and dockerized.** Only one should own port 11434
 at a time. The workshop's status line shows which is active so you don't
 have to guess.
+
+### Full cleanup — returning to native-only
+
+If you want to remove the dockerized Ollama entirely and go back to a native install:
+
+```bash
+# 1. Stop & remove the container
+docker compose -f docker/ollama/docker-compose.yaml down
+
+# 2. (Optional) Remove the model blobs — frees 10+ GB
+rm -rf models/ollama/manifests models/ollama/blobs
+
+# 3. (Optional) Remove the image
+docker rmi ollama/ollama:latest
+
+# 4. Confirm you're back on native
+./workshop.sh status       # should show ollama:local (or ollama:off if not installed)
+```
+
+Your native `Ollama.app` or `ollama serve` install is untouched by any of the
+above — the dockerized path only ever wrote to `models/ollama/` and pulled
+the `ollama/ollama` image.
