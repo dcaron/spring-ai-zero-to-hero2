@@ -1026,7 +1026,7 @@ cmd_setup() {
     # ── Step 1: Ollama models ──────────────────────────────
     echo ""
     local pull_models
-    read -r -p "$(echo -e "${BOLD}[1/3]${NC} Pull/update Ollama models (${OLLAMA_MODELS[*]})? [Y/n] ")" pull_models
+    read -r -p "$(echo -e "${BOLD}[1/4]${NC} Pull/update Ollama models (${OLLAMA_MODELS[*]})? [Y/n] ")" pull_models
     pull_models="${pull_models:-y}"
     if [[ "${pull_models}" =~ ^[yY] ]]; then
         if command -v ollama &>/dev/null; then
@@ -1046,7 +1046,7 @@ cmd_setup() {
     # ── Step 2: Docker images ──────────────────────────────
     echo ""
     local pull_images
-    read -r -p "$(echo -e "${BOLD}[2/3]${NC} Pull/update Docker images (PostgreSQL + LGTM observability stack)? [Y/n] ")" pull_images
+    read -r -p "$(echo -e "${BOLD}[2/4]${NC} Pull/update Docker images (PostgreSQL + LGTM observability stack)? [Y/n] ")" pull_images
     pull_images="${pull_images:-y}"
     if [[ "${pull_images}" =~ ^[yY] ]]; then
         if command -v docker &>/dev/null; then
@@ -1063,10 +1063,27 @@ cmd_setup() {
         info "Skipped image pull."
     fi
 
-    # ── Step 3: Maven build ────────────────────────────────
+    # ── Step 3: Optional Ollama container image ────────────
+    echo ""
+    local pull_ollama_img
+    read -r -p "$(echo -e "${BOLD}[3/4]${NC} Pull optional Ollama container image (ollama/ollama:latest, ~1.3 GB)? [y/N] ")" pull_ollama_img
+    pull_ollama_img="${pull_ollama_img:-n}"
+    if [[ "${pull_ollama_img}" =~ ^[yY] ]]; then
+        if command -v docker &>/dev/null; then
+            header "Pulling Ollama container image"
+            docker compose -f "${OLLAMA_COMPOSE}" pull
+            ok "Ollama image ready (use: ./workshop.sh infra ollama)"
+        else
+            fail "Docker not installed — skipping Ollama image pull"
+        fi
+    else
+        info "Skipped Ollama image pull."
+    fi
+
+    # ── Step 4: Maven build ────────────────────────────────
     echo ""
     local build_jars
-    read -r -p "$(echo -e "${BOLD}[3/3]${NC} Compile all JARs (provider apps, MCP demos, agentic apps)? [Y/n] ")" build_jars
+    read -r -p "$(echo -e "${BOLD}[4/4]${NC} Compile all JARs (provider apps, MCP demos, agentic apps)? [Y/n] ")" build_jars
     build_jars="${build_jars:-y}"
     if [[ "${build_jars}" =~ ^[yY] ]]; then
         header "Building Maven project"
