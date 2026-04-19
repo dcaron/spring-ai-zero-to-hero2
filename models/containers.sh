@@ -26,6 +26,35 @@ WORKSHOP_IMAGES=(
   "maildev/maildev:2.2.1"
 )
 
+# Optional images — NOT included by default; attendees opt in at prompt or via --with-ollama.
+WORKSHOP_IMAGES_OPTIONAL=(
+  "ollama/ollama:latest"
+)
+
+# Returns the effective image list on stdout, honoring INCLUDE_OLLAMA.
+# Callers set INCLUDE_OLLAMA=1 (via prompt or --with-ollama) to include optional images.
+effective_images() {
+  local imgs=("${WORKSHOP_IMAGES[@]}")
+  if [[ "${INCLUDE_OLLAMA:-0}" == "1" ]]; then
+    imgs+=("${WORKSHOP_IMAGES_OPTIONAL[@]}")
+  fi
+  printf '%s\n' "${imgs[@]}"
+}
+
+maybe_prompt_optional_ollama() {
+  # Non-interactive: if INCLUDE_OLLAMA is already set, skip the prompt.
+  if [[ -n "${INCLUDE_OLLAMA:-}" ]]; then
+    return 0
+  fi
+  local ans
+  read -rp "$(echo -e "Include the optional Ollama image (ollama/ollama:latest, ~1.3 GB)? [y/N] ")" ans
+  if [[ "$ans" =~ ^[yY] ]]; then
+    INCLUDE_OLLAMA=1
+  else
+    INCLUDE_OLLAMA=0
+  fi
+}
+
 BOLD='\033[1m'
 DIM='\033[2m'
 GREEN='\033[0;32m'
@@ -57,8 +86,11 @@ image_exists() {
 do_export() {
   check_docker || return 1
 
+  maybe_prompt_optional_ollama
+  local images
+  IFS=$'\n' read -rd '' -a images < <(effective_images && printf '\0')
   local found_images=()
-  for image in "${WORKSHOP_IMAGES[@]}"; do
+  for image in "${images[@]}"; do
     if image_exists "$image"; then
       echo -e "  ${GREEN}FOUND${RESET}   $image"
       found_images+=("$image")
@@ -108,8 +140,11 @@ do_import() {
 do_pull() {
   check_docker || return 1
 
+  maybe_prompt_optional_ollama
+  local images
+  IFS=$'\n' read -rd '' -a images < <(effective_images && printf '\0')
   echo "Pulling workshop images ..."
-  for image in "${WORKSHOP_IMAGES[@]}"; do
+  for image in "${images[@]}"; do
     echo ""
     echo -e "--- ${CYAN}$image${RESET} ---"
     docker pull "$image"
@@ -124,10 +159,13 @@ do_pull() {
 do_list() {
   check_docker || return 1
 
+  maybe_prompt_optional_ollama
+  local images
+  IFS=$'\n' read -rd '' -a images < <(effective_images && printf '\0')
   echo ""
   echo -e "${BOLD}Workshop Docker images:${RESET}"
   echo ""
-  for image in "${WORKSHOP_IMAGES[@]}"; do
+  for image in "${images[@]}"; do
     if image_exists "$image"; then
       local size
       size=$(docker image inspect "$image" --format='{{.Size}}' 2>/dev/null)
@@ -188,7 +226,16 @@ interactive() {
 if [[ $# -eq 0 ]]; then
   interactive
 else
-  case "$1" in
+  # Allow --with-ollama anywhere in the argv; strip it and set INCLUDE_OLLAMA=1.
+  for a in "$@"; do
+    if [[ "$a" == "--with-ollama" ]]; then
+      export INCLUDE_OLLAMA=1
+    fi
+  done
+  # Filter --with-ollama out of the positional args.
+  set -- $(printf '%s\n' "$@" | grep -v '^--with-ollama$' || true)
+
+  case "${1:-}" in
     export) do_export ;;
     import) do_import ;;
     pull)   do_pull ;;
