@@ -125,22 +125,111 @@ do_export() {
 }
 
 # ---------------------------------------------------------------------------
-# IMPORT — unpack archive into the Ollama models directory
+# IMPORT — three target modes:
+#   ollama      → unpack tarball into the host Ollama models dir (default 1)
+#   docker      → unpack tarball into models/ollama/ for the dockerized Ollama
+#   docker-pull → 'docker exec ollama ollama pull' for each WORKSHOP_MODELS entry
 # ---------------------------------------------------------------------------
-do_import() {
-  local models_dir
-  models_dir="$(find_models_dir)" || return 1
 
+DOCKER_MODELS_DIR="${SCRIPT_DIR}/ollama"
+
+choose_import_target() {
+  echo "" >&2
+  echo -e "${BOLD}Where to import the models?${RESET}" >&2
+  echo -e "  ${CYAN}1${RESET}) Into the running Ollama (default: ~/.ollama/models or \$OLLAMA_MODELS)" >&2
+  echo -e "  ${CYAN}2${RESET}) Into models/ollama/ (for the dockerized Ollama in docker/ollama/)" >&2
+  echo -e "  ${CYAN}3${RESET}) Pull all workshop models directly into the running dockerized Ollama" >&2
+  echo -e "     ${DIM}(no archive needed; requires internet and the 'ollama' container to be up)${RESET}" >&2
+  echo "" >&2
+  local choice
+  read -rp "Choose [1/2/3]: " choice
+  case "$choice" in
+    ""|1) echo "ollama" ;;
+    2)    echo "docker" ;;
+    3)    echo "docker-pull" ;;
+    *)    echo -e "${RED}Invalid choice.${RESET}" >&2; return 1 ;;
+  esac
+}
+
+do_import_tarball_into() {
+  local target_dir="$1"
   if [[ ! -f "$ARCHIVE" ]]; then
     echo -e "${RED}ERROR: $ARCHIVE not found.${RESET} Export models first with option [1]." >&2
     return 1
   fi
+  mkdir -p "$target_dir"
+  echo "Importing models from $ARCHIVE into $target_dir ..."
+  tar -xzf "$ARCHIVE" -C "$target_dir"
+}
 
-  echo "Importing models from $ARCHIVE into $models_dir ..."
-  tar -xzf "$ARCHIVE" -C "$models_dir"
+do_import() {
+  local target="${1:-}"
+  if [[ -z "$target" ]]; then
+    target="$(choose_import_target)" || return 1
+  fi
 
-  echo -e "${GREEN}Done.${RESET} Restart Ollama if it was running, then verify with:"
-  echo "  ollama list"
+  case "$target" in
+    ollama)
+      local models_dir
+      models_dir="$(find_models_dir)" || return 1
+      do_import_tarball_into "$models_dir" || return 1
+      echo -e "${GREEN}Done.${RESET} Restart Ollama if it was running, then verify with:"
+      echo "  ollama list"
+      ;;
+    docker)
+      do_import_tarball_into "$DOCKER_MODELS_DIR" || return 1
+      echo -e "${GREEN}Done.${RESET} Start with:"
+      echo "  docker compose -f docker/ollama/docker-compose.yaml up -d"
+      echo "Then verify: docker exec ollama ollama list"
+      ;;
+    docker-pull)
+      do_import_docker_pull || return 1
+      ;;
+    *)
+      echo -e "${RED}Unknown target: $target${RESET}" >&2
+      echo "Expected: ollama | docker | docker-pull" >&2
+      return 1
+      ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# IMPORT mode 3: pull each WORKSHOP_MODELS entry into the running 'ollama'
+# container via docker exec. No tarball involved.
+# ---------------------------------------------------------------------------
+do_import_docker_pull() {
+  if ! command -v docker &>/dev/null; then
+    echo -e "${RED}ERROR: docker is not installed.${RESET}" >&2
+    return 1
+  fi
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^ollama$'; then
+    echo -e "${RED}ERROR: the 'ollama' container is not running.${RESET}" >&2
+    echo "Start it first:" >&2
+    echo "  ./workshop.sh infra ollama" >&2
+    echo "  docker compose -f docker/ollama/docker-compose.yaml up -d" >&2
+    return 1
+  fi
+
+  echo "Pulling workshop models into the 'ollama' container ..."
+  local failed=0
+  for model in "${WORKSHOP_MODELS[@]}"; do
+    echo ""
+    echo -e "--- ${CYAN}${model}${RESET} ---"
+    if docker exec ollama ollama pull "$model"; then
+      echo -e "  ${GREEN}OK${RESET}  $model"
+    else
+      echo -e "  ${RED}FAIL${RESET} $model"
+      failed=$((failed + 1))
+    fi
+  done
+
+  echo ""
+  if [[ $failed -gt 0 ]]; then
+    echo -e "${YELLOW}${failed} model(s) failed to pull.${RESET} See output above."
+    return 1
+  fi
+  echo -e "${GREEN}All workshop models pulled into the container.${RESET}"
+  echo "Verify: docker exec ollama ollama list"
 }
 
 # ---------------------------------------------------------------------------
@@ -188,7 +277,7 @@ show_menu() {
   echo -e "${BOLD}========================================${RESET}"
   echo ""
   echo -e "  ${CYAN}1${RESET})  Export models to models.tar.gz"
-  echo -e "  ${CYAN}2${RESET})  Import models from models.tar.gz"
+  echo -e "  ${CYAN}2${RESET})  Import models from models.tar.gz (or pull directly into dockerized Ollama)"
   echo -e "  ${CYAN}3${RESET})  Pull all workshop models"
   echo -e "  ${CYAN}4${RESET})  List installed workshop models"
   echo ""
@@ -220,7 +309,25 @@ if [[ $# -eq 0 ]]; then
 else
   case "$1" in
     export) shift; do_export "$@" ;;
-    import) do_import ;;
+    import)
+      shift
+      target=""
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --target=*) target="${1#--target=}"; shift ;;
+          --target)
+            if [[ $# -lt 2 ]]; then
+              echo "ERROR: --target requires a value (ollama|docker|docker-pull)" >&2
+              exit 1
+            fi
+            target="$2"
+            shift 2
+            ;;
+          *) echo "Unknown arg: $1" >&2; exit 1 ;;
+        esac
+      done
+      do_import "$target"
+      ;;
     pull)   do_pull ;;
     list)   do_list ;;
     *)

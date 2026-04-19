@@ -645,8 +645,11 @@ creds_status_line() {
 }
 
 # ── Running services status ─────────────────────────────────
-# Returns a compact services status line for the TUI header
-services_status_line() {
+# The header now splits app-level state (provider/spy/ui) from infra-level
+# state (pg/lgtm/ollama) into two lines for readability.
+
+# App-level status: provider + spy (gateway) + ui (dashboard)
+services_status_line_app() {
     local line=""
 
     # Provider app on port 8080
@@ -680,10 +683,17 @@ services_status_line() {
 
     # UI profile — check if dashboard endpoint responds
     if curl -sf -o /dev/null http://localhost:8080/dashboard 2>/dev/null; then
-        line+="ui:${GREEN}on${NC}  "
+        line+="ui:${GREEN}on${NC}"
     else
-        line+="ui:${RED}off${NC}  "
+        line+="ui:${RED}off${NC}"
     fi
+
+    echo "${line}"
+}
+
+# Infra-level status: postgres + lgtm + ollama (three-state)
+services_status_line_infra() {
+    local line=""
 
     # Docker: postgres
     if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "postgres"; then
@@ -698,6 +708,15 @@ services_status_line() {
     else
         line+="lgtm:${RED}off${NC}"
     fi
+
+    # Ollama three-state: docker (cyan) | local (green) | off (red)
+    local om
+    om=$(ollama_mode)
+    case "${om}" in
+        docker) line+="  ollama:${CYAN}docker${NC}" ;;
+        local)  line+="  ollama:${GREEN}local${NC}" ;;
+        off)    line+="  ollama:${RED}off${NC}" ;;
+    esac
 
     echo -e "${line}"
 }
@@ -819,6 +838,10 @@ POSTGRES_COMPOSE="${SCRIPT_DIR}/docker/postgres/docker-compose.yaml"
 LGTM_COMPOSE="${SCRIPT_DIR}/docker/observability-stack/docker-compose.yaml"
 POSTGRES_CONTAINER="postgres-postgres-1"
 LGTM_CONTAINER="grafana-lgtm"
+OLLAMA_COMPOSE="${SCRIPT_DIR}/docker/ollama/docker-compose.yaml"
+OLLAMA_GPU_COMPOSE="${SCRIPT_DIR}/docker/ollama/docker-compose.gpu.yaml"
+OLLAMA_CONTAINER="ollama"
+OLLAMA_MODELS_DIR="${SCRIPT_DIR}/models/ollama"
 
 OLLAMA_MODELS=("qwen3" "nomic-embed-text" "llava")
 DATABASES=("ollama" "openai" "azure")
@@ -831,6 +854,43 @@ PROFILE_DESC=(
     "Workshop dashboard"
     "Gateway network spy"
 )
+
+# ─────────────────────────────────────────────────────────────
+# Ollama mode detection — returns "docker" | "local" | "off"
+# Docker-first because both use port 11434; container-name presence
+# is the authoritative signal.
+# ─────────────────────────────────────────────────────────────
+ollama_mode() {
+    if command -v docker &>/dev/null && \
+       docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${OLLAMA_CONTAINER}$"; then
+        echo "docker"
+    elif curl -sf http://localhost:11434/api/tags &>/dev/null; then
+        echo "local"
+    else
+        echo "off"
+    fi
+}
+
+# Runs `docker compose` against the Ollama compose files, auto-appending the
+# GPU overlay when NVIDIA is detected (or forced via WORKSHOP_OLLAMA_GPU=1).
+# Disable with WORKSHOP_OLLAMA_GPU=0. Arguments after this function's name are
+# forwarded to `docker compose` (e.g. `ollama_up up -d`, `ollama_up down`,
+# `ollama_up pull`).
+ollama_up() {
+    local args=(-f "${OLLAMA_COMPOSE}")
+    local force="${WORKSHOP_OLLAMA_GPU:-auto}"
+    local gpu_ok=0
+    if [ "${force}" = "1" ]; then
+        gpu_ok=1
+    elif [ "${force}" != "0" ] && command -v nvidia-smi &>/dev/null && \
+         docker info 2>/dev/null | grep -qi 'Runtimes:.*nvidia'; then
+        gpu_ok=1
+    fi
+    if [ "${gpu_ok}" = "1" ] && [ -f "${OLLAMA_GPU_COMPOSE}" ]; then
+        args+=(-f "${OLLAMA_GPU_COMPOSE}")
+    fi
+    docker compose "${args[@]}" "$@"
+}
 
 # ─────────────────────────────────────────────────────────────
 # cmd_check — Check all prerequisites
@@ -866,12 +926,13 @@ cmd_check() {
     fi
 
     header "Ollama (optional — needed only for provider-ollama)"
-    if command -v ollama &>/dev/null; then
-        ok "Ollama installed — $(ollama --version 2>&1 | head -1)"
-        # Check if Ollama server is running
-        local model_list
-        if model_list=$(ollama list 2>/dev/null); then
-            ok "Ollama server is running"
+    local om
+    om=$(ollama_mode)
+    case "${om}" in
+        local)
+            ok "Ollama running locally — $(ollama --version 2>&1 | head -1)"
+            local model_list
+            model_list=$(ollama list 2>/dev/null || true)
             for model in "${OLLAMA_MODELS[@]}"; do
                 if echo "${model_list}" | grep -q "${model}"; then
                     ok "Model ${model} — available"
@@ -880,13 +941,42 @@ cmd_check() {
                     info "Run: ollama pull ${model}"
                 fi
             done
-        else
-            warn "Ollama server is not running — start with: ollama serve"
-        fi
-    else
-        info "Ollama not installed (not needed for cloud providers)"
-        info "Install from https://ollama.com/ if you want to run locally"
-    fi
+            ;;
+        docker)
+            ok "Ollama running (dockerized) — container '${OLLAMA_CONTAINER}'"
+            local docker_model_list
+            docker_model_list=$(docker exec "${OLLAMA_CONTAINER}" ollama list 2>/dev/null || true)
+            for model in "${OLLAMA_MODELS[@]}"; do
+                if echo "${docker_model_list}" | grep -q "${model}"; then
+                    ok "Model ${model} — available (in container)"
+                else
+                    warn "Model ${model} — not in container"
+                    info "Run: docker exec ${OLLAMA_CONTAINER} ollama pull ${model}"
+                fi
+            done
+            ;;
+        off)
+            if command -v ollama &>/dev/null; then
+                warn "Ollama installed but not running — start with: ollama serve"
+            else
+                info "Ollama not installed locally"
+                info "Install from https://ollama.com/ OR use the dockerized alternative:"
+                info "  ./workshop.sh infra ollama   (requires ollama/ollama image)"
+                info "  See docs/ollama_dockerized.md"
+            fi
+            # Hint whether the dockerized path is ready
+            if [ -d "${OLLAMA_MODELS_DIR}" ] && [ -n "$(ls -A "${OLLAMA_MODELS_DIR}" 2>/dev/null | grep -v '^\.gitkeep$' || true)" ]; then
+                info "Models detected in ${OLLAMA_MODELS_DIR#${SCRIPT_DIR}/} — container will serve them once started"
+            else
+                info "To pre-seed the dockerized Ollama: ./models/ollama.sh import (pick target 2)"
+            fi
+            if command -v docker &>/dev/null && docker image inspect ollama/ollama:latest &>/dev/null; then
+                info "Image ollama/ollama:latest is pulled locally"
+            else
+                info "Image ollama/ollama:latest is NOT pulled — ./models/containers.sh pull --with-ollama"
+            fi
+            ;;
+    esac
 
     header "Docker"
     if command -v docker &>/dev/null; then
@@ -943,7 +1033,7 @@ cmd_setup() {
     # ── Step 1: Ollama models ──────────────────────────────
     echo ""
     local pull_models
-    read -r -p "$(echo -e "${BOLD}[1/3]${NC} Pull/update Ollama models (${OLLAMA_MODELS[*]})? [Y/n] ")" pull_models
+    read -r -p "$(echo -e "${BOLD}[1/4]${NC} Pull/update Ollama models (${OLLAMA_MODELS[*]})? [Y/n] ")" pull_models
     pull_models="${pull_models:-y}"
     if [[ "${pull_models}" =~ ^[yY] ]]; then
         if command -v ollama &>/dev/null; then
@@ -963,7 +1053,7 @@ cmd_setup() {
     # ── Step 2: Docker images ──────────────────────────────
     echo ""
     local pull_images
-    read -r -p "$(echo -e "${BOLD}[2/3]${NC} Pull/update Docker images (PostgreSQL + LGTM observability stack)? [Y/n] ")" pull_images
+    read -r -p "$(echo -e "${BOLD}[2/4]${NC} Pull/update Docker images (PostgreSQL + LGTM observability stack)? [Y/n] ")" pull_images
     pull_images="${pull_images:-y}"
     if [[ "${pull_images}" =~ ^[yY] ]]; then
         if command -v docker &>/dev/null; then
@@ -980,10 +1070,27 @@ cmd_setup() {
         info "Skipped image pull."
     fi
 
-    # ── Step 3: Maven build ────────────────────────────────
+    # ── Step 3: Optional Ollama container image ────────────
+    echo ""
+    local pull_ollama_img
+    read -r -p "$(echo -e "${BOLD}[3/4]${NC} Pull optional Ollama container image (ollama/ollama:latest, ~1.3 GB)? [y/N] ")" pull_ollama_img
+    pull_ollama_img="${pull_ollama_img:-n}"
+    if [[ "${pull_ollama_img}" =~ ^[yY] ]]; then
+        if command -v docker &>/dev/null; then
+            header "Pulling Ollama container image"
+            docker compose -f "${OLLAMA_COMPOSE}" pull
+            ok "Ollama image ready (use: ./workshop.sh infra ollama)"
+        else
+            fail "Docker not installed — skipping Ollama image pull"
+        fi
+    else
+        info "Skipped Ollama image pull."
+    fi
+
+    # ── Step 4: Maven build ────────────────────────────────
     echo ""
     local build_jars
-    read -r -p "$(echo -e "${BOLD}[3/3]${NC} Compile all JARs (provider apps, MCP demos, agentic apps)? [Y/n] ")" build_jars
+    read -r -p "$(echo -e "${BOLD}[4/4]${NC} Compile all JARs (provider apps, MCP demos, agentic apps)? [Y/n] ")" build_jars
     build_jars="${build_jars:-y}"
     if [[ "${build_jars}" =~ ^[yY] ]]; then
         header "Building Maven project"
@@ -1026,6 +1133,15 @@ cmd_start() {
         exit 1
     fi
 
+    # Parse optional --ollama-docker flag (added here rather than via Spring profiles,
+    # since this concerns infrastructure rather than app configuration).
+    local want_ollama_docker=0
+    # shellcheck disable=SC2124
+    local raw_args="${@:-}"
+    if echo " ${raw_args} " | grep -q -- ' --ollama-docker '; then
+        want_ollama_docker=1
+    fi
+
     echo ""
     echo -e "${BOLD}Starting provider: ${CYAN}${provider}${NC}"
     [ -n "${profiles}" ] && echo -e "Profiles: ${CYAN}${profiles}${NC}"
@@ -1042,6 +1158,27 @@ cmd_start() {
         header "Starting LGTM observability stack"
         docker compose -f "${LGTM_COMPOSE}" up -d
         ok "LGTM stack started"
+    fi
+
+    if [ "${want_ollama_docker}" = "1" ] && [ "${provider}" = "ollama" ]; then
+        if [ ! -f "${OLLAMA_COMPOSE}" ]; then
+            fail "Missing ${OLLAMA_COMPOSE} — cannot honor --ollama-docker"
+            return 1
+        fi
+        header "Starting dockerized Ollama"
+        ollama_up up -d
+        echo -e "  ${CYAN}→${NC} Waiting for Ollama on port 11434..."
+        local wait_n=0
+        while [ "${wait_n}" -lt 30 ]; do
+            curl -sf http://localhost:11434/api/tags &>/dev/null && break
+            sleep 2
+            wait_n=$((wait_n + 1))
+        done
+        if [ "${wait_n}" -ge 30 ]; then
+            warn "Dockerized Ollama did not respond within 60s"
+        else
+            ok "Dockerized Ollama ready"
+        fi
     fi
 
     # Check if port 8080 is already in use (works on macOS and Linux)
@@ -1259,15 +1396,24 @@ cmd_stop() {
     fi
     ok "Gateway stopped"
 
-    # Ask about Docker containers
+    # Ask about Docker containers — append Ollama only when dockerized.
     echo ""
-    local stop_docker
-    read -r -p "  Stop Docker containers (postgres + LGTM)? [y/N] " stop_docker
+    local stop_docker prompt_extra=""
+    local ollama_was_docker=0
+    if [ "$(ollama_mode)" = "docker" ]; then
+        prompt_extra=" + Ollama"
+        ollama_was_docker=1
+    fi
+    read -r -p "  Stop Docker containers (postgres + LGTM${prompt_extra})? [y/N] " stop_docker
     if [[ "${stop_docker}" =~ ^[Yy]$ ]]; then
         echo -e "  ${CYAN}→${NC} Stopping PostgreSQL..."
         docker compose -f "${POSTGRES_COMPOSE}" down 2>/dev/null && ok "PostgreSQL stopped" || warn "PostgreSQL was not running"
         echo -e "  ${CYAN}→${NC} Stopping LGTM stack..."
         docker compose -f "${LGTM_COMPOSE}" down 2>/dev/null && ok "LGTM stopped" || warn "LGTM was not running"
+        if [ "${ollama_was_docker}" = "1" ]; then
+            echo -e "  ${CYAN}→${NC} Stopping dockerized Ollama..."
+            docker compose -f "${OLLAMA_COMPOSE}" down 2>/dev/null && ok "Ollama stopped" || warn "Ollama compose down failed"
+        fi
     else
         info "Docker containers left running"
     fi
@@ -1360,11 +1506,12 @@ cmd_status() {
         warn "Docker not available"
     fi
 
-    if command -v ollama &>/dev/null; then
-        header "Ollama"
-        local status_model_list
-        if status_model_list=$(ollama list 2>/dev/null); then
-            ok "Ollama server running"
+    header "Ollama"
+    case "$(ollama_mode)" in
+        local)
+            ok "Ollama running locally"
+            local status_model_list
+            status_model_list=$(ollama list 2>/dev/null || true)
             for model in "${OLLAMA_MODELS[@]}"; do
                 if echo "${status_model_list}" | grep -q "${model}"; then
                     ok "  Model: ${model}"
@@ -1372,10 +1519,23 @@ cmd_status() {
                     warn "  Model not pulled: ${model}"
                 fi
             done
-        else
-            warn "Ollama server not running"
-        fi
-    fi
+            ;;
+        docker)
+            ok "Ollama running (dockerized) — container '${OLLAMA_CONTAINER}'"
+            local docker_status_models
+            docker_status_models=$(docker exec "${OLLAMA_CONTAINER}" ollama list 2>/dev/null || true)
+            for model in "${OLLAMA_MODELS[@]}"; do
+                if echo "${docker_status_models}" | grep -q "${model}"; then
+                    ok "  Model: ${model}"
+                else
+                    warn "  Model not in container: ${model}"
+                fi
+            done
+            ;;
+        off)
+            info "Ollama not running (neither locally nor dockerized)"
+            ;;
+    esac
 
     header "Endpoints"
     echo -e "  App:       ${CYAN}http://localhost:8080${NC}"
@@ -1751,7 +1911,8 @@ draw_menu() {
     echo -e "${BOLD}${CYAN}│${NC}  Boot 4.0.5 | AI 2.0.0-M4 | Java 25                      ${BOLD}${CYAN}│${NC}"
     echo -e "${BOLD}${CYAN}├──────────────────────────────────────────────────────────┘${NC}"
     echo -e "${BOLD}${CYAN}│${NC}  Creds:   $(creds_status_line)"
-    echo -e "${BOLD}${CYAN}│${NC}  State:   $(services_status_line)"
+    echo -e "${BOLD}${CYAN}│${NC}  State:   $(services_status_line_app)"
+    echo -e "${BOLD}${CYAN}│${NC}  Infra:   $(services_status_line_infra)"
     echo -e "${BOLD}${CYAN}│${NC}  MCP:     $(mcp_status_line)"
     echo -e "${BOLD}${CYAN}│${NC}  Agentic: $(agentic_status_line)"
     echo -e "${BOLD}${CYAN}├──────────────────────────────────────────────────────────┐${NC}"
@@ -1797,7 +1958,13 @@ interactive_infra() {
     echo -e "${BOLD}Start infrastructure:${NC}"
     echo -e "  ${GREEN}1)${NC} PostgreSQL (pgvector)    port 15432"
     echo -e "  ${GREEN}2)${NC} LGTM observability       port 3000, 4317, 4318"
-    echo -e "  ${GREEN}3)${NC} Both"
+    echo -e "  ${GREEN}3)${NC} Both (1+2)"
+    local has_ollama_compose=0
+    if [ -f "${OLLAMA_COMPOSE}" ]; then
+        has_ollama_compose=1
+        echo -e "  ${GREEN}4)${NC} Ollama (dockerized)      port 11434"
+        echo -e "  ${GREEN}5)${NC} All three (1+2+4)"
+    fi
     echo -e "  ${RED}a)${NC} Abort"
     echo ""
     local choice
@@ -1821,6 +1988,24 @@ interactive_infra() {
             header "Starting LGTM observability stack"
             docker compose -f "${LGTM_COMPOSE}" up -d
             ok "LGTM started — Grafana on port 3000"
+            ;;
+        4)
+            [ "${has_ollama_compose}" = "1" ] || { warn "Invalid choice"; return 0; }
+            header "Starting dockerized Ollama"
+            ollama_up up -d
+            ok "Ollama container started on port 11434"
+            ;;
+        5)
+            [ "${has_ollama_compose}" = "1" ] || { warn "Invalid choice"; return 0; }
+            header "Starting PostgreSQL (pgvector)"
+            docker compose -f "${POSTGRES_COMPOSE}" up -d
+            ok "PostgreSQL started on port 15432"
+            header "Starting LGTM observability stack"
+            docker compose -f "${LGTM_COMPOSE}" up -d
+            ok "LGTM started — Grafana on port 3000"
+            header "Starting dockerized Ollama"
+            ollama_up up -d
+            ok "Ollama container started on port 11434"
             ;;
         *)
             warn "Invalid choice"
@@ -1926,7 +2111,20 @@ interactive_start() {
     if [[ "${start_infra}" =~ ^[aA]$ ]]; then
         info "Aborted"; return 0
     fi
-    cmd_start "${SELECTED_PROVIDER}" "${SELECTED_PROFILES}"
+
+    # When user picked ollama and neither native nor container is up,
+    # offer to start the dockerized one alongside the provider app.
+    local passthrough=()
+    if [ "${SELECTED_PROVIDER}" = "ollama" ] && [ "$(ollama_mode)" = "off" ] && [ -f "${OLLAMA_COMPOSE}" ]; then
+        local ans
+        read -r -p "  Also start dockerized Ollama? [y/N] " ans
+        if [[ "${ans}" =~ ^[yY] ]]; then
+            passthrough+=("--ollama-docker")
+        fi
+    fi
+
+    # bash 3.2-safe empty-array expansion under set -u:
+    cmd_start "${SELECTED_PROVIDER}" "${SELECTED_PROFILES}" ${passthrough[@]+"${passthrough[@]}"}
 }
 
 interactive_mcp_start() {
@@ -2148,6 +2346,15 @@ main() {
                     docker compose -f "${LGTM_COMPOSE}" up -d
                     ok "LGTM started — Grafana on port 3000"
                     ;;
+                ollama)
+                    if [ ! -f "${OLLAMA_COMPOSE}" ]; then
+                        fail "Missing ${OLLAMA_COMPOSE}"
+                        exit 1
+                    fi
+                    header "Starting dockerized Ollama"
+                    ollama_up up -d
+                    ok "Ollama container started on port 11434"
+                    ;;
                 all|both)
                     header "Starting PostgreSQL (pgvector)"
                     docker compose -f "${POSTGRES_COMPOSE}" up -d
@@ -2155,10 +2362,15 @@ main() {
                     header "Starting LGTM observability stack"
                     docker compose -f "${LGTM_COMPOSE}" up -d
                     ok "LGTM started — Grafana on port 3000"
+                    if [ -f "${OLLAMA_COMPOSE}" ]; then
+                        header "Starting dockerized Ollama"
+                        ollama_up up -d
+                        ok "Ollama container started on port 11434"
+                    fi
                     ;;
                 *)
                     fail "Unknown target: ${target}"
-                    echo "Usage: ./workshop.sh infra <postgres|lgtm|all>"
+                    echo "Usage: ./workshop.sh infra <postgres|lgtm|ollama|all>"
                     exit 1
                     ;;
             esac
@@ -2174,6 +2386,7 @@ main() {
             local profiles=""
             shift || true
             # Parse --profiles flag
+            local passthrough=()
             while [ $# -gt 0 ]; do
                 case "$1" in
                     --profiles)
@@ -2184,12 +2397,17 @@ main() {
                         profiles="${1#--profiles=}"
                         shift
                         ;;
+                    --ollama-docker)
+                        passthrough+=("--ollama-docker")
+                        shift
+                        ;;
                     *)
                         shift
                         ;;
                 esac
             done
-            cmd_start "${provider}" "${profiles}"
+            # bash 3.2-safe empty-array expansion under set -u:
+            cmd_start "${provider}" "${profiles}" ${passthrough[@]+"${passthrough[@]}"}
             ;;
         stop)
             cmd_stop
