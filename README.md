@@ -59,6 +59,7 @@ Every stage builds on the previous one. You can follow them linearly, or jump st
 
 Then open:
 - **Workshop Dashboard** — http://localhost:8080/dashboard
+- **Workshop Slides** — http://localhost:8080/slides.html
 - **Swagger UI** — http://localhost:8080/swagger-ui.html
 - **Grafana** — http://localhost:3000
 
