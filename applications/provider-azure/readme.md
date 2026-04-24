@@ -1,6 +1,6 @@
 # Azure OpenAI
 
-**Spring Boot 4.0.5 | Spring AI 2.0.0-M4 | spring-ai-starter-model-azure-openai**
+**Spring Boot 4.0.6 | Spring AI 2.0.0-M4 | spring-ai-starter-model-azure-openai**
 
 All 8 chat endpoints pass with gpt-4.1-mini.
 

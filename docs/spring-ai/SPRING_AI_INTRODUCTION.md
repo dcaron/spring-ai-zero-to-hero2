@@ -1,7 +1,7 @@
 # Spring AI Introduction
 
 **Spring AI Version:** 2.0.0-M4
-**Spring Boot Version:** 4.0.5
+**Spring Boot Version:** 4.0.6
 **Java Version:** 25
 
 ---

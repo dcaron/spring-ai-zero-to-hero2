@@ -1,5 +1,11 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.3] - 2026-04-24
+
+### Changed
+- Bumped Spring Boot from `4.0.5` → `4.0.6` across the parent POM, workshop docs, dashboard, slides, OpenAPI description, Grafana dashboard, `workshop.sh` banners, and all provider/component readmes. No code changes required — 4.0.6 is a maintenance release with no breaking changes relevant to the workshop (notable fixes — actuator-without-health security misconfig, Jackson `use-jackson2-defaults`, Elasticsearch REST5Client, MongoDB reactive driver transitive, Cassandra/RabbitMQ config — do not affect any module here).
+- Transitively picks up Spring Framework `7.0.7`, Spring Security `7.0.5`, Hibernate `7.2.12` via the managed parent.
+
 ## [2.3.2] - 2026-04-19
 
 ### Added
