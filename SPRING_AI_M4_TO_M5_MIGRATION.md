@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS vector_store (
 CREATE INDEX ON vector_store USING HNSW (embedding vector_cosine_ops);
 ```
 
-Same gap remains in `provider-aws` and `provider-google`. Worth replicating before someone hits it.
+**Update (post-investigation):** an earlier draft of this document recommended replicating the Flyway migration to `provider-aws` and `provider-google`. Closer audit shows that's **not** needed and would actively make things worse. Those two providers (and `provider-anthropic`) deliberately exclude `embedding`, `vector-store`, and `config-pgvector` from their poms — Spring AI 2.0.0-M5 doesn't auto-configure an `EmbeddingModel` for AWS Bedrock Converse (chat-only starter), Google Gemini in API-key mode, or Anthropic (no native embeddings). They also have no `pgvector` profile block in `application.yaml`. So `--profiles=pgvector` on those providers is a clean no-op: the profile activates, but no pgvector code path is wired, no JDBC autoconfig fires, and no Flyway runs. Adding Flyway there would force Postgres to be running on startup for no benefit. The gap is closed only for providers that actually use pgvector (openai, ollama, azure).
 
 ---
 
@@ -469,7 +469,7 @@ grep -rl "2\.0\.0-M4" --include="*.md" --include="*.xml" --include="*.html" \
 
 ## Part 7 — Recommended follow-ups (not done in this bump)
 
-1. **Replicate the Flyway migration to `provider-aws` and `provider-google`** — same gap (§3.5) that bit Azure. They'll fail identically the first time anyone runs them with `-Dspring-boot.run.profiles=pgvector`.
+1. ~~Replicate the Flyway migration to `provider-aws` and `provider-google`~~ — **investigated and closed.** AWS/Google/Anthropic deliberately exclude embedding/vector-store/config-pgvector from their poms (Spring AI 2.0.0-M5 doesn't auto-configure an `EmbeddingModel` for those chat starters), and they have no `pgvector` profile block in `application.yaml`. `--profiles=pgvector` is a clean no-op on those three; no Flyway needed. See updated note in §3.5.
 2. **Bake capacity flags into the Azure setup commands in `applications/provider-azure/readme.md`** — currently the readme inherits the M4-era `--sku-capacity 1`, which is the trap from §4.5.
 3. **Decide on a Foundry api-version pin** — we rely on the openai-java SDK default (`V2024_10_21`). When the SDK bumps its default, we'll automatically follow; if a deployment ever needs a specific version, set `spring.ai.openai.microsoft-foundry-service-version` explicitly.
 4. **Re-test the `spy` gateway path with anthropic** — the gateway rewrite now sends `/anthropic/<rest>` straight through with no `/v1` prefix. If Anthropic's SDK appends `/v1/messages` on its own, we're fine; if it appends just `/messages`, the route needs the same `/v1` prefix as `/openai`. We didn't have an active anthropic-via-spy test during this bump.
