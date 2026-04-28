@@ -28,7 +28,7 @@
 			<version>${project.version}</version>
 		</dependency>
 		<!-- Embedding/vector-store excluded: Gemini API key mode
-		     doesn't auto-configure EmbeddingModel in Spring AI 2.0.0-M4 -->
+		     doesn't auto-configure EmbeddingModel in Spring AI 2.0.0-M5 -->
 		<!--
 		<dependency>
 			<groupId>com.example</groupId>

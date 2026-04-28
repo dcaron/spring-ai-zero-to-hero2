@@ -13,10 +13,12 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("openai")
 class AgentOptionsConfigOpenAiTest {
 
-  @Autowired ChatOptions chatOptions;
+  // Spring AI 2.0.0-M5: bean exposes a ChatOptions.Builder so the chat client can merge defaults.
+  @Autowired ChatOptions.Builder chatOptionsBuilder;
 
   @Test
   void selectsOpenAiOptionsWithRequiredToolChoice() {
+    ChatOptions chatOptions = chatOptionsBuilder.build();
     assertThat(chatOptions).isInstanceOf(OpenAiChatOptions.class);
     OpenAiChatOptions opts = (OpenAiChatOptions) chatOptions;
     assertThat(opts.getToolChoice()).isEqualTo("required");

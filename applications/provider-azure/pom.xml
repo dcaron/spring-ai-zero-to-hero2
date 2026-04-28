@@ -69,13 +69,25 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!-- Flyway runs db/migration/V1__test.sql on startup to enable the pgvector extension
+		     and create the vector_store table in the `azure` database (matches provider-openai). -->
 		<dependency>
-			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-starter-model-azure-openai</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<!--
+		  Spring AI 2.0.0-M5 removed `spring-ai-azure-openai`.
+		  Azure OpenAI ("Microsoft Foundry") is now served via the unified `spring-ai-openai` module:
+		  Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com`
+		  (or `cognitiveservices.azure.com`), or when `deployment-name` is set.
+		-->
+		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-azure-store</artifactId>
+			<artifactId>spring-ai-starter-model-openai</artifactId>
 		</dependency>
 	</dependencies>
 	<build>

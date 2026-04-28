@@ -34,8 +34,9 @@ class InnerMonologueAgentControllerTest {
     }
 
     @Bean
-    ChatOptions chatOptions() {
-      return OpenAiChatOptions.builder().toolChoice("required").build();
+    ChatOptions.Builder chatOptions() {
+      // Spring AI 2.0.0-M5: ChatClient.Builder.defaultOptions() takes a ChatOptions.Builder.
+      return OpenAiChatOptions.builder().toolChoice("required");
     }
   }
 

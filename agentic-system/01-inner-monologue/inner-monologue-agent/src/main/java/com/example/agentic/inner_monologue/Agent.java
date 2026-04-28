@@ -38,7 +38,7 @@ public class Agent {
   private final ChatClient chatClient;
   private final MessageWindowChatMemory memory;
 
-  public Agent(ChatClient.Builder builder, String id, ChatOptions options) {
+  public Agent(ChatClient.Builder builder, String id, ChatOptions.Builder options) {
     this.id = id;
 
     this.memory =

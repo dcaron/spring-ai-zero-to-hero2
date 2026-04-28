@@ -22,7 +22,7 @@ class AgentTest {
     ChatClient.CallResponseSpec call = mock(ChatClient.CallResponseSpec.class);
 
     when(builder.clone()).thenReturn(clone);
-    when(clone.defaultOptions(any(ChatOptions.class))).thenReturn(clone);
+    when(clone.defaultOptions(any(ChatOptions.Builder.class))).thenReturn(clone);
     when(clone.defaultTools(any(Object[].class))).thenReturn(clone);
     when(clone.defaultSystem(any(String.class))).thenReturn(clone);
     when(clone.defaultAdvisors(any(org.springframework.ai.chat.client.advisor.api.Advisor.class)))
@@ -39,7 +39,7 @@ class AgentTest {
   void returnsStructuredResponseWhenJsonIsValid() {
     String validJson = "{\"message\":\"Hello\",\"innerThoughts\":\"Simple reply\"}";
     ChatClient.Builder b = stubBuilder(validJson);
-    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder().build());
+    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder());
 
     ChatResponse result = agent.userMessage(new ChatRequest("hi"));
 
@@ -52,7 +52,7 @@ class AgentTest {
   void returnsFallbackResponseWhenContentIsFreeText() {
     String freeText = "I'd love to help you with that!";
     ChatClient.Builder b = stubBuilder(freeText);
-    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder().build());
+    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder());
 
     ChatResponse result = agent.userMessage(new ChatRequest("hi"));
 
@@ -65,7 +65,7 @@ class AgentTest {
   void returnsFallbackResponseWhenJsonIsMalformed() {
     String badJson = "{not even close";
     ChatClient.Builder b = stubBuilder(badJson);
-    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder().build());
+    Agent agent = new Agent(b, "test", OpenAiChatOptions.builder());
 
     ChatResponse result = agent.userMessage(new ChatRequest("hi"));
 

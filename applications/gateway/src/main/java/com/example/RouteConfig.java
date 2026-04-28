@@ -1,6 +1,5 @@
 package com.example;
 
-import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.stripPrefix;
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
 import static org.springframework.cloud.gateway.server.mvc.filter.BodyFilterFunctions.adaptCachedBody;
 import static org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions.route;
@@ -24,7 +23,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Configuration(proxyBeanMethods = false)
 public class RouteConfig {
@@ -41,19 +42,41 @@ public class RouteConfig {
             http())
         .before(
             request -> {
+              // Spring Cloud Gateway MVC's proxy only takes scheme/host/port from `uri(...)` —
+              // the upstream path is the REQUEST URI's path. So we must rewrite the request URI
+              // to the upstream path here (provider prefix stripped, API version prefix added),
+              // and set the route URI for scheme/host/port.
+              //
+              // Spring AI 2.0.0-M5: the openai-java SDK treats `base-url` as the API root and
+              // appends `/chat/completions` (or `/embeddings`, etc.) itself, so a call to
+              // `http://localhost:7777/openai/chat/completions` must become
+              // `https://api.openai.com/v1/chat/completions`.
               String requestPath = request.uri().getPath();
-              if (requestPath.startsWith("/letta/")) {
-                return uri("https://api.openai.com/v1").apply(request);
-              } else if (requestPath.startsWith("/openai/")) {
-                return uri("https://api.openai.com/v1/chat/completions").apply(request);
+              String routeBase;
+              String upstreamPath;
+              if (requestPath.startsWith("/openai/")) {
+                routeBase = "https://api.openai.com";
+                upstreamPath = "/v1" + requestPath.substring("/openai".length());
+              } else if (requestPath.startsWith("/letta/")) {
+                routeBase = "https://api.openai.com";
+                upstreamPath = "/v1" + requestPath.substring("/letta".length());
               } else if (requestPath.startsWith("/anthropic/")) {
-                return uri("https://api.anthropic.com").apply(request);
+                routeBase = "https://api.anthropic.com";
+                upstreamPath = requestPath.substring("/anthropic".length());
               } else if (requestPath.startsWith("/ollama/")) {
-                return uri("http://localhost:11434/").apply(request);
+                routeBase = "http://localhost:11434";
+                upstreamPath = requestPath.substring("/ollama".length());
+              } else {
+                return request;
               }
-              return request;
+              URI rewrittenUri =
+                  UriComponentsBuilder.fromUri(request.uri())
+                      .replacePath(upstreamPath)
+                      .build(true)
+                      .toUri();
+              ServerRequest pathRewritten = ServerRequest.from(request).uri(rewrittenUri).build();
+              return uri(routeBase).apply(pathRewritten);
             })
-        .before(stripPrefix(1))
         .before(
             request -> {
               var requestLogEntry = new RequestLogEntry();

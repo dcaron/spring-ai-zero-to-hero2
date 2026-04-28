@@ -1,5 +1,16 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.4] - 2026-04-28
+
+### Changed
+- Bumped Spring AI from `2.0.0-M4` → `2.0.0-M5` across the parent POM, workshop docs, dashboard, slides, Grafana dashboard, `workshop.sh` banners, and all provider/component readmes.
+
+### Migrated (M5 breaking changes)
+- **Azure OpenAI** — `spring-ai-azure-openai` was removed in M5. `applications/provider-azure` now depends on `spring-ai-starter-model-openai` and runs in "Microsoft Foundry" mode (auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com`). Config keys moved from `spring.ai.azure.openai.*` to `spring.ai.openai.*`; `creds-template.yaml`, `application.yaml`, `DebugController`, and the Azure provider readme were rewritten to match. Existing Azure resources/keys/deployments work unchanged. Dropped the unused `spring-ai-azure-store` dependency.
+- **`ChatClient.Builder.defaultOptions(...)` and `ChatClientRequestSpec.options(...)`** now take a `ChatOptions.Builder` instead of a built `ChatOptions` (release: "options merging moved to ChatClient level"). Updated `MultiModalController`, both agentic-system `Agent` classes + their controllers + `AgentOptionsConfig` beans + tests to pass and inject builders.
+- **OpenAI internal API package** — `org.springframework.ai.openai.api.*` no longer exists; the module now uses the official `openai-java` SDK directly. `TranscribeController` now imports `com.openai.models.audio.AudioResponseFormat` (was `OpenAiAudioApi.TranscriptResponseFormat`).
+- **MCP modules** — all 5 `mcp/` submodules compile and pass tests on the upgraded MCP Java SDK 2.0.0-M2 without code changes.
+
 ## [2.3.3] - 2026-04-24
 
 ### Changed

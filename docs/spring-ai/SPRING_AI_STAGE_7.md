@@ -4,6 +4,8 @@
 **Maven Artifacts:** `spring-ai-client-chat`, `spring-ai-openai`, `spring-shell-starter`
 **Package Base:** `com.example.agentic.inner_monologue`, `com.example.agentic.model_directed_loop`
 
+> **⚠ Spring AI 2.0.0-M4 → M5 note** — Stage 7 was hit by the M5 `ChatClient` options-API change in several places. Both `ChatClient.Builder.defaultOptions(...)` and `ChatClientRequestSpec.options(...)` now take a `ChatOptions.Builder` instead of a built `ChatOptions`. Consequently, the agent's `@Bean` factories return a `ChatOptions.Builder`, the `Agent` constructor accepts `ChatOptions.Builder`, and the controller injects `ChatOptions.Builder`. Code blocks below are M5-current; M4↔M5 deltas are called out where the change is non-obvious. Full migration: **[SPRING_AI_M4_TO_M5_MIGRATION.md](../../SPRING_AI_M4_TO_M5_MIGRATION.md)**.
+
 ---
 
 ## Overview
@@ -172,23 +174,36 @@ Both `spring-ai-openai` and `spring-ai-starter-model-ollama` are on the classpat
 @Configuration("modelDirectedLoopAgentOptionsConfig")
 public class AgentOptionsConfig {
 
+  // Spring AI 2.0.0-M5: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
+  // (so the chat client can merge with its own defaults). Beans return the builder, not a built instance.
+
   @Bean
   @Profile("!ollama")
-  public ChatOptions openAiAgentOptions() {
-    return OpenAiChatOptions.builder().toolChoice("required").build();
+  public ChatOptions.Builder openAiAgentOptions() {
+    return OpenAiChatOptions.builder().toolChoice("required");
   }
 
   @Bean
   @Profile("ollama")
-  public ChatOptions ollamaAgentOptions(@Value("${agent.ollama.model:qwen3}") String model) {
-    return OllamaChatOptions.builder().model(model).build();
+  public ChatOptions.Builder ollamaAgentOptions(@Value("${agent.ollama.model:qwen3}") String model) {
+    return OllamaChatOptions.builder().model(model);
   }
 }
 ```
 
+**M4 → M5 delta** — return type and the missing `.build()` are the whole change:
+
+```diff
+-  public ChatOptions openAiAgentOptions() {
+-    return OpenAiChatOptions.builder().toolChoice("required").build();
++  public ChatOptions.Builder openAiAgentOptions() {
++    return OpenAiChatOptions.builder().toolChoice("required");
+   }
+```
+
 Demo 01 has the same class under `com.example.agentic.inner_monologue.config`, annotated `@Configuration("innerMonologueAgentOptionsConfig")`. The **explicit bean names** are load-bearing: when both agent modules sit on a single classpath (e.g. during earlier experiments that bundled them into the provider app, or now when a test context spans modules), Spring would otherwise raise a bean-name collision on `AgentOptionsConfig`. Naming each configuration explicitly sidesteps that.
 
-The `Agent` and its controller receive `ChatOptions` by constructor injection — they never look at `OpenAiChatOptions` or `OllamaChatOptions` directly, which is why switching providers requires no agent-code change.
+The `Agent` and its controller receive a `ChatOptions.Builder` by constructor injection — they never look at `OpenAiChatOptions` or `OllamaChatOptions` directly, which is why switching providers requires no agent-code change. (In Spring AI 2.0.0-M4 this was a `ChatOptions`; M5's `ChatClient.Builder.defaultOptions(...)` now expects the builder.)
 
 ### Auxiliary profiles
 
@@ -277,7 +292,8 @@ public Agent(ChatClient.Builder builder, String id, ChatOptions options) {
   this(builder, id, options, null);                       // backwards-compatible
 }
 
-public Agent(ChatClient.Builder builder, String id, ChatOptions options, String userContext) {
+// Spring AI 2.0.0-M5: parameter type is ChatOptions.Builder (not ChatOptions).
+public Agent(ChatClient.Builder builder, String id, ChatOptions.Builder options, String userContext) {
   // ...
   String effectiveSystemPrompt = SYSTEM_PROMPT;
   if (userContext != null && !userContext.isBlank()) {
@@ -286,12 +302,19 @@ public Agent(ChatClient.Builder builder, String id, ChatOptions options, String 
   }
   this.chatClient =
       builder.clone()
-          .defaultOptions(options)
+          .defaultOptions(options)               // M5: defaultOptions(ChatOptions.Builder)
           .defaultTools(new AgentTools())
           .defaultSystem(effectiveSystemPrompt)
           .defaultAdvisors(chatMemoryAdvisor)
           .build();
 }
+```
+
+**M4 → M5 delta** — only the constructor parameter type changed; the call site stayed the same because `options` is now already a builder:
+
+```diff
+- public Agent(ChatClient.Builder builder, String id, ChatOptions options, String userContext) {
++ public Agent(ChatClient.Builder builder, String id, ChatOptions.Builder options, String userContext) {
 ```
 
 ### What the model sees
@@ -400,7 +423,7 @@ The agent always responds through a `send_message` tool with two fields: `messag
 
 ### Spring AI Components
 
-- `ChatClient` — built with `defaultTools`, `defaultOptions`, `defaultSystem`, `defaultAdvisors`
+- `ChatClient` — built with `defaultTools`, `defaultOptions` (Spring AI 2.0.0-M5: takes a `ChatOptions.Builder`), `defaultSystem`, `defaultAdvisors`
 - `OpenAiChatOptions.toolChoice("required")` — forces the model to always call a tool
 - `@Tool(returnDirect = true)` — tool result becomes the response content
 - `MessageChatMemoryAdvisor` — persists conversation across requests
@@ -476,7 +499,8 @@ public Agent(String id, ChatClient.Builder chatClientBuilder) {
     var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
 
     this.chatClient = chatClientBuilder.clone()
-        .defaultOptions(OpenAiChatOptions.builder().toolChoice("required").build())
+        // Spring AI 2.0.0-M5: defaultOptions() takes a ChatOptions.Builder — drop the trailing .build()
+        .defaultOptions(OpenAiChatOptions.builder().toolChoice("required"))
         .defaultTools(new AgentTools())
         .defaultSystem(SYSTEM_PROMPT)
         .defaultAdvisors(chatMemoryAdvisor)
@@ -789,7 +813,13 @@ The gateway route `/ollama/**` already exists (`applications/gateway/src/main/ja
 ### Pattern 1: Forced Tool Calling
 
 ```java
-OpenAiChatOptions.builder().toolChoice("required").build()
+// Spring AI 2.0.0-M5 — pass the Builder to ChatClient.Builder.defaultOptions(...)
+OpenAiChatOptions.builder().toolChoice("required")
+```
+
+```diff
+- OpenAiChatOptions.builder().toolChoice("required").build()   // Spring AI 2.0.0-M4
++ OpenAiChatOptions.builder().toolChoice("required")           // Spring AI 2.0.0-M5
 ```
 
 Forces the model to always call a tool instead of responding with free-form text. This ensures:

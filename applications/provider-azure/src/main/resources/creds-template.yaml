@@ -1,13 +1,18 @@
 # Copy this file to creds.yaml and fill in your Azure OpenAI credentials.
+#
+# Spring AI 2.0.0-M5 removed `spring-ai-azure-openai`. Azure OpenAI ("Microsoft Foundry")
+# is now configured via the unified OpenAI module: set `base-url` to your Azure endpoint
+# and a `deployment-name`, and Foundry mode is auto-detected.
+#
 # Create resource: az cognitiveservices account create --name NAME --resource-group RG --location eastus --kind OpenAI --sku S0
 # Deploy model: az cognitiveservices account deployment create --name NAME --resource-group RG --deployment-name gpt-41-mini --model-name gpt-4.1-mini --model-version "2025-04-14" --model-format OpenAI --sku-capacity 1 --sku-name Standard
 # Get key: az cognitiveservices account keys list --name NAME --resource-group RG
 spring:
   ai:
-    azure:
-      openai:
-        api-key: ...your-key-here...
-        endpoint: https://your-resource.openai.azure.com/
-        chat:
-          options:
-            deployment-name: gpt-41-mini
+    openai:
+      api-key: ...your-key-here...
+      base-url: https://your-resource.openai.azure.com/
+      chat:
+        options:
+          deployment-name: gpt-41-mini
+          model: gpt-41-mini

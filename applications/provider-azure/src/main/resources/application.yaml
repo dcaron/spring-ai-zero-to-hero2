@@ -1,17 +1,16 @@
 
 spring:
+  application:
+    name: azure
   config:
     import: "optional:classpath:/creds.yaml"
   profiles:
     active: #pgvector
   ai:
-    azure:
-      openai:
-        chat:
-          options:
-
-
-            temperature: 0.7
+    openai:
+      chat:
+        options:
+          temperature: 0.7
 management:
   tracing:
     sampling:
@@ -41,3 +40,8 @@ spring:
     username: postgres
     password: password
   ai:
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimension: 1536

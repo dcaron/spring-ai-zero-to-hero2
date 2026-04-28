@@ -20,7 +20,7 @@ class AgentTest {
     ChatClient.CallResponseSpec call = mock(ChatClient.CallResponseSpec.class);
 
     when(builder.clone()).thenReturn(clone);
-    when(clone.defaultOptions(any(ChatOptions.class))).thenReturn(clone);
+    when(clone.defaultOptions(any(ChatOptions.Builder.class))).thenReturn(clone);
     when(clone.defaultTools(any(Object[].class))).thenReturn(clone);
     when(clone.defaultSystem(any(String.class))).thenReturn(clone);
     when(clone.defaultAdvisors(any(org.springframework.ai.chat.client.advisor.api.Advisor.class)))
@@ -44,7 +44,7 @@ class AgentTest {
   void stopsOnFirstStepWhenReinvokeIsFalse() {
     String resp =
         "{\"message\":\"Done\",\"innerThoughts\":\"no more\",\"requestReinvocation\":false}";
-    Agent a = new Agent(stubBuilder(resp), "x", OpenAiChatOptions.builder().build());
+    Agent a = new Agent(stubBuilder(resp), "x", OpenAiChatOptions.builder());
     ChatTraceResponse trace = a.userMessage(new ChatRequest("hi"));
     assertThat(trace.steps()).hasSize(1);
     assertThat(trace.steps().get(0).requestReinvocation()).isFalse();
@@ -52,7 +52,7 @@ class AgentTest {
 
   @Test
   void stopsImmediatelyOnFallbackEvenIfModelSignalsReinvoke() {
-    Agent a = new Agent(stubBuilder("sure I can help!"), "x", OpenAiChatOptions.builder().build());
+    Agent a = new Agent(stubBuilder("sure I can help!"), "x", OpenAiChatOptions.builder());
     ChatTraceResponse trace = a.userMessage(new ChatRequest("plan a trip"));
     assertThat(trace.steps()).hasSize(1);
     assertThat(trace.steps().get(0).isFallback()).isTrue();
@@ -69,7 +69,7 @@ class AgentTest {
         new Agent(
             stubBuilder(keepGoing, keepGoing, keepGoing, keepGoing, keepGoing, keepGoing),
             "x",
-            OpenAiChatOptions.builder().build());
+            OpenAiChatOptions.builder());
     ChatTraceResponse trace = a.userMessage(new ChatRequest("go"));
     assertThat(trace.steps()).hasSize(5);
   }

@@ -53,7 +53,8 @@ public class MultiModalController {
 
     // Use llava for Ollama multimodal — llama3.2 has no vision capability
     if (ollamaModel != null) {
-      prompt = prompt.options(ChatOptions.builder().model("llava").build());
+      // Spring AI 2.0.0-M5: options() takes a ChatOptions.Builder, not a built ChatOptions
+      prompt = prompt.options(ChatOptions.builder().model("llava"));
     }
 
     return prompt

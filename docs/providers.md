@@ -167,25 +167,132 @@ spring:
 
 Supports chat, embeddings, tool calling. Requires Standard SKU (not GlobalStandard).
 
+> **Spring AI 2.0.0-M5 note** — `spring-ai-azure-openai` was removed in M5. Azure OpenAI is now served by the unified `spring-ai-openai` module under the **Microsoft Foundry** label. Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. Config keys moved from `spring.ai.azure.openai.*` → `spring.ai.openai.*`. See `migration/SPRING_AI_M4_TO_M5_MIGRATION.md` for the full migration record.
+
+Azure has more setup nuance than the other providers. The bullet points below capture every gotcha we hit during the M4 → M5 migration; if you skim only one section in this file, this is the one.
+
+### Quick reference — what trips you up
+
+| # | Gotcha | Symptom | Fix |
+|---|---|---|---|
+| 1 | Resource created without `--custom-domain` | `401 invalid subscription key or wrong API endpoint` even with a known-good key | Recreate the resource with `--custom-domain "$RESOURCE"`; the endpoint must be `https://<resource>.openai.azure.com/`, not a regional shared URL |
+| 2 | `deployment-name` mismatch in `creds.yaml` | `404: The API deployment for this resource does not exist` | The `model:` in chat-options must equal your Azure deployment name (the SDK uses it verbatim as the URL deployment segment) |
+| 3 | Embeddings 404 even though chat works | `404` only on `/embed/*` and `/vector/*` | Azure requires a *separate* deployment per model — deploy `text-embedding-3-small` independently |
+| 4 | Default capacity is too low | `429 ... call rate limit for your current OpenAI S0 pricing tier` (or apparent "hangs" — see #5) | Use `--sku-capacity 30` for chat, `--sku-capacity 50` for embeddings; capacity is free, only rate-limits |
+| 5 | Hangs lasting 1–3 minutes | Request never returns; eventually 429 | The openai-java SDK silently retries up to 3× with 60s timeout. Looks like a hang. Bumping capacity (#4) fixes it. |
+| 6 | `Unbekannter Typ vector` / "Unknown type vector" SQL error | Stage 3 `/vector/01/load` fails after embeddings succeed | The pgvector Postgres extension isn't installed in the `azure` database. Flyway migration `V1__test.sql` ships in `provider-azure/src/main/resources/db/migration/` — make sure the Flyway deps + the script are present |
+| 7 | "unknown" badge in dashboard topbar | Cosmetic but confusing | `spring.application.name: azure` must be set in `application.yaml` (also makes OTel `service.name` correct) |
+
+### Azure resource provisioning (idempotent, copy-paste)
+
+```bash
+RG="spring-ai-workshop-rg"
+RESOURCE="spring-ai-workshop-$(date +%s)"   # globally-unique; becomes the subdomain
+LOCATION="eastus"
+
+# 1. Resource group
+az group create --name "$RG" --location "$LOCATION"
+
+# 2. Azure OpenAI resource (note: --custom-domain is mandatory!)
+az cognitiveservices account create \
+  --name "$RESOURCE" --resource-group "$RG" --location "$LOCATION" \
+  --kind OpenAI --sku S0 \
+  --custom-domain "$RESOURCE" --yes
+
+# 3. Chat deployment (capacity 30 = ~30k TPM — workshop-realistic)
+az cognitiveservices account deployment create \
+  --name "$RESOURCE" --resource-group "$RG" \
+  --deployment-name gpt-41-mini \
+  --model-name gpt-4.1-mini --model-version "2025-04-14" --model-format OpenAI \
+  --sku-capacity 30 --sku-name Standard
+
+# 4. Embedding deployment (capacity 50 = ~50k TPM — Stage 3 batches 70+ chunks at once)
+az cognitiveservices account deployment create \
+  --name "$RESOURCE" --resource-group "$RG" \
+  --deployment-name text-embedding-3-small \
+  --model-name text-embedding-3-small --model-version "1" --model-format OpenAI \
+  --sku-capacity 50 --sku-name Standard
+
+# 5. Pull endpoint + key1 (key never echoed)
+ENDPOINT=$(az cognitiveservices account show --name "$RESOURCE" --resource-group "$RG" --query properties.endpoint -o tsv)
+KEY=$(az cognitiveservices account keys list --name "$RESOURCE" --resource-group "$RG" --query key1 -o tsv)
+echo "endpoint=$ENDPOINT"   # https://<resource>.openai.azure.com/
+echo "key length=${#KEY}"   # ~84 chars
+```
+
+**Tear-down when done:** `az group delete --name "$RG" --yes --no-wait` (deletes resources + deployments).
+**Rotate key1:** `az cognitiveservices account keys regenerate --name "$RESOURCE" --resource-group "$RG" --key-name key1`. Keys are resource-level (not deployment-level), so this doesn't break deployments.
+
 ### creds.yaml
 
-File location: `applications/provider-azure/src/main/resources/creds.yaml`
+File location: `applications/provider-azure/src/main/resources/creds.yaml` (gitignored).
 
 ```yaml
 spring:
   ai:
-    azure:
-      openai:
-        api-key: ...your-key...
-        endpoint: https://your-resource.openai.azure.com/
+    openai:
+      api-key: ...your-key...
+      base-url: https://your-resource.openai.azure.com/
+      chat:
+        options:
+          deployment-name: gpt-41-mini
+          model: gpt-41-mini              # MUST match your Azure deployment name
+      embedding:
+        options:
+          deployment-name: text-embedding-3-small
+          model: text-embedding-3-small   # MUST match your embedding deployment name
 ```
+
+> **Why `model` repeats `deployment-name`:** the `openai-java` SDK reads the request body's `model` field and uses it verbatim as the URL deployment segment for Azure. So in Foundry mode, the chat-options `model` is **the deployment name**, not the underlying model identifier (e.g. it's `gpt-41-mini`, not `gpt-4.1-mini`).
+
+### URL construction (for debugging)
+
+The actual URL the SDK calls in Foundry mode is:
+
+```
+<base-url>/openai/deployments/<MODEL_FROM_REQUEST>/chat/completions?api-version=<version>
+```
+
+- `<base-url>` ← `spring.ai.openai.base-url` (host portion only matters for routing — must end with `openai.azure.com` for auto-detection).
+- `<MODEL_FROM_REQUEST>` ← the chat-options `model` field. **This is your Azure deployment name.**
+- `<version>` ← defaults to `AzureOpenAIServiceVersion.latestStableVersion()` (currently `2024-10-21`). Override with `spring.ai.openai.microsoft-foundry-service-version: 2024-10-21` (or any value from `com.openai.azure.AzureOpenAIServiceVersion`).
+
+To debug a 404 from Azure, reproduce the SDK's URL with a direct curl:
+
+```bash
+curl -i \
+  -H "api-key: $KEY" -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"ping"}],"max_tokens":5}' \
+  "${ENDPOINT}openai/deployments/<deployment-name>/chat/completions?api-version=2024-10-21"
+```
+
+- `200` → Azure side is fine; check `creds.yaml` matches the values you used in curl.
+- `404 The API deployment for this resource does not exist` → wrong `deployment-name` or wrong subdomain.
+- `401 invalid subscription key or wrong API endpoint` → wrong endpoint (probably the regional shared URL — see #1) or wrong key.
+- `429` → capacity too low (see #4/#5).
 
 ### Run
 
 ```bash
 ./mvnw spring-boot:run -pl applications/provider-azure \
-  -Dspring-boot.run.profiles=pgvector,observation
+  -Dspring-boot.run.profiles=pgvector,observation,ui
 ```
+
+First run with the `pgvector` profile: Flyway will execute `db/migration/V1__test.sql` to install the `vector`/`hstore`/`uuid-ossp` extensions and create the `vector_store` table in the `azure` database. If you see `Migrating schema "public" to version 1` in the log, you're good.
+
+### Models
+
+- **Chat:** `gpt-4.1-mini` (deployed as `gpt-41-mini`); `gpt-4.1`, `gpt-4o`, `gpt-5` available with separate deployments.
+- **Embeddings:** `text-embedding-3-small` (1536-dim, matches `pgvector.dimension: 1536`); `text-embedding-3-large` (3072-dim) requires bumping the pgvector dimension.
+- **Tool calling:** Yes (provider-agnostic via Spring AI).
+- **Image / TTS / Whisper:** require their own deployments; not exercised by the workshop currently.
+
+### Notes
+
+- **Custom subdomain is mandatory** — without `--custom-domain` Azure gives you a regional shared URL (e.g. `https://eastus.api.cognitive.microsoft.com/`) that openai-java doesn't recognize as Azure mode. The fix is to delete and recreate the resource with `--custom-domain "$RESOURCE"`.
+- **`Standard` SKU only** — `GlobalStandard` is not supported on the workshop's free-tier-friendly path. The deployment SKU (`--sku-name Standard`) is independent of the resource SKU (`--sku S0`).
+- **Capacity is free** — Azure OpenAI Standard is pay-per-token regardless of capacity. Higher capacity only raises rate-limit ceilings; it doesn't add a fixed cost. The constraint is per-region quota across deployments.
+- **Capacity isn't editable** — `az cognitiveservices account deployment update` doesn't accept `--sku-capacity`. To change it, delete and recreate the deployment. Vector data already in pgvector is preserved (1536-dim floats aren't bound to the deployment that produced them).
 
 ---
 

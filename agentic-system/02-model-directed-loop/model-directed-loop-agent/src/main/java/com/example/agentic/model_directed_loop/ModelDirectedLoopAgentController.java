@@ -21,10 +21,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class ModelDirectedLoopAgentController {
 
   private final ChatClient.Builder builder;
-  private final ChatOptions chatOptions;
+  private final ChatOptions.Builder chatOptions;
+
   private Map<String, Agent> agents = new HashMap<>();
 
-  public ModelDirectedLoopAgentController(ChatClient.Builder builder, ChatOptions chatOptions) {
+  public ModelDirectedLoopAgentController(
+      ChatClient.Builder builder, ChatOptions.Builder chatOptions) {
     this.builder = builder;
     this.chatOptions = chatOptions;
   }

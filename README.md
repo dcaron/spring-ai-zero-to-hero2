@@ -4,9 +4,11 @@
   <img src="docs/assets/workshop.png" alt="Spring AI — From Zero To Hero" width="50%">
 </p>
 
-> **Spring Boot 4.0.6 | Spring AI 2.0.0-M4 | Java 25**
+> **Spring Boot 4.0.6 | Spring AI 2.0.0-M5 | Java 25**
 >
 > A hands-on workshop for building AI-powered applications with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
+
+> ⚠️ **Recently upgraded Spring AI 2.0.0-M4 → 2.0.0-M5.** Several breaking changes affect anything depending on Spring AI 2.x — most notably the removal of `spring-ai-azure-openai` (Azure now goes through `spring-ai-openai` in "Microsoft Foundry" mode), an internal switch to the official `openai-java` SDK that changes how request URLs are constructed, and a `ChatClient` options-API signature change. Full breakdown with diffs, pitfalls, and per-provider checklist: **[SPRING_AI_M4_TO_M5_MIGRATION.md](SPRING_AI_M4_TO_M5_MIGRATION.md)**.
 
 ## What You'll Learn — 8 Stages
 

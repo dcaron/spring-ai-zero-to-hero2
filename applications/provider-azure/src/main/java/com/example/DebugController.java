@@ -6,17 +6,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class DebugController {
-  @Value("${spring.ai.azure.openai.api-key:notfound}")
+  @Value("${spring.ai.openai.api-key:notfound}")
   private String apiKey;
 
-  @Value("${spring.ai.azure.openai.endpoint:notfound}")
-  private String endpoint;
+  @Value("${spring.ai.openai.base-url:notfound}")
+  private String baseUrl;
+
+  @Value("${spring.ai.openai.chat.options.deployment-name:notfound}")
+  private String deploymentName;
 
   @GetMapping("/debug")
   public String getDebug() {
-    return "You are running Azure OpenAI Application with apiKey="
+    return "You are running Azure OpenAI (Microsoft Foundry) Application with apiKey="
         + apiKey
-        + " and endpoint="
-        + endpoint;
+        + ", base-url="
+        + baseUrl
+        + ", deployment-name="
+        + deploymentName;
   }
 }

@@ -51,7 +51,7 @@ You may now begin acting as a thoughtful, tool-using agent.
 
   private final String id;
   private final ChatClient.Builder builder;
-  private final ChatOptions options;
+  private final ChatOptions.Builder options;
   private final MessageWindowChatMemory memory;
   private final MessageChatMemoryAdvisor chatMemoryAdvisor;
   private final AgentFallbackHandler fallbackHandler = new AgentFallbackHandler();
@@ -63,11 +63,12 @@ You may now begin acting as a thoughtful, tool-using agent.
   private volatile String effectiveSystemPrompt;
   private volatile ChatClient chatClient;
 
-  public Agent(ChatClient.Builder builder, String id, ChatOptions options) {
+  public Agent(ChatClient.Builder builder, String id, ChatOptions.Builder options) {
     this(builder, id, options, null);
   }
 
-  public Agent(ChatClient.Builder builder, String id, ChatOptions options, String userContext) {
+  public Agent(
+      ChatClient.Builder builder, String id, ChatOptions.Builder options, String userContext) {
     this.id = id;
     this.builder = builder;
     this.options = options;

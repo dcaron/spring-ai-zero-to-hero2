@@ -17,15 +17,20 @@ import org.springframework.context.annotation.Profile;
 @Configuration("innerMonologueAgentOptionsConfig")
 public class AgentOptionsConfig {
 
+  // Spring AI 2.0.0-M5: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
+  // (so the chat client can merge with its own defaults). Beans return the builder, not a built
+  // instance.
+
   @Bean
   @Profile("!ollama")
-  public ChatOptions openAiAgentOptions() {
-    return OpenAiChatOptions.builder().toolChoice("required").build();
+  public ChatOptions.Builder openAiAgentOptions() {
+    return OpenAiChatOptions.builder().toolChoice("required");
   }
 
   @Bean
   @Profile("ollama")
-  public ChatOptions ollamaAgentOptions(@Value("${agent.ollama.model:qwen3}") String model) {
-    return OllamaChatOptions.builder().model(model).build();
+  public ChatOptions.Builder ollamaAgentOptions(
+      @Value("${agent.ollama.model:qwen3}") String model) {
+    return OllamaChatOptions.builder().model(model);
   }
 }

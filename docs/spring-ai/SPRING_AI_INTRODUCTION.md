@@ -1,8 +1,10 @@
 # Spring AI Introduction
 
-**Spring AI Version:** 2.0.0-M4
+**Spring AI Version:** 2.0.0-M5
 **Spring Boot Version:** 4.0.6
 **Java Version:** 25
+
+> **⚠ Spring AI 2.0.0-M4 → M5 migration** — this workshop was recently bumped from M4 to M5. The most visible breaking changes affect (1) Azure OpenAI (the dedicated module was removed; Azure now goes through `spring-ai-openai` in "Microsoft Foundry" mode), (2) the `ChatClient` options API (`defaultOptions(...)` and `.options(...)` now take a `ChatOptions.Builder`, not a built `ChatOptions`), and (3) the OpenAI module's switch to the official `openai-java` SDK (which changes how URLs are constructed — relevant for the gateway/spy profile). Code examples below mark M4↔M5 deltas where they matter. Full breakdown: **[SPRING_AI_M4_TO_M5_MIGRATION.md](../../SPRING_AI_M4_TO_M5_MIGRATION.md)**.
 
 ---
 
@@ -17,7 +19,7 @@ The core idea: **write AI logic once, run it against any provider** by swapping 
 Spring AI follows the same principles that make the Spring ecosystem productive:
 
 - **Portable abstractions** — `ChatModel`, `EmbeddingModel`, `VectorStore` work identically across providers
-- **Auto-configuration** — Add a provider starter (e.g., `spring-ai-openai-spring-boot-starter`), set your API key, and Spring Boot wires everything
+- **Auto-configuration** — Add a provider starter (e.g., `spring-ai-starter-model-openai` for Spring AI 2.0+), set your API key, and Spring Boot wires everything
 - **POJO-centric** — Your business logic stays in plain Java classes; Spring AI handles serialization, HTTP calls, and retries
 - **Composable** — Mix and match components: use OpenAI for chat, Ollama for embeddings, PgVector for storage
 
@@ -100,16 +102,19 @@ spring:                         Reads properties → creates:
         model: gpt-4o-mini
 ```
 
-Each provider has its own Spring Boot starter that auto-configures the correct implementation:
+Each provider has its own Spring Boot starter that auto-configures the correct implementation. The table below uses the **Spring AI 2.0.0-M5** artifact names; if you see older names like `spring-ai-<provider>-spring-boot-starter` floating around the web, those are the pre-2.0 convention.
 
-| Provider | Maven Starter | ChatModel Implementation |
-|----------|--------------|--------------------------|
-| OpenAI | `spring-ai-openai-spring-boot-starter` | `OpenAiChatModel` |
-| Anthropic | `spring-ai-anthropic-spring-boot-starter` | `AnthropicChatModel` |
-| Azure OpenAI | `spring-ai-azure-openai-spring-boot-starter` | `AzureOpenAiChatModel` |
-| Google Vertex AI | `spring-ai-vertex-ai-gemini-spring-boot-starter` | `VertexAiGeminiChatModel` |
-| AWS Bedrock | `spring-ai-bedrock-converse-spring-boot-starter` | `BedrockProxyChatModel` |
-| Ollama | `spring-ai-ollama-spring-boot-starter` | `OllamaChatModel` |
+| Provider | Maven Starter (M5) | ChatModel Implementation |
+|----------|--------------------|--------------------------|
+| OpenAI | `spring-ai-starter-model-openai` | `OpenAiChatModel` |
+| Anthropic | `spring-ai-starter-model-anthropic` | `AnthropicChatModel` |
+| Azure OpenAI | `spring-ai-starter-model-openai` (Microsoft Foundry mode) ¹ | `OpenAiChatModel` |
+| Google GenAI (Gemini) | `spring-ai-starter-model-google-genai` ² | `GoogleGenAiChatModel` |
+| AWS Bedrock | `spring-ai-starter-model-bedrock-converse` | `BedrockProxyChatModel` |
+| Ollama | `spring-ai-starter-model-ollama` | `OllamaChatModel` |
+
+¹ **Spring AI 2.0.0-M5 change:** the dedicated `spring-ai-starter-model-azure-openai` module was removed; Azure OpenAI is now served by the unified OpenAI starter, which auto-detects "Microsoft Foundry" mode when the base URL host ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. M4 users: the chat-model class is now `OpenAiChatModel` (not `AzureOpenAiChatModel`), and config keys move from `spring.ai.azure.openai.*` to `spring.ai.openai.*`. See `docs/providers.md` and `SPRING_AI_M4_TO_M5_MIGRATION.md`.
+² **Spring AI 2.0.0-M5 change:** the Vertex-AI-Gemini chat module (`spring-ai-vertex-ai-gemini-spring-boot-starter`) was removed; only the embedding submodule remains under `spring-ai-vertex-ai-embedding`. The current Gemini chat path goes through the **Google GenAI** starter, which uses an API-key flow (or Vertex AI service account if configured).
 
 > **Workshop pattern:** The `components/` modules depend only on `spring-ai-client-chat` (the abstraction). The `applications/provider-*` modules add the provider-specific starter. Same code, different provider.
 
@@ -339,14 +344,16 @@ This requires the model to reliably produce valid JSON. Larger models (GPT-4o, C
 
 ### Supported Providers in This Workshop
 
-| Provider | Starter Dependency | Default Model | Local/Cloud |
-|----------|--------------------|---------------|-------------|
-| **Ollama** | `spring-ai-ollama-spring-boot-starter` | qwen3 | Local |
-| **OpenAI** | `spring-ai-openai-spring-boot-starter` | gpt-4o-mini | Cloud |
-| **Anthropic** | `spring-ai-anthropic-spring-boot-starter` | claude-3.5-sonnet | Cloud |
-| **Azure OpenAI** | `spring-ai-azure-openai-spring-boot-starter` | gpt-4o | Cloud |
-| **Google Vertex AI** | `spring-ai-vertex-ai-gemini-spring-boot-starter` | gemini-pro | Cloud |
-| **AWS Bedrock** | `spring-ai-bedrock-converse-spring-boot-starter` | various | Cloud |
+Artifact names are the **Spring AI 2.0.0-M5** ones. See note ¹ above on Azure and ² on Google.
+
+| Provider | Starter Dependency (M5) | Default Model | Local/Cloud |
+|----------|-------------------------|---------------|-------------|
+| **Ollama** | `spring-ai-starter-model-ollama` | qwen3 | Local |
+| **OpenAI** | `spring-ai-starter-model-openai` | gpt-4o-mini | Cloud |
+| **Anthropic** | `spring-ai-starter-model-anthropic` | claude-3.5-sonnet | Cloud |
+| **Azure OpenAI** | `spring-ai-starter-model-openai` (Foundry mode) | gpt-4.1-mini | Cloud |
+| **Google GenAI (Gemini)** | `spring-ai-starter-model-google-genai` | gemini-2.5-flash | Cloud |
+| **AWS Bedrock** | `spring-ai-starter-model-bedrock-converse` | nova-lite | Cloud |
 
 ### Feature Support Matrix
 
@@ -368,10 +375,10 @@ components/apis/chat/          ← AI logic (provider-agnostic)
     depends on: spring-ai-client-chat (abstraction only)
 
 applications/provider-ollama/  ← Provider wiring
-    depends on: chat + spring-ai-ollama-spring-boot-starter
+    depends on: chat + spring-ai-starter-model-ollama
 
 applications/provider-openai/  ← Same code, different provider
-    depends on: chat + spring-ai-openai-spring-boot-starter
+    depends on: chat + spring-ai-starter-model-openai
 ```
 
 The same `ChatClient.prompt().user("...").call().content()` code runs against any provider. Switch providers by starting a different application module — no code changes needed.

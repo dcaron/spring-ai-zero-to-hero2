@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: aws
   config:
     import: "optional:classpath:/creds.yaml"
   profiles:

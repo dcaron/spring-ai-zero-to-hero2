@@ -23,11 +23,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class InnerMonologueAgentController {
 
   private final ChatClient.Builder builder;
-  private final org.springframework.ai.chat.prompt.ChatOptions chatOptions;
+  private final org.springframework.ai.chat.prompt.ChatOptions.Builder chatOptions;
   private Map<String, Agent> agents = new HashMap<>();
 
   public InnerMonologueAgentController(
-      ChatClient.Builder builder, org.springframework.ai.chat.prompt.ChatOptions chatOptions) {
+      ChatClient.Builder builder,
+      org.springframework.ai.chat.prompt.ChatOptions.Builder chatOptions) {
     this.builder = builder;
     this.chatOptions = chatOptions;
   }
