@@ -91,6 +91,84 @@
     #start-sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
     #start-sign .board{background:#8a5230;border:3px solid #5a3520;padding:8px 4px;box-shadow:3px 3px 0 #2a1810;}
 
+    /* Wild-west wooden boards: vertical plank grain + dark border + 4 nail dots */
+    .sign .board{
+      position:relative;
+      background:
+        repeating-linear-gradient(90deg,
+          #8a5230 0,#8a5230 12px,
+          #6b3e1f 12px,#6b3e1f 14px,
+          #8a5230 14px,#8a5230 26px,
+          #7a4520 26px,#7a4520 28px);
+      border:4px solid #3a1f10;
+      padding:8px 6px;
+      box-shadow:
+        inset 0 0 0 1px #5a3520,
+        inset 0 -3px 0 #5a3520,
+        4px 4px 0 #1a0f08;
+      color:#f5e6c8;
+      text-shadow:1px 1px 0 #3a1f10;
+    }
+    /* Four corner nails */
+    .sign .board::before,
+    .sign .board::after{
+      content:"";
+      position:absolute;
+      width:5px;height:5px;
+      background:#2a1810;
+      border-radius:50%;
+      box-shadow:inset 1px 1px 0 #6b6058;
+    }
+    .sign .board::before{top:4px;left:4px;box-shadow:inset 1px 1px 0 #6b6058, calc(100% + 96px - 5px - 8px) 0 0 0 #2a1810, calc(100% + 96px - 5px - 8px) 0 0 1px #6b6058;}
+    .sign .board::after{bottom:4px;left:4px;box-shadow:inset 1px 1px 0 #6b6058, calc(100% + 96px - 5px - 8px) 0 0 0 #2a1810, calc(100% + 96px - 5px - 8px) 0 0 1px #6b6058;}
+
+    /* Ecosystem signs: aged red wood (saloon-poster colors) */
+    .sign.eco .board{
+      background:
+        repeating-linear-gradient(90deg,
+          #6b3a3a 0,#6b3a3a 12px,
+          #4a2828 12px,#4a2828 14px,
+          #6b3a3a 14px,#6b3a3a 26px,
+          #5a2f2f 26px,#5a2f2f 28px);
+      border-color:#2a1010;
+      color:#ffd2c0;
+      text-shadow:1px 1px 0 #2a1010;
+    }
+    .sign.eco .post{background:#4a1f1f;}
+
+    /* Passed signs fade out */
+    .sign.passed{opacity:0.45;}
+
+    /* Active sign: bleached pine with green glow */
+    .sign.active .board{
+      background:
+        repeating-linear-gradient(90deg,
+          #d4c088 0,#d4c088 12px,
+          #b8a36a 12px,#b8a36a 14px,
+          #d4c088 14px,#d4c088 26px,
+          #c4b078 26px,#c4b078 28px);
+      border-color:#3d7a1c;
+      color:#1a3a16;
+      font-weight:bold;
+      text-shadow:1px 1px 0 rgba(255,255,255,0.4);
+      box-shadow:
+        inset 0 0 0 1px #6db33f,
+        4px 4px 0 #1a3a16,
+        0 0 0 4px rgba(155,224,104,0.25);
+    }
+    .sign.active::before{
+      content:"★";
+      position:absolute;
+      top:-18px;left:50%;
+      transform:translateX(-50%);
+      color:#ffd84a;
+      font-size:14px;
+      text-shadow:2px 2px 0 #1a3a16;
+    }
+
+    /* Wood post (the stake the board is mounted on) — slightly thicker for the western look */
+    .sign .post{width:8px;height:66px;background:#6b3e1f;background-image:repeating-linear-gradient(180deg,#6b3e1f 0,#6b3e1f 8px,#5a3520 8px,#5a3520 10px);margin:0 auto;border:2px solid #3a1f10;border-top:none;}
+
     /* Lime character sprite classes */
     .lime-outline{fill:#0b2f00;}
     .lime-body{fill:#baff00;}
@@ -123,13 +201,6 @@
 
     /* Sign post (lives in #world, positioned via inline left:Xpx) */
     .sign{position:absolute;bottom:90px;width:140px;text-align:center;font-size:13px;line-height:1.6;color:#f5e6c8;z-index:6;transition:opacity 0.3s ease;transform:translateX(-50%);}
-    .sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
-    .sign .board{background:#8a5230;border:3px solid #5a3520;padding:6px 4px;box-shadow:3px 3px 0 #2a1810;}
-    .sign.eco .board{background:#3a2030;border-color:#7a3a5a;color:#ffd2e0;}
-    .sign.eco .post{background:#6b1f1f;}
-    .sign.passed{opacity:0.45;}
-    .sign.active .board{background:#9be068;color:#1a3a16;border-color:#6db33f;font-weight:bold;box-shadow:3px 3px 0 #1a3a16,0 0 0 4px rgba(155,224,104,0.25);}
-    .sign.active::before{content:"★";position:absolute;top:-14px;left:50%;transform:translateX(-50%);color:#ffd84a;font-size:16px;text-shadow:2px 2px 0 #1a3a16;}
 
     .sign-date{display:inline-block;margin-top:2px;font-size:10px;opacity:0.85;letter-spacing:1px;color:#f5e6c8;}
     .sign.eco .sign-date{color:#ffd2e0;}
@@ -639,6 +710,8 @@
           '<li>Open the workshop dashboard and start shipping</li>';
         panel.classList.remove('eco');
         panel.classList.add('open');
+        const hint = panel.querySelector('.hint');
+        if (hint) hint.textContent = '★ END';
       }
     }
   }, STEP_FRAME_MS);
@@ -831,6 +904,8 @@
       li.textContent = b;
       panelBullets.appendChild(li);
     });
+    const hint = panel.querySelector('.hint');
+    if (hint) hint.textContent = '▶ KEEP WALKING';
     panel.classList.add('open');
   }
 
