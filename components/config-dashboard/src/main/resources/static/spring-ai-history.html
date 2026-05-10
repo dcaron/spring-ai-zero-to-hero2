@@ -637,12 +637,13 @@
   const mountainLayer = document.getElementById('mountain-layer');
   const MOUNTAIN_PARALLAX = 0.05;     // slower than clouds (0.25) and bg-decor (0.10) — looks far
   const MOUNTAIN_COUNT = 24;
+  const MOUNTAIN_H_MAX = Math.max(180, window.innerHeight * 0.5);   // up to 50% of viewport
   for (let i = 0; i < MOUNTAIN_COUNT; i++) {
     const wx = (i / MOUNTAIN_COUNT) * (WORLD_END * 1.05) + (Math.random() - 0.5) * 700;
-    const w  = 200 + Math.random() * 440;            // 200..640 — wider size range
-    const h  = 100 + Math.random() * 220;            // 100..320 — taller range
-    const op = 0.15 + Math.random() * 0.27;          // 0.15..0.42 — more transparent
-    const tier = i % 3;                              // 0 far, 1 mid, 2 default mid-green
+    const w  = 220 + Math.random() * 520;                            // 220..740 — wider, scales with taller mountains
+    const h  = 120 + Math.random() * (MOUNTAIN_H_MAX - 120);         // 120..50%vh
+    const op = 0.15 + Math.random() * 0.27;                          // 0.15..0.42 — more transparent
+    const tier = i % 3;                                              // 0 far, 1 mid, 2 default mid-green
     const m = document.createElement('div');
     m.className = 'bg-mountain' + (tier === 0 ? ' far' : tier === 1 ? ' mid' : '');
     m.style.width = w + 'px';
