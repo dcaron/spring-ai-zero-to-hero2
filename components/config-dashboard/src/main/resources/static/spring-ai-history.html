@@ -48,6 +48,12 @@
     .cloud-bg{position:absolute;background:#fff;}
     .cloud-bg::before,.cloud-bg::after{content:"";position:absolute;background:#fff;}
 
+    /* Background mountain range — slowest parallax, semi-transparent for far-distance feel */
+    #mountain-layer{position:absolute;inset:0;pointer-events:none;z-index:-1;will-change:transform;}
+    .bg-mountain{position:absolute;bottom:80px;background:#3a5a32;clip-path:polygon(0% 100%,8% 82%,15% 68%,22% 56%,28% 46%,34% 36%,40% 28%,45% 22%,48% 18%,50% 16%,52% 16%,55% 18%,58% 22%,63% 28%,68% 36%,74% 46%,80% 56%,86% 68%,92% 82%,97% 96%,100% 100%);will-change:transform;image-rendering:pixelated;}
+    .bg-mountain.far{background:#3a4a48;}
+    .bg-mountain.mid{background:#3d6a3a;}
+
     /* Background AI symbols, slow parallax */
     #bg-decor{position:absolute;inset:0;pointer-events:none;z-index:0;}
     .bg-symbol{position:absolute;opacity:0.25;color:#9be068;font-family:'Press Start 2P',monospace;}
@@ -331,6 +337,9 @@
 </svg>
 
 <div id="stage">
+
+  <!-- Background mountain range — slowest parallax, very transparent -->
+  <div id="mountain-layer"></div>
 
   <!-- Background AI symbols, slow-parallax (looks far away) -->
   <div id="bg-decor"></div>
@@ -624,6 +633,36 @@
     '<svg width="72" height="56" viewBox="0 0 72 56"><g fill="#6db33f"><circle cx="10" cy="14" r="4"/><circle cx="10" cy="28" r="4"/><circle cx="10" cy="42" r="4"/><circle cx="36" cy="20" r="4"/><circle cx="36" cy="36" r="4"/><circle cx="62" cy="28" r="4"/></g><g stroke="#6db33f" stroke-width="2" fill="none"><line x1="10" y1="14" x2="36" y2="20"/><line x1="10" y1="14" x2="36" y2="36"/><line x1="10" y1="28" x2="36" y2="20"/><line x1="10" y1="28" x2="36" y2="36"/><line x1="10" y1="42" x2="36" y2="20"/><line x1="10" y1="42" x2="36" y2="36"/><line x1="36" y1="20" x2="62" y2="28"/><line x1="36" y1="36" x2="62" y2="28"/></g></svg>',
   ];
 
+  // Background mountain range — slow parallax, varied sizes, semi-transparent
+  const mountainLayer = document.getElementById('mountain-layer');
+  const MOUNTAIN_PARALLAX = 0.05;     // slower than clouds (0.25) and bg-decor (0.10) — looks far
+  const MOUNTAIN_COUNT = 14;
+  for (let i = 0; i < MOUNTAIN_COUNT; i++) {
+    const wx = (i / MOUNTAIN_COUNT) * (WORLD_END * 1.0) + (Math.random() - 0.5) * 600;
+    const w  = 240 + Math.random() * 280;            // 240..520
+    const h  = 130 + Math.random() * 150;            // 130..280
+    const op = 0.25 + Math.random() * 0.30;          // 0.25..0.55 (transparent)
+    const tier = i % 3;                              // 0 far, 1 mid, 2 default mid-green
+    const m = document.createElement('div');
+    m.className = 'bg-mountain' + (tier === 0 ? ' far' : tier === 1 ? ' mid' : '');
+    m.style.width = w + 'px';
+    m.style.height = h + 'px';
+    m.style.opacity = String(op);
+    m.dataset.wx = String(wx);
+    mountainLayer.appendChild(m);
+  }
+
+  function paintMountains() {
+    const screenCenter = window.innerWidth / 2;
+    mountainLayer.querySelectorAll('.bg-mountain').forEach((m) => {
+      const wx = parseFloat(m.dataset.wx);
+      const w  = parseFloat(m.style.width);
+      // Center-anchor the mountain on its world-x so it doesn't drift off
+      const x = screenCenter + (wx - worldX) * MOUNTAIN_PARALLAX - w / 2;
+      m.style.transform = `translateX(${x}px)`;
+    });
+  }
+
   const BG_PARALLAX = 0.10;   // very slow — far in the distance
   const BG_COUNT = 18;
   for (let i = 0; i < BG_COUNT; i++) {
@@ -657,6 +696,7 @@
     cloud1.style.transform = `translateX(${cloudShift}px)`;
     cloud2.style.transform = `translateX(${cloudShift}px)`;
     paintClouds();
+    paintMountains();
     paintBgDecor();
     // Mascot follows terrain (Donkey-Kong-style multi-level)
     const f = floorAt(worldX);
