@@ -608,6 +608,7 @@
     c.style.top = top + 'px';
     c.style.width = (90 * scale) + 'px';
     c.style.height = (26 * scale) + 'px';
+    c.style.opacity = String(0.6 + Math.random() * 0.2);   // 0.6..0.8 → 20-40% transparent
     const variant = 1 + Math.floor(Math.random() * 3);
     c.innerHTML = cloudShape(variant, scale);
     c.dataset.wx = String(wx);
