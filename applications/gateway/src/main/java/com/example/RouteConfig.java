@@ -47,7 +47,7 @@ public class RouteConfig {
               // to the upstream path here (provider prefix stripped, API version prefix added),
               // and set the route URI for scheme/host/port.
               //
-              // Spring AI 2.0.0-M5: the openai-java SDK treats `base-url` as the API root and
+              // Spring AI 2.0.0-M6: the openai-java SDK treats `base-url` as the API root and
               // appends `/chat/completions` (or `/embeddings`, etc.) itself, so a call to
               // `http://localhost:7777/openai/chat/completions` must become
               // `https://api.openai.com/v1/chat/completions`.

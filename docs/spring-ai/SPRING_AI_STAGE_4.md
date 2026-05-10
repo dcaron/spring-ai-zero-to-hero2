@@ -24,7 +24,7 @@ After completing this stage, developers will be able to:
 - Build manual RAG pipelines: search → format → prompt → generate
 - Use `QuestionAnswerAdvisor` for declarative, advisor-based RAG
 - Understand Spring AI's advisor architecture for prompt augmentation
-- Add conversation memory with `PromptChatMemoryAdvisor` and `MessageWindowChatMemory`
+- Add conversation memory with `MessageChatMemoryAdvisor` and `MessageWindowChatMemory`
 - Compare stateless vs. stateful chat interactions
 
 ### Prerequisites
@@ -74,7 +74,8 @@ graph TD
 | `Document` | `o.s.ai.document.Document` | Text with metadata, used in vector search results |
 | `TokenTextSplitter` | `o.s.ai.transformer.splitter.TokenTextSplitter` | Chunks documents for vector store ingestion |
 | `QuestionAnswerAdvisor` | `o.s.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor` | Advisor that automates RAG: search + prompt augmentation |
-| `PromptChatMemoryAdvisor` | `o.s.ai.chat.client.advisor.PromptChatMemoryAdvisor` | Advisor that injects conversation history into prompts |
+| `MessageChatMemoryAdvisor` | `o.s.ai.chat.client.advisor.MessageChatMemoryAdvisor` | Advisor that injects conversation history into prompts as messages |
+| `ChatMemory.CONVERSATION_ID` | `o.s.ai.chat.memory.ChatMemory` | Context key (`"chat_memory_conversation_id"`) — supplies the conversation id at request time. **Spring AI 2.0.0-M6** removed `Builder.conversationId(String)`; the id is now passed via `.advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, ...))`. |
 | `MessageWindowChatMemory` | `o.s.ai.chat.memory.MessageWindowChatMemory` | Sliding-window conversation memory |
 | `InMemoryChatMemoryRepository` | `o.s.ai.chat.memory.InMemoryChatMemoryRepository` | In-memory storage for chat history |
 
@@ -417,12 +418,14 @@ public String name() {
 
 ### Description
 
-Adds conversation memory using `PromptChatMemoryAdvisor`. The advisor stores each message in a `MessageWindowChatMemory` backed by `InMemoryChatMemoryRepository`, and injects prior messages into subsequent prompts. Now when the user asks "What is my name?", the AI recalls the name from the stored conversation history.
+Adds conversation memory using `MessageChatMemoryAdvisor`. The advisor stores each message in a `MessageWindowChatMemory` backed by `InMemoryChatMemoryRepository`, and injects prior messages into subsequent prompts as a list of `Message` objects. Now when the user asks "What is my name?", the AI recalls the name from the stored conversation history.
+
+> **Spring AI 2.0.0-M6 note:** `PromptChatMemoryAdvisor` (M5 and earlier) was removed in M6 — `MessageChatMemoryAdvisor` is the canonical chat-memory advisor. The conversation id is no longer set on the builder; it must be supplied at request time via the `ChatMemory.CONVERSATION_ID` context key.
 
 ### Spring AI Components
 
 - `ChatClient` — fluent API with `.advisors()` for memory injection
-- `PromptChatMemoryAdvisor` — advisor that injects conversation history into prompts
+- `MessageChatMemoryAdvisor` — advisor that injects conversation history into prompts as messages
 - `MessageWindowChatMemory` — sliding-window memory (keeps the last N messages)
 - `InMemoryChatMemoryRepository` — in-memory storage backend for conversation history
 
@@ -433,7 +436,7 @@ sequenceDiagram
     participant Client as HTTP Client
     participant Controller as ChatHistoryController
     participant ChatClient as ChatClient
-    participant Advisor as PromptChatMemoryAdvisor
+    participant Advisor as MessageChatMemoryAdvisor
     participant Memory as MessageWindowChatMemory
     participant LLM as AI Provider
 
@@ -473,6 +476,8 @@ sequenceDiagram
 ### Key Code
 
 ```java
+private static final String CONVERSATION_ID = "mem-02-default";
+
 public ChatHistoryController(ChatClient.Builder builder) {
     this.chatClient = builder.build();
 
@@ -480,14 +485,16 @@ public ChatHistoryController(ChatClient.Builder builder) {
     var memory = MessageWindowChatMemory.builder()
         .chatMemoryRepository(new InMemoryChatMemoryRepository())
         .build();
-    this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(memory).build();
+    this.chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
 }
 
 @GetMapping("/hello")
 public String query(@RequestParam(value = "message",
     defaultValue = "Hello my name is John, what is the capital of France?") String message) {
     return this.chatClient.prompt()
-        .advisors(promptChatMemoryAdvisor)
+        // Spring AI 2.0.0-M6: pass the conversation id at request time via the context key.
+        .advisors(spec -> spec.advisors(chatMemoryAdvisor)
+            .param(ChatMemory.CONVERSATION_ID, CONVERSATION_ID))
         .user(message)
         .call().content();
 }
@@ -495,13 +502,14 @@ public String query(@RequestParam(value = "message",
 @GetMapping("/name")
 public String name() {
     return this.chatClient.prompt()
-        .advisors(promptChatMemoryAdvisor)
+        .advisors(spec -> spec.advisors(chatMemoryAdvisor)
+            .param(ChatMemory.CONVERSATION_ID, CONVERSATION_ID))
         .user("What is my name?")
         .call().content();
 }
 ```
 
-> **Takeaway:** Chat memory is implemented as an advisor that intercepts the ChatClient call. The memory stack has three layers: `InMemoryChatMemoryRepository` (storage) → `MessageWindowChatMemory` (windowing strategy) → `PromptChatMemoryAdvisor` (prompt injection). Adding `.advisors(memoryAdvisor)` is the only code change from stateless to stateful.
+> **Takeaway:** Chat memory is implemented as an advisor that intercepts the ChatClient call. The memory stack has three layers: `InMemoryChatMemoryRepository` (storage) → `MessageWindowChatMemory` (windowing strategy) → `MessageChatMemoryAdvisor` (message injection). Adding `.advisors(...)` plus a `ChatMemory.CONVERSATION_ID` param is the only code change from stateless to stateful.
 
 ---
 
@@ -532,7 +540,7 @@ sequenceDiagram
 | Advisor | Purpose | Intercepts |
 |---------|---------|------------|
 | `QuestionAnswerAdvisor` | Searches vector store, injects results into prompt | Before call |
-| `PromptChatMemoryAdvisor` | Injects conversation history, stores new messages | Before + after call |
+| `MessageChatMemoryAdvisor` | Injects conversation history as messages, stores new exchanges | Before + after call |
 
 Advisors are composable — you can chain memory + RAG in a single request:
 ```java
@@ -575,7 +583,7 @@ graph LR
 
 ```
 ┌────────────────────────────────┐
-│    PromptChatMemoryAdvisor     │  ← Injects history into prompt
+│   MessageChatMemoryAdvisor     │  ← Injects history as messages
 ├────────────────────────────────┤
 │    MessageWindowChatMemory     │  ← Sliding window (last N messages)
 ├────────────────────────────────┤

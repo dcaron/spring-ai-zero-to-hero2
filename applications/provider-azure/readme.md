@@ -1,10 +1,10 @@
 # Azure OpenAI
 
-**Spring Boot 4.0.6 | Spring AI 2.0.0-M5 | spring-ai-starter-model-openai (Microsoft Foundry mode)**
+**Spring Boot 4.0.6 | Spring AI 2.0.0-M6 | spring-ai-starter-model-openai (Microsoft Foundry mode)**
 
 All 8 chat endpoints pass with gpt-4.1-mini.
 
-> **M5 migration note** — Spring AI 2.0.0-M5 removed `spring-ai-azure-openai`. Azure OpenAI is now served by the unified `spring-ai-openai` module under the **Microsoft Foundry** label. Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set.
+> **M5 migration note** — Spring AI 2.0.0-M6 removed `spring-ai-azure-openai`. Azure OpenAI is now served by the unified `spring-ai-openai` module under the **Microsoft Foundry** label. Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set.
 
 ## Setup
 
@@ -68,4 +68,4 @@ Or run from the IDE for breakpoints.
 - Older models like gpt-4o-mini v2024-07-18 are deprecated — use gpt-4.1-mini or newer
 - Removed deprecated `spring.ai.azure.openai.chat.options.functions` config (Spring AI 2.0)
 - Embedding module not tested (requires separate Azure OpenAI embedding deployment)
-- Migrated from `spring-ai-starter-model-azure-openai` → `spring-ai-starter-model-openai` for Spring AI 2.0.0-M5
+- Migrated from `spring-ai-starter-model-azure-openai` → `spring-ai-starter-model-openai` for Spring AI 2.0.0-M6

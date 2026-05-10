@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spring AI · A Brief History</title>
+  <link rel="stylesheet" href="vendor/press-start-2p/press-start-2p.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100%;height:100%;overflow:hidden;background:#0d1a0d;color:#cfeac0;font-family:'Press Start 2P',monospace;}
+
+    #stage{position:relative;width:100vw;height:100vh;background:linear-gradient(180deg,#1a2818 0%,#0d1a0d 70%);overflow:hidden;image-rendering:pixelated;isolation:isolate;}
+    #stage::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.04) 1px,transparent 1px);background-size:6px 6px;pointer-events:none;}
+
+    /* World container — translates horizontally for scroll */
+    #world{position:absolute;left:0;bottom:0;width:1px;height:100%;will-change:transform;}
+
+    /* Foreground baselines (screen-fixed, not in #world) */
+    .ground{position:absolute;left:0;right:0;bottom:0;height:80px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;}
+    .grass{position:absolute;left:0;right:0;bottom:80px;height:14px;background:#6db33f;background-image:repeating-linear-gradient(90deg,#6db33f 0,#6db33f 6px,#5a9e2f 6px,#5a9e2f 12px);z-index:5;}
+
+    /* Score HUD (screen-fixed) */
+    #score{position:absolute;top:18px;right:24px;font-size:22px;color:#fff;text-align:right;line-height:1.6;z-index:10;text-shadow:2px 2px 0 #1a3a16;}
+    #score b{display:block;font-size:30px;margin-top:4px;}
+
+    /* Title — shrinks to compact bar once user starts walking */
+    #title{position:absolute;top:14vh;left:50%;transform:translate(-50%,0) scale(1);font-size:72px;color:#9be068;text-shadow:4px 4px 0 #2a5a26,8px 8px 0 #1a3a16;text-align:center;line-height:1.2;letter-spacing:2px;z-index:3;transition:transform 0.4s ease-out, top 0.4s ease-out, font-size 0.4s ease-out;transform-origin:50% 0;white-space:nowrap;}
+    #title.compact{top:18px;font-size:36px;text-shadow:2px 2px 0 #2a5a26,4px 4px 0 #1a3a16;}
+
+    #year-display{position:absolute;top:175px;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:18px;color:#fff;text-shadow:2px 2px 0 #1a3a16;letter-spacing:3px;z-index:3;opacity:0;transition:opacity 0.4s ease-out;}
+    #year-display.visible{opacity:1;}
+
+    /* Hill (lives in world, anchored at world-x = 0) */
+    .hill{position:absolute;left:0;bottom:80px;width:760px;height:400px;background:#4a8a3a;background-image:radial-gradient(circle at 30% 70%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 60% 80%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 70% 55%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 45% 45%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 55% 30%,#1a3a16 8px,transparent 9px);clip-path:polygon(0% 100%,8% 88%,15% 76%,22% 64%,28% 52%,34% 42%,40% 32%,45% 24%,48% 18%,50% 14%,52% 12%,55% 12%,58% 14%,60% 18%,63% 24%,68% 32%,74% 42%,80% 52%,86% 64%,92% 76%,97% 88%,100% 100%);box-shadow:inset -8px 0 0 #3d7a1c;}
+
+    /* Clouds (screen-fixed, slow parallax handled in Task 4) */
+    .cloud{position:absolute;background:#fff;}
+    .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;}
+    .cloud-1{top:80px;left:6vw;width:140px;height:40px;}
+    .cloud-1::before{width:72px;height:40px;top:-20px;left:24px;}
+    .cloud-1::after{width:56px;height:30px;top:-36px;left:38px;}
+    .cloud-2{top:140px;right:8vw;width:180px;height:46px;}
+    .cloud-2::before{width:84px;height:46px;top:-22px;left:30px;}
+    .cloud-2::after{width:54px;height:30px;top:-38px;left:46px;}
+
+    /* Procedural background cloud layer */
+    #cloud-layer{position:absolute;inset:0;pointer-events:none;z-index:1;will-change:transform;}
+    .cloud-bg{position:absolute;background:#fff;}
+    .cloud-bg::before,.cloud-bg::after{content:"";position:absolute;background:#fff;}
+
+    /* Background mountain range — slowest parallax, semi-transparent for far-distance feel */
+    #mountain-layer{position:absolute;inset:0;pointer-events:none;z-index:-1;will-change:transform;}
+    .bg-mountain{position:absolute;bottom:80px;background:#3a5a32;clip-path:polygon(0% 100%,8% 82%,15% 68%,22% 56%,28% 46%,34% 36%,40% 28%,45% 22%,48% 18%,50% 16%,52% 16%,55% 18%,58% 22%,63% 28%,68% 36%,74% 46%,80% 56%,86% 68%,92% 82%,97% 96%,100% 100%);will-change:transform;image-rendering:pixelated;}
+    .bg-mountain.far{background:#3a4a48;}
+    .bg-mountain.mid{background:#3d6a3a;}
+
+    /* Background AI symbols, slow parallax */
+    #bg-decor{position:absolute;inset:0;pointer-events:none;z-index:0;}
+    .bg-symbol{position:absolute;opacity:0.25;color:#9be068;font-family:'Press Start 2P',monospace;}
+    .bg-symbol svg{display:block;}
+
+    /* Obstacles — placed so left:x is the CENTER (transform:translateX(-50%)). */
+    .obstacle{position:absolute;bottom:94px;transform:translateX(-50%);z-index:6;font-family:'Press Start 2P',monospace;}
+
+    /* Wood crate — 56×52 */
+    .obstacle.wood{width:56px;height:52px;background:#a87437;border:3px solid #5a3520;box-shadow:inset 0 -8px 0 #7a4f22,inset 0 8px 0 #c08c50,4px 4px 0 #2a1810;}
+    .obstacle.wood::before,.obstacle.wood::after{content:"";position:absolute;background:#5a3520;}
+    .obstacle.wood::before{top:6px;left:4px;width:6px;height:6px;box-shadow:38px 0 0 #5a3520;}
+    .obstacle.wood::after{bottom:6px;left:4px;width:6px;height:6px;box-shadow:38px 0 0 #5a3520;}
+
+    /* Stone block — 68×46, wider and shorter */
+    .obstacle.stone{width:68px;height:46px;background:#8c8f95;border:3px solid #3a3f44;box-shadow:inset -4px -4px 0 #6b6e74,inset 4px 4px 0 #adb1b8,4px 4px 0 #1a1d20;}
+    .obstacle.stone::before,.obstacle.stone::after{content:"";position:absolute;background:#5a5d63;border-radius:50%;}
+    .obstacle.stone::before{top:10px;left:14px;width:6px;height:6px;box-shadow:24px 8px 0 #5a5d63,12px 18px 0 #5a5d63;}
+    .obstacle.stone::after{top:8px;right:12px;width:5px;height:5px;box-shadow:-8px 22px 0 #5a5d63;}
+
+    /* Green pipe — 56×70, tall with a lip on top */
+    .obstacle.pipe{width:56px;height:70px;background:#3d7a1c;border:3px solid #1a3a16;box-shadow:inset -6px 0 0 #2a5a16,inset 6px 0 0 #5a9e2f,4px 4px 0 #0a1a0a;}
+    .obstacle.pipe::before{content:"";position:absolute;top:-8px;left:-8px;width:68px;height:18px;background:#3d7a1c;border:3px solid #1a3a16;box-shadow:inset 0 -4px 0 #2a5a16;}
+
+    /* AI server rack — 60×50, dark with green blinkenlights */
+    .obstacle.server{width:60px;height:50px;background:#2a2f33;border:3px solid #5a5d63;box-shadow:inset 0 -6px 0 #1a1d20,4px 4px 0 #0a0d10;}
+    .obstacle.server::before{content:"";position:absolute;top:8px;left:8px;width:6px;height:6px;background:#9be068;border-radius:50%;box-shadow:0 0 0 1px #1a3a16,12px 0 0 #9be068,12px 0 0 1px #1a3a16,24px 0 0 #ffd84a,24px 0 0 1px #5a4a10;animation:server-blink 1.4s steps(2) infinite;}
+    .obstacle.server::after{content:"";position:absolute;bottom:6px;left:8px;right:8px;height:8px;background:#1a1d20;box-shadow:inset 0 0 0 1px #5a5d63;}
+    @keyframes server-blink{
+      0%,100%{opacity:1;}
+      50%{opacity:0.5;}
+    }
+
+    /* Branding (screen-fixed, matches reference) */
+    .springlogo{position:absolute;bottom:14px;left:18px;color:#6db33f;font-size:16px;display:flex;align-items:center;gap:8px;z-index:10;}
+    .springlogo .leaf{width:24px;height:24px;background:#6db33f;border-radius:50% 0 50% 50%;transform:rotate(-30deg);}
+
+    /* Instruction sign at start (screen-fixed in start scene) */
+    #start-sign{position:absolute;bottom:90px;left:80px;width:170px;text-align:center;color:#f5e6c8;font-size:14px;line-height:1.6;z-index:6;transition:opacity 0.4s ease-out;}
+    #start-sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
+    #start-sign .board{background:#8a5230;border:3px solid #5a3520;padding:8px 4px;box-shadow:3px 3px 0 #2a1810;}
+
+    /* Wild-west wooden boards: vertical plank grain + dark border + 4 nail dots */
+    .sign .board{
+      position:relative;
+      background:
+        /* moss patches — small green blooms at varied positions */
+        radial-gradient(ellipse 14px 6px at 20% 0%,#3d7a1c 0,#3d7a1c 60%,transparent 70%),
+        radial-gradient(ellipse 10px 5px at 78% 100%,#4a8a3a 0,#4a8a3a 60%,transparent 70%),
+        radial-gradient(ellipse 8px 4px at 92% 30%,#3d7a1c 0,#3d7a1c 50%,transparent 65%),
+        /* aged-oak vertical plank gradient with olive-brown tones */
+        repeating-linear-gradient(90deg,
+          #7a6a40 0,#7a6a40 12px,
+          #5a4a28 12px,#5a4a28 14px,
+          #7a6a40 14px,#7a6a40 26px,
+          #6b5a35 26px,#6b5a35 28px);
+      border:4px solid #2a2410;
+      padding:8px 6px;
+      box-shadow:
+        inset 0 0 0 1px #4a3f20,
+        inset 0 -3px 0 #4a3f20,
+        4px 4px 0 #1a1408;
+      color:#f5e6c8;
+      text-shadow:1px 1px 0 #2a2410;
+    }
+    /* Four corner nails */
+    .sign .board::before,
+    .sign .board::after{
+      content:"";
+      position:absolute;
+      width:5px;height:5px;
+      background:#1a1408;
+      border-radius:50%;
+      box-shadow:inset 1px 1px 0 #5a5340;
+    }
+    .sign .board::before{top:4px;left:4px;box-shadow:inset 1px 1px 0 #5a5340, calc(100% + 96px - 5px - 8px) 0 0 0 #1a1408, calc(100% + 96px - 5px - 8px) 0 0 1px #5a5340;}
+    .sign .board::after{bottom:4px;left:4px;box-shadow:inset 1px 1px 0 #5a5340, calc(100% + 96px - 5px - 8px) 0 0 0 #1a1408, calc(100% + 96px - 5px - 8px) 0 0 1px #5a5340;}
+
+    /* Ecosystem signs: aged red wood (saloon-poster colors) */
+    .sign.eco .board{
+      background:
+        repeating-linear-gradient(90deg,
+          #6b3a3a 0,#6b3a3a 12px,
+          #4a2828 12px,#4a2828 14px,
+          #6b3a3a 14px,#6b3a3a 26px,
+          #5a2f2f 26px,#5a2f2f 28px);
+      border-color:#2a1010;
+      color:#ffd2c0;
+      text-shadow:1px 1px 0 #2a1010;
+    }
+    .sign.eco .post{background:#4a1f1f;}
+
+    /* Passed signs fade out */
+    .sign.passed{opacity:0.45;}
+
+    /* Active sign: bleached pine with green glow */
+    .sign.active .board{
+      background:
+        repeating-linear-gradient(90deg,
+          #d4c088 0,#d4c088 12px,
+          #b8a36a 12px,#b8a36a 14px,
+          #d4c088 14px,#d4c088 26px,
+          #c4b078 26px,#c4b078 28px);
+      border-color:#3d7a1c;
+      color:#1a3a16;
+      font-weight:bold;
+      text-shadow:1px 1px 0 rgba(255,255,255,0.4);
+      box-shadow:
+        inset 0 0 0 1px #6db33f,
+        4px 4px 0 #1a3a16,
+        0 0 0 4px rgba(155,224,104,0.25);
+    }
+    .sign.active::before{
+      content:"★";
+      position:absolute;
+      top:-18px;left:50%;
+      transform:translateX(-50%);
+      color:#ffd84a;
+      font-size:14px;
+      text-shadow:2px 2px 0 #1a3a16;
+    }
+
+    /* Wood post (the stake the board is mounted on) — slightly thicker for the western look */
+    .sign .post{width:8px;height:66px;background:#5a4a28;background-image:repeating-linear-gradient(180deg,#5a4a28 0,#5a4a28 8px,#3d3220 8px,#3d3220 10px);margin:0 auto;border:2px solid #2a2410;border-top:none;}
+
+    /* Lime character sprite classes */
+    .lime-outline{fill:#0b2f00;}
+    .lime-body{fill:#baff00;}
+    .lime-shade{fill:#5fb300;}
+    .lime-light{fill:#dfff2f;}
+    .lime-darkdot{fill:#2e6500;}
+    .lime-armleg{fill:#5a3a21;}
+    .lime-eye{fill:#fff;}
+    .lime-pupil{fill:#101010;}
+    .lime-mouth{fill:none;stroke:#173900;stroke-width:4;stroke-linecap:round;}
+    .lime-pixel{shape-rendering:geometricPrecision;}
+
+    /* Elevated platform — visible "floor" the mascot walks on between stair obstacles */
+    .platform{position:absolute;height:14px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;border:2px solid #2a1810;border-bottom:none;box-shadow:0 -3px 0 #6db33f inset;}
+
+    /* Mascot — screen-fixed, centered horizontally */
+    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:auto;transition:transform 0.1s, bottom 0.18s ease-out;}
+    #mascot.bobbing{animation:mascot-bob 0.28s steps(2) infinite;}
+    @keyframes mascot-bob{
+      0%{transform:translateX(-50%) translateY(0);}
+      50%{transform:translateX(-50%) translateY(-4px);}
+      100%{transform:translateX(-50%) translateY(0);}
+    }
+
+    /* Jump animation — fires when mascot passes an ecosystem event. Overrides bobbing while running. */
+    #mascot.jumping{animation:mascot-jump 0.55s ease-out;}
+    @keyframes mascot-jump{
+      0%{transform:translateX(-50%) translateY(0);}
+      30%{transform:translateX(-50%) translateY(-48px);}
+      55%{transform:translateX(-50%) translateY(-48px);}
+      100%{transform:translateX(-50%) translateY(0);}
+    }
+
+    /* Sign post (lives in #world, positioned via inline left:Xpx) */
+    .sign{position:absolute;bottom:90px;width:140px;text-align:center;font-size:13px;line-height:1.6;color:#f5e6c8;z-index:6;transition:opacity 0.3s ease;transform:translateX(-50%);}
+
+    .sign-date{display:inline-block;margin-top:2px;font-size:10px;opacity:0.85;letter-spacing:1px;color:#d4dca8;}
+    .sign.eco .sign-date{color:#ffd2e0;}
+    .sign.active .sign-date{color:#1a3a16;}
+
+    /* Bush decoration (screen-fixed, anchored to start scene) */
+    #start-bush{position:absolute;bottom:88px;right:80px;width:60px;height:24px;z-index:6;}
+
+    /* Side panel — slides in from right when a sign is active (sizes bumped to match scaled-up UI) */
+    #panel{position:absolute;top:50%;right:-440px;transform:translateY(-50%);width:380px;background:#0a0d0a;border:3px solid #6db33f;padding:20px 22px;color:#cfeac0;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.7;box-shadow:6px 6px 0 #1a3a16;z-index:9;transition:right 0.4s ease-out;}
+    #panel.open{right:32px;}
+    #panel.eco{border-color:#c062a0;box-shadow:6px 6px 0 #2a1830;}
+    #panel .v{color:#9be068;font-size:14px;}
+    #panel.eco .v{color:#ffd2e0;}
+    #panel .date{color:#9ab89a;font-size:10px;letter-spacing:1px;margin-top:6px;}
+    #panel .h{color:#fff;font-size:14px;margin:14px 0;line-height:1.5;}
+    #panel ul{margin:0;padding-left:16px;font-size:11px;line-height:1.9;color:#cfeac0;}
+    #panel ul li{margin-bottom:5px;}
+    #panel .hint{color:#6db33f;font-size:10px;margin-top:14px;text-align:right;letter-spacing:1px;}
+
+    /* End-of-level goal — the player walks up to an agentic portal */
+    .goal{position:absolute;bottom:94px;width:140px;height:200px;z-index:6;}
+    .goal .banner{position:absolute;top:0;left:50%;transform:translateX(-50%);background:#9be068;color:#1a3a16;border:3px solid #1a3a16;padding:6px 10px;font-family:'Press Start 2P',monospace;font-size:14px;white-space:nowrap;letter-spacing:2px;box-shadow:3px 3px 0 #1a3a16;}
+    .goal .banner-sub{margin-top:4px;font-size:9px;color:#1a3a16;letter-spacing:3px;text-align:center;}
+    .goal .door{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:140px;background:#3a2a1a;border:6px solid #6b3e1f;box-shadow:inset 0 -8px 0 #1a1209,inset -6px 0 0 #2a1d10,4px 4px 0 #1a1209;}
+    .goal .door::before{content:"";position:absolute;top:50%;right:14px;width:8px;height:8px;background:#caa15a;border-radius:50%;box-shadow:0 0 0 2px #6b3e1f;}
+    .goal .robot{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);width:44px;height:44px;}
+    .goal-flag{position:absolute;left:50%;transform:translateX(-50%);top:62px;width:6px;height:48px;background:#6b3e1f;}
+    .goal-flag::after{content:"";position:absolute;left:6px;top:0;width:30px;height:18px;background:#9be068;border:2px solid #1a3a16;}
+
+    /* Goal sparkle when the player arrives */
+    .goal.reached .banner{animation:goal-pulse 0.6s ease-out 3;}
+    @keyframes goal-pulse{
+      0%,100%{transform:translateX(-50%) scale(1);}
+      50%{transform:translateX(-50%) scale(1.15);box-shadow:6px 6px 0 #1a3a16;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Inline SVG sprite library -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Lime character sprite (220×220) -->
+    <symbol id="lime-character" viewBox="0 0 220 220">
+      <g class="lime-pixel">
+        <!-- outer pixel outline / silhouette -->
+        <path class="lime-outline" d="M59 36h64v8h16v8h12v12h10v17h7v29h-7v20h-8v18h-11v14h-16v10h-23v-8h-14v-14h-12v-17h-9v-21h-7V87h-6V63h-8V44h12z"/>
+
+        <!-- body -->
+        <path class="lime-body" d="M57 39h62v8h16v8h12v12h9v17h6v26h-6v19h-8v17h-10v13h-15v9h-20v-8H90v-13H79v-16h-8v-20h-6V88h-6V66h-8V47h8z"/>
+
+        <!-- green side shading -->
+        <path class="lime-shade" d="M119 47h16v8h12v12h9v17h6v26h-6v19h-8v17h-10v13h-15v8h-19v-7h14v-11h10v-14h8v-18h6V94h-6V76h-9V60h-13z"/>
+        <path class="lime-shade" d="M132 61h12v14h8v23h5v12h-5V87h-7V72h-13z" opacity=".7"/>
+
+        <!-- bright left/top highlight -->
+        <path class="lime-light" d="M58 42h55v7h-35v6h-17v11h-8V48h5z" opacity=".8"/>
+
+        <!-- pixel texture spots -->
+        <rect class="lime-darkdot" x="83" y="60" width="5" height="5" opacity=".45"/>
+        <rect class="lime-darkdot" x="101" y="50" width="5" height="5" opacity=".35"/>
+        <rect class="lime-darkdot" x="143" y="119" width="5" height="5" opacity=".5"/>
+        <rect class="lime-darkdot" x="126" y="142" width="5" height="5" opacity=".45"/>
+        <rect class="lime-darkdot" x="74" y="121" width="5" height="5" opacity=".35"/>
+
+        <!-- arms behind/side -->
+        <path class="lime-outline" d="M67 111h-8v9h-9v12h8v-6h7v-8h8z"/>
+        <path class="lime-armleg" d="M66 108h7v9h-8v8h-7v6h-7v-9h8v-9h7z"/>
+
+        <path class="lime-outline" d="M157 111h8v8h9v13h-8v-7h-7v-8h-7z"/>
+        <path class="lime-armleg" d="M155 108h7v8h8v8h7v9h-7v-6h-8v-8h-7z"/>
+
+        <!-- legs -->
+        <path class="lime-outline" d="M94 164h12v25h11v10H88v-10h9v-18h-3z"/>
+        <path class="lime-armleg" d="M97 161h9v27h11v8H90v-7h8v-19h-1z"/>
+
+        <path class="lime-outline" d="M127 164h11v25h10v10h-29v-10h9v-18h-1z"/>
+        <path class="lime-armleg" d="M128 161h9v27h10v8h-26v-7h8v-19h-1z"/>
+
+        <!-- eyes -->
+        <path class="lime-outline" d="M113 76h12v7h6v14h-6v8h-12v-6h-5V83h5z"/>
+        <path class="lime-eye" d="M114 77h10v6h5v13h-5v7h-10v-6h-4V84h4z"/>
+        <rect class="lime-pupil" x="118" y="83" width="6" height="12"/>
+        <rect class="lime-eye" x="121" y="82" width="3" height="4"/>
+
+        <path class="lime-outline" d="M139 74h12v7h6v14h-6v8h-12v-6h-5V81h5z"/>
+        <path class="lime-eye" d="M140 75h10v6h5v13h-5v7h-10v-6h-4V82h4z"/>
+        <rect class="lime-pupil" x="144" y="81" width="6" height="12"/>
+        <rect class="lime-eye" x="147" y="80" width="3" height="4"/>
+
+        <!-- smile -->
+        <path class="lime-mouth" d="M126 113q8 9 18 0"/>
+        <rect class="lime-outline" x="121" y="105" width="4" height="4"/>
+        <rect class="lime-outline" x="145" y="104" width="4" height="4"/>
+      </g>
+    </symbol>
+
+    <!-- Bush (60×24) -->
+    <symbol id="bush" viewBox="0 0 60 24">
+      <rect x="0" y="8" width="60" height="16" fill="#5a9e2f"/>
+      <rect x="6" y="4" width="14" height="8" fill="#5a9e2f"/>
+      <rect x="22" y="0" width="16" height="10" fill="#5a9e2f"/>
+      <rect x="40" y="4" width="14" height="8" fill="#5a9e2f"/>
+      <rect x="0" y="20" width="60" height="4" fill="#3d7a1c"/>
+    </symbol>
+
+    <!-- Tiny pixel robot for the goal portal -->
+    <symbol id="robot-head" viewBox="0 0 44 44">
+      <rect x="20" y="2" width="4" height="6" fill="#6db33f"/>
+      <circle cx="22" cy="2" r="2" fill="#ffd84a"/>
+      <rect x="6" y="10" width="32" height="28" fill="#cfd2d6" stroke="#3a3f44" stroke-width="2"/>
+      <rect x="12" y="18" width="6" height="6" fill="#6db33f"/>
+      <rect x="26" y="18" width="6" height="6" fill="#6db33f"/>
+      <rect x="14" y="30" width="16" height="3" fill="#3a3f44"/>
+      <rect x="2" y="20" width="4" height="6" fill="#3a3f44"/>
+      <rect x="38" y="20" width="4" height="6" fill="#3a3f44"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+
+  <!-- Background mountain range — slowest parallax, very transparent -->
+  <div id="mountain-layer"></div>
+
+  <!-- Background AI symbols, slow-parallax (looks far away) -->
+  <div id="bg-decor"></div>
+
+  <!-- Procedural background clouds — populated by JS, parallax-scrolled -->
+  <div id="cloud-layer"></div>
+
+  <!-- Background clouds (screen-fixed, slow parallax) -->
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+
+  <!-- World layer (scrolls horizontally, contains hill + sign-posts) -->
+  <div id="world">
+    <div class="hill"></div>
+  </div>
+
+  <!-- Side panel — content updated by JS when the active milestone changes -->
+  <aside id="panel" aria-live="polite">
+    <div class="v" id="panel-v">v0.0.0</div>
+    <div class="date" id="panel-date">YYYY-MM-DD</div>
+    <h2 class="h" id="panel-title">Title</h2>
+    <ul id="panel-bullets"></ul>
+    <div class="hint">▶ KEEP WALKING</div>
+  </aside>
+
+  <!-- Foreground baselines (screen-fixed, render on top of world) -->
+  <div class="grass"></div>
+  <div class="ground"></div>
+
+  <!-- HUD (screen-fixed) -->
+  <h1 id="title">A BRIEF HISTORY<br>OF<br>SPRING AI</h1>
+  <!-- Year of the most recently reached milestone — updated by JS -->
+  <div id="year-display"><span id="year-value">—</span></div>
+  <div id="score">Score<b id="score-value">0</b></div>
+
+  <!-- Start instruction sign -->
+  <div id="start-sign">
+    <div class="board">SCROLL<br>OR ARROWS<br>▶</div>
+    <div class="post"></div>
+  </div>
+
+  <!-- Branding -->
+  <div class="springlogo"><span class="leaf"></span>Spring AI</div>
+
+  <!-- Mascot (screen-fixed, centered) -->
+  <svg id="mascot" viewBox="0 0 220 220"><use href="#lime-character"/></svg>
+
+  <!-- Decorative bush in start scene -->
+  <svg id="start-bush" viewBox="0 0 60 24"><use href="#bush"/></svg>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // Milestone data — 36 entries: 4 origin + 4 ecosystem prelude + 1 MCP + 8 GA line +
+  // 12 1.1 line + 1 Boot 4 + 6 2.0 line
+  // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..]}
+  const MILESTONES = [
+
+    // ── Chapter 1: Origin ────────────────────────────────────────────────────
+    { id:'v0.8.0', date:'2024-05-21', type:'spring-ai', version:'v0.8.0', badge:'M',
+      title:'First public preview',
+      bullets:['First public preview release','OpenAI + Azure chat models','Embedding clients — the seed of an idea'] },
+
+    { id:'v0.8.1', date:'2024-06-20', type:'spring-ai', version:'v0.8.1', badge:'M',
+      title:'Early iteration',
+      bullets:['Stabilisation of the 0.8.x line','Additional vector store adapters','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.0-Mx-early', date:'2024-11-15', type:'spring-ai', version:'v1.0.0', badge:'M1-M4',
+      title:'API shaping (M1 → M4)',
+      bullets:['Function calling lands','Advisors arrive','VectorStore grows from 1 to 20+ providers'] },
+
+    { id:'v1.0.0-Mx-late', date:'2025-04-09', type:'spring-ai', version:'v1.0.0', badge:'M5-M8',
+      title:'API stabilising (M5 → M8)',
+      bullets:['Ollama integration matures','RAG advisor lands','API surface freezing for GA'] },
+
+    // ── Ecosystem prelude (interleaved into the narrative) ───────────────────
+    { id:'chatgpt', date:'2022-11-30', type:'ecosystem', version:'★ AI', badge:'BOOM',
+      title:'ChatGPT public launch',
+      bullets:['AI suddenly matters to every developer','Python ecosystem (LangChain) takes the lead','JVM is left at the gate'] },
+
+    { id:'gpt4', date:'2023-03-14', type:'ecosystem', version:'★ GPT', badge:'4',
+      title:'OpenAI GPT-4 release',
+      bullets:['Quality leap that justifies enterprise adoption','Function/tool calling reshapes API design'] },
+
+    { id:'llama2', date:'2023-07-18', type:'ecosystem', version:'★ Llama', badge:'2',
+      title:'Llama 2 open-weighted (Meta)',
+      bullets:['First credible open-weight LLM','Local inference becomes viable','Sets up Ollama on the laptop'] },
+
+    { id:'claude3', date:'2024-03-04', type:'ecosystem', version:'★ Claude', badge:'3',
+      title:'Anthropic Claude 3 family',
+      bullets:['Frontier-class alternative to GPT-4','Vision + long context','Spring AI gains a third major provider'] },
+
+    // ── Ecosystem trigger for Chapter 3 ─────────────────────────────────────
+    { id:'mcp-open', date:'2024-11-25', type:'ecosystem', version:'★ MCP', badge:'OPEN',
+      title:'Anthropic open-sources MCP',
+      bullets:['Model Context Protocol becomes an open standard','Foundation for Spring AI Stage 6','Tool/resource/prompt unification'] },
+
+    // ── Chapter 2: GA line (v1.0.0 → v1.0.7) ────────────────────────────────
+    { id:'v1.0.0', date:'2025-05-19', type:'spring-ai', version:'v1.0.0', badge:'GA',
+      title:'Spring AI 1.0 — General Availability',
+      bullets:['ChatClient stable API','Advisors + RAG','VectorStore (20+ providers)'] },
+
+    { id:'v1.0.1', date:'2025-08-08', type:'spring-ai', version:'v1.0.1', badge:null,
+      title:'Claude Opus/Sonnet 4 + tool fixes',
+      bullets:['claude-opus-4 & claude-sonnet-4 support','Improved @Tool annotation handling','Elasticsearch VectorStore integration'] },
+
+    { id:'v1.0.2', date:'2025-09-17', type:'spring-ai', version:'v1.0.2', badge:null,
+      title:'GPT-5 + Kotlin schema support',
+      bullets:['GPT-5 model support','Kotlin data class JSON schema fix','MariaDB VectorStore similarity scores'] },
+
+    { id:'v1.0.3', date:'2025-10-01', type:'spring-ai', version:'v1.0.3', badge:null,
+      title:'GraalVM native + AWS enhancements',
+      bullets:['GraalVM native image improvements','GemFireVectorStore metadata filtering','AWS BedrockChatOptions added'] },
+
+    { id:'v1.0.4', date:'2026-03-17', type:'spring-ai', version:'v1.0.4', badge:null,
+      title:'Claude 4.6 models + vector fixes',
+      bullets:['claude-opus-4-6 & claude-sonnet-4-6','Enhanced VectorStore filter expressions','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.5', date:'2026-03-26', type:'spring-ai', version:'v1.0.5', badge:null,
+      title:'AWS streaming + vector store fixes',
+      bullets:['AWS Bedrock streaming finishReason fix','Filter fixes for Redis, Neo4j, PgVector','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.6', date:'2026-04-27', type:'spring-ai', version:'v1.0.6', badge:null,
+      title:'Security hardening',
+      bullets:['PDF parsing DoS vulnerability patched','Transformer cache permissions tightened','Chat memory scoping fixes'] },
+
+    { id:'v1.0.7', date:'2026-05-08', type:'spring-ai', version:'v1.0.7', badge:null,
+      title:'Chat memory security + MCP SDK bump',
+      bullets:['Explicit conversation IDs required','MCP SDK 0.10.0 → 0.18.2 upgrade','Bug fixes & dependency updates'] },
+
+    // ── Chapter 3: 1.1 line (M1 → RC1 → GA → patches) ──────────────────────
+    { id:'v1.1.0-M1', date:'2025-09-09', type:'spring-ai', version:'v1.1.0', badge:'M1',
+      title:'Google GenAI + MCP annotations',
+      bullets:['Unified Google GenAI SDK integration','Audio transcription standardised','MCP annotation-based config'] },
+
+    { id:'v1.1.0-M2', date:'2025-09-22', type:'spring-ai', version:'v1.1.0', badge:'M2',
+      title:'Mistral OCR + Gemini structured output',
+      bullets:['Mistral AI OCR document extraction','Vertex AI Gemini structured outputs','Anthropic cache management'] },
+
+    { id:'v1.1.0-M3', date:'2025-10-15', type:'spring-ai', version:'v1.1.0', badge:'M3',
+      title:'Cosmos DB memory + MCP SDK bump',
+      bullets:['Azure Cosmos DB chat memory','MCP Java SDK 0.14.0 upgrade','Latest Claude model names added'] },
+
+    { id:'v1.1.0-M4', date:'2025-11-03', type:'spring-ai', version:'v1.1.0', badge:'M4',
+      title:'Anthropic Citations + File API',
+      bullets:['Anthropic Citations API support','Recursive advisor chaining','OpenAI File API integration'] },
+
+    { id:'v1.1.0-RC1', date:'2025-11-08', type:'spring-ai', version:'v1.1.0', badge:'RC1',
+      title:'MongoDB memory + Ollama thinking',
+      bullets:['MongoDB chat memory persistence','Ollama thinking/reasoning mode','Auto-retry for network exceptions'] },
+
+    { id:'v1.1.0', date:'2025-11-12', type:'spring-ai', version:'v1.1.0', badge:'GA',
+      title:'Spring AI 1.1 — MCP integration',
+      bullets:['First-class MCP client + server','Pluggable chat memory (Redis/Mongo/JDBC)','Mature RAG advisors'] },
+
+    { id:'v1.1.1', date:'2025-12-05', type:'spring-ai', version:'v1.1.1', badge:null,
+      title:'Native OpenAI SDK + Claude Skills',
+      bullets:['Native OpenAI Java SDK integration','Structured output via ChatClient','Claude Skills API + Files support'] },
+
+    { id:'v1.1.2', date:'2025-12-09', type:'spring-ai', version:'v1.1.2', badge:null,
+      title:'Security patch + Kotlin compat',
+      bullets:['CVE-2024-7254 protobuf fix (Milvus)','ToolCallAdvisor finalisation hook','Kotlin 1.9.x compatibility restored'] },
+
+    // ── Ecosystem trigger for Chapter 4 ─────────────────────────────────────
+    { id:'spring-boot-4', date:'2025-11-20', type:'ecosystem', version:'★ Boot', badge:'4',
+      title:'Spring Boot 4 GA',
+      bullets:['Spring Framework 7 baseline','Java 17 minimum, Java 25 ready','Sets the stage for Spring AI 2.0'] },
+
+    { id:'v1.1.3', date:'2026-03-17', type:'spring-ai', version:'v1.1.3', badge:null,
+      title:'Anthropic Skills + streaming tools',
+      bullets:['Anthropic Skills API unified helper','ToolCallAdvisor streaming tool calls','Mistral + Ollama structured outputs'] },
+
+    { id:'v1.1.4', date:'2026-03-26', type:'spring-ai', version:'v1.1.4', badge:null,
+      title:'Dynamic structured output control',
+      bullets:['Toggle native structured output at runtime','VectorStore filter fixes (Oracle, PgVector)','Anthropic prompt caching fix'] },
+
+    { id:'v1.1.5', date:'2026-04-27', type:'spring-ai', version:'v1.1.5', badge:null,
+      title:'Security hardening (1.1 line)',
+      bullets:['CosmosDB SQL injection prevention','PDF parsing DoS vulnerability patched','Transformer cache permissions tightened'] },
+
+    { id:'v1.1.6', date:'2026-05-08', type:'spring-ai', version:'v1.1.6', badge:null,
+      title:'Explicit conversation IDs (1.1)',
+      bullets:['Chat memory requires explicit conv IDs','MCP auto-config override support','Milvus deletion + MistralAI fixes'] },
+
+    // ── Chapter 4: 2.0 line (M1 → M6) ───────────────────────────────────────
+    { id:'v2.0.0-M1', date:'2025-12-11', type:'spring-ai', version:'v2.0.0', badge:'M1',
+      title:'Spring Boot 4 + Spring 7 foundation',
+      bullets:['Spring Boot 4.0 / Framework 7.0 upgrade','Native OpenAI Java SDK integration','Redis-based chat memory, Claude Skills + Files API'] },
+
+    { id:'v2.0.0-M2', date:'2026-01-23', type:'spring-ai', version:'v2.0.0', badge:'M2',
+      title:'S3, Infinispan + Redis semantic cache',
+      bullets:['Amazon S3 + Infinispan VectorStores','Redis semantic caching for AI queries','Mistral + Ollama structured output'] },
+
+    { id:'v2.0.0-M3', date:'2026-03-17', type:'spring-ai', version:'v2.0.0', badge:'M3',
+      title:'MCP built-in + fluent builders',
+      bullets:['MCP annotations built into core','Fluent builder across all providers','Claude 4.6 models, Claude 3 removed'] },
+
+    { id:'v2.0.0-M4', date:'2026-03-26', type:'spring-ai', version:'v2.0.0', badge:'M4',
+      title:'Gemini Google Search + deprecations',
+      bullets:['Gemini: Google Search + custom tools','Dynamic structured output control','Vertex AI / OCI GenAI deprecated'] },
+
+    { id:'v2.0.0-M5', date:'2026-04-27', type:'spring-ai', version:'v2.0.0', badge:'M5',
+      title:'OpenAI SDK native + cache metrics',
+      bullets:['openai-java SDK replaces internals','Anthropic web search + thinking UI','Unified cache hit/miss statistics'] },
+
+    { id:'v2.0.0-M6', date:'2026-05-08', type:'spring-ai', version:'v2.0.0', badge:'M6',
+      title:'Where we are today',
+      bullets:['Enhanced observability across chat + tool calling','Immutable builders everywhere','Explicit chat-memory conversation IDs'] },
+  ];
+
+  // World state
+  const WORLD_START = 0;
+  const WORLD_END = 14480;            // 720 + 36 entries × 360 + 800; tuned in Task 6
+  const SCROLL_SENSITIVITY = 1.4;     // wheel delta multiplier
+  const STEP_FRAME_MS = 140;          // walk animation tempo
+
+  let worldX = WORLD_START;
+  let lastMoveAt = 0;
+
+  const world = document.getElementById('world');
+  const mascot = document.getElementById('mascot');
+  const title = document.getElementById('title');
+  const startSign = document.getElementById('start-sign');
+  const startBush = document.getElementById('start-bush');
+  const cloud1 = document.querySelector('.cloud-1');
+  const cloud2 = document.querySelector('.cloud-2');
+  const cloudLayer = document.getElementById('cloud-layer');
+  const bgDecor = document.getElementById('bg-decor');
+  const yearDisplay = document.getElementById('year-display');
+  const yearValue = document.getElementById('year-value');
+  let lastReachedYear = null;
+
+  // Three cloud silhouettes — every cloud picks one at random so the sky has variety.
+  function cloudShape(variant, scale) {
+    const px = (n) => Math.round(n * scale) + 'px';
+    if (variant === 1) {
+      // Classic Mario cloud: 2 lobes on top of a base
+      return `<div style="position:absolute;background:#fff;width:${px(48)};height:${px(26)};top:${px(-12)};left:${px(15)};"></div>` +
+             `<div style="position:absolute;background:#fff;width:${px(36)};height:${px(18)};top:${px(-24)};left:${px(24)};"></div>`;
+    }
+    if (variant === 2) {
+      // Puffy cloud: 3 lobes (left, center taller, right)
+      return `<div style="position:absolute;background:#fff;width:${px(34)};height:${px(22)};top:${px(-10)};left:${px(8)};"></div>` +
+             `<div style="position:absolute;background:#fff;width:${px(40)};height:${px(28)};top:${px(-22)};left:${px(28)};"></div>` +
+             `<div style="position:absolute;background:#fff;width:${px(34)};height:${px(22)};top:${px(-10)};left:${px(54)};"></div>`;
+    }
+    // variant 3 — wispy / flat cloud: single low lobe + a tail nub on the right
+    return `<div style="position:absolute;background:#fff;width:${px(38)};height:${px(14)};top:${px(-8)};left:${px(20)};"></div>` +
+           `<div style="position:absolute;background:#fff;width:${px(18)};height:${px(10)};top:${px(-4)};left:${px(72)};"></div>`;
+  }
+
+  // Spawn ~14 clouds spread across the world distance with random sizes/heights.
+  // They live in a parallax layer that drifts at ~25% of worldX for "near-distance" feel.
+  const CLOUD_PARALLAX = 0.25;
+  const CLOUD_COUNT = 14;
+  for (let i = 0; i < CLOUD_COUNT; i++) {
+    const wx = (i / CLOUD_COUNT) * (WORLD_END * 0.9) + Math.random() * 600;
+    const top = 30 + Math.random() * 180;        // skyish band
+    const scale = 0.7 + Math.random() * 0.9;     // 0.7..1.6
+    const c = document.createElement('div');
+    c.className = 'cloud-bg';
+    c.style.top = top + 'px';
+    c.style.width = (90 * scale) + 'px';
+    c.style.height = (26 * scale) + 'px';
+    c.style.opacity = String(0.6 + Math.random() * 0.2);   // 0.6..0.8 → 20-40% transparent
+    const variant = 1 + Math.floor(Math.random() * 3);
+    c.innerHTML = cloudShape(variant, scale);
+    c.dataset.wx = String(wx);
+    cloudLayer.appendChild(c);
+  }
+
+  function paintClouds() {
+    const screenCenter = window.innerWidth / 2;
+    cloudLayer.querySelectorAll('.cloud-bg').forEach(c => {
+      const wx = parseFloat(c.dataset.wx);
+      const x = screenCenter + (wx - worldX) * CLOUD_PARALLAX;
+      c.style.transform = `translateX(${x}px)`;
+    });
+  }
+
+  // Simple inline SVG icons rendered as background motifs along the world.
+  const BG_SYMBOLS = [
+    // Brain glyph
+    '<svg width="64" height="64" viewBox="0 0 64 64"><g fill="none" stroke="#6db33f" stroke-width="3"><path d="M20 20q-8 8 0 18 q-6 8 4 12 q-2 8 8 8 q4 6 12 2 q10-2 8-12 q8-8 0-16 q4-10-8-12 q-4-8-14-4 q-8-2-10 4z"/><path d="M32 20v32 M22 30q5 4 10 0 M40 28q-5 4-8 0"/></g></svg>',
+    // CPU/chip glyph
+    '<svg width="56" height="56" viewBox="0 0 56 56"><g fill="none" stroke="#6db33f" stroke-width="3"><rect x="14" y="14" width="28" height="28"/><rect x="22" y="22" width="12" height="12" fill="#6db33f"/></g><g fill="#6db33f"><rect x="6" y="20" width="6" height="3"/><rect x="6" y="28" width="6" height="3"/><rect x="6" y="36" width="6" height="3"/><rect x="44" y="20" width="6" height="3"/><rect x="44" y="28" width="6" height="3"/><rect x="44" y="36" width="6" height="3"/><rect x="20" y="6" width="3" height="6"/><rect x="28" y="6" width="3" height="6"/><rect x="36" y="6" width="3" height="6"/><rect x="20" y="44" width="3" height="6"/><rect x="28" y="44" width="3" height="6"/><rect x="36" y="44" width="3" height="6"/></g></svg>',
+    // Neural network glyph
+    '<svg width="72" height="56" viewBox="0 0 72 56"><g fill="#6db33f"><circle cx="10" cy="14" r="4"/><circle cx="10" cy="28" r="4"/><circle cx="10" cy="42" r="4"/><circle cx="36" cy="20" r="4"/><circle cx="36" cy="36" r="4"/><circle cx="62" cy="28" r="4"/></g><g stroke="#6db33f" stroke-width="2" fill="none"><line x1="10" y1="14" x2="36" y2="20"/><line x1="10" y1="14" x2="36" y2="36"/><line x1="10" y1="28" x2="36" y2="20"/><line x1="10" y1="28" x2="36" y2="36"/><line x1="10" y1="42" x2="36" y2="20"/><line x1="10" y1="42" x2="36" y2="36"/><line x1="36" y1="20" x2="62" y2="28"/><line x1="36" y1="36" x2="62" y2="28"/></g></svg>',
+  ];
+
+  // Background mountain range — slow parallax, varied sizes, semi-transparent
+  const mountainLayer = document.getElementById('mountain-layer');
+  const MOUNTAIN_PARALLAX = 0.05;     // slower than clouds (0.25) and bg-decor (0.10) — looks far
+  const MOUNTAIN_COUNT = 24;
+  const MOUNTAIN_H_MAX = Math.max(180, window.innerHeight * 0.5);   // up to 50% of viewport
+  for (let i = 0; i < MOUNTAIN_COUNT; i++) {
+    const wx = (i / MOUNTAIN_COUNT) * (WORLD_END * 1.05) + (Math.random() - 0.5) * 700;
+    const w  = 220 + Math.random() * 520;                            // 220..740 — wider, scales with taller mountains
+    const h  = 120 + Math.random() * (MOUNTAIN_H_MAX - 120);         // 120..50%vh
+    const op = 0.15 + Math.random() * 0.27;                          // 0.15..0.42 — more transparent
+    const tier = i % 3;                                              // 0 far, 1 mid, 2 default mid-green
+    const m = document.createElement('div');
+    m.className = 'bg-mountain' + (tier === 0 ? ' far' : tier === 1 ? ' mid' : '');
+    m.style.width = w + 'px';
+    m.style.height = h + 'px';
+    m.style.opacity = String(op);
+    m.dataset.wx = String(wx);
+    mountainLayer.appendChild(m);
+  }
+
+  function paintMountains() {
+    const screenCenter = window.innerWidth / 2;
+    mountainLayer.querySelectorAll('.bg-mountain').forEach((m) => {
+      const wx = parseFloat(m.dataset.wx);
+      const w  = parseFloat(m.style.width);
+      // Center-anchor the mountain on its world-x so it doesn't drift off
+      const x = screenCenter + (wx - worldX) * MOUNTAIN_PARALLAX - w / 2;
+      m.style.transform = `translateX(${x}px)`;
+    });
+  }
+
+  const BG_PARALLAX = 0.10;   // very slow — far in the distance
+  const BG_COUNT = 18;
+  for (let i = 0; i < BG_COUNT; i++) {
+    const wx = (i / BG_COUNT) * (WORLD_END * 0.95) + Math.random() * 800;
+    const top = 60 + Math.random() * 280;
+    const sym = BG_SYMBOLS[i % BG_SYMBOLS.length];
+    const el = document.createElement('div');
+    el.className = 'bg-symbol';
+    el.style.top = top + 'px';
+    el.dataset.wx = String(wx);
+    el.innerHTML = sym;
+    bgDecor.appendChild(el);
+  }
+
+  function paintBgDecor() {
+    const screenCenter = window.innerWidth / 2;
+    bgDecor.querySelectorAll('.bg-symbol').forEach((el) => {
+      const wx = parseFloat(el.dataset.wx);
+      const x = screenCenter + (wx - worldX) * BG_PARALLAX;
+      el.style.transform = `translateX(${x}px)`;
+    });
+  }
+
+  // Center the world so the mascot (which is at left:50%) sits at world-x = 0 initially.
+  function applyWorld() {
+    const screenCenter = window.innerWidth / 2;
+    // World shifts LEFT by worldX so worldX=0 puts world-origin under the mascot.
+    world.style.transform = `translateX(${screenCenter - worldX}px)`;
+    // Slow parallax for foreground clouds — drift opposite to motion at 15%
+    const cloudShift = -worldX * 0.15;
+    cloud1.style.transform = `translateX(${cloudShift}px)`;
+    cloud2.style.transform = `translateX(${cloudShift}px)`;
+    paintClouds();
+    paintMountains();
+    paintBgDecor();
+    // Mascot follows terrain (Donkey-Kong-style multi-level)
+    const f = floorAt(worldX);
+    if (f !== lastFloor) {
+      triggerJump();
+      lastFloor = f;
+    }
+    mascot.style.bottom = (f - 4) + 'px';   // -4 so mascot feet land flush on top
+  }
+
+  function move(delta) {
+    const next = Math.max(WORLD_START, Math.min(WORLD_END, worldX + delta));
+    if (next === worldX) return;
+    worldX = next;
+    applyWorld();
+    lastMoveAt = performance.now();
+    // Compact title + year display once the user has moved past 200px
+    if (worldX > 200) {
+      title.classList.add('compact');
+      startSign.style.opacity = '0';
+      startBush.style.opacity = '0';
+      if (lastReachedYear) yearDisplay.classList.add('visible');
+    } else {
+      title.classList.remove('compact');
+      startSign.style.opacity = '1';
+      startBush.style.opacity = '1';
+      yearDisplay.classList.remove('visible');
+    }
+  }
+
+  // Walk animation tick + obstacle auto-jump
+  const passedObstacles = new Set();
+  let goalX = null;  // Will be set by renderGoal()
+  setInterval(() => {
+    const moving = (performance.now() - lastMoveAt) < 200;
+    mascot.classList.toggle('bobbing', moving);
+
+    // Auto-jump when the mascot is within ±50px of an obstacle (one fire per obstacle per pass).
+    const obstacles = world.querySelectorAll('.obstacle');
+    obstacles.forEach((o) => {
+      const ox = parseFloat(o.dataset.x);
+      const dx = Math.abs(ox - worldX);
+      const key = String(ox);
+      if (dx <= 50 && !passedObstacles.has(key)) {
+        passedObstacles.add(key);
+        triggerJump();
+      } else if (dx > 200 && passedObstacles.has(key)) {
+        passedObstacles.delete(key);  // re-arm when far from the box
+      }
+    });
+
+    // Goal proximity — celebrate every time the player arrives, re-arm when they leave.
+    const goalEl = document.getElementById('goal');
+    if (goalEl && goalX !== null) {
+      const dx = Math.abs(goalX - worldX);
+      if (dx <= 60 && !goalEl.classList.contains('reached')) {
+        goalEl.classList.add('reached');
+        triggerJump();
+        // Celebratory panel takeover
+        panelV.textContent = '★ GOAL ★';
+        panelDate.textContent = 'YOU MADE IT';
+        panelTitle.textContent = 'Build the next agentic app with Spring AI';
+        panelBullets.innerHTML =
+          '<li>You walked through 30+ releases</li>' +
+          '<li>Spring AI 2.0.0-M6 is the foundation</li>' +
+          '<li>Open the workshop dashboard and start shipping</li>';
+        panel.classList.remove('eco');
+        panel.classList.add('open');
+        const hint = panel.querySelector('.hint');
+        if (hint) hint.textContent = '★ END';
+      } else if (dx > 200 && goalEl.classList.contains('reached')) {
+        // Re-arm so walking back into the goal area triggers the takeover again
+        goalEl.classList.remove('reached');
+      }
+    }
+  }, STEP_FRAME_MS);
+
+  // Jump animation — restart-on-demand by removing/forcing-reflow/re-adding the class
+  function triggerJump() {
+    mascot.classList.remove('jumping');
+    void mascot.offsetWidth;          // force reflow so the animation restarts on re-entry
+    mascot.classList.add('jumping');
+  }
+  mascot.addEventListener('animationend', (e) => {
+    if (e.animationName === 'mascot-jump') {
+      mascot.classList.remove('jumping');
+    }
+  });
+
+  // Mouse wheel — vertical wheel maps to horizontal world motion
+  window.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    move(e.deltaY * SCROLL_SENSITIVITY);
+  }, { passive: false });
+
+  // Arrow keys — track held state, advance smoothly via rAF (matches wheel feel)
+  const heldKeys = { ArrowLeft: false, ArrowRight: false };
+  const KEY_VELOCITY = 8;  // pixels per frame ≈ 480 px/sec at 60fps
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      heldKeys[e.key] = true;
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key in heldKeys) heldKeys[e.key] = false;
+  });
+  window.addEventListener('blur', () => {
+    heldKeys.ArrowLeft = false;
+    heldKeys.ArrowRight = false;
+  });
+
+  function arrowTick() {
+    if (heldKeys.ArrowRight) move(KEY_VELOCITY);
+    if (heldKeys.ArrowLeft) move(-KEY_VELOCITY);
+    requestAnimationFrame(arrowTick);
+  }
+  requestAnimationFrame(arrowTick);
+
+  // Touch swipe
+  let touchX = null;
+  window.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (touchX == null) return;
+    const dx = touchX - e.touches[0].clientX;
+    touchX = e.touches[0].clientX;
+    move(dx);
+  }, { passive: true });
+  window.addEventListener('touchend', () => { touchX = null; });
+
+  // Resize re-centers
+  window.addEventListener('resize', applyWorld);
+
+  // === Milestone rendering, active detection, score ===
+
+  const SIGN_SPACING = 360;        // horizontal pixels between adjacent signs
+  const SIGN_FIRST_X = 720;        // first sign starts beyond the start-scene assets
+  const ACTIVE_RANGE = 80;         // ± px from sign for "active"
+
+  // Obstacle catalog — name, height (used for podium lift), width unused at JS level (CSS handles it)
+  const OBSTACLE_TYPES = [
+    { name: 'wood',   h: 52 },
+    { name: 'stone',  h: 46 },
+    { name: 'pipe',   h: 70 },
+    { name: 'server', h: 50 },
+  ];
+  function obstacleType(i) { return OBSTACLE_TYPES[i % OBSTACLE_TYPES.length]; }
+
+  function makeObstacle(x, type) {
+    const o = document.createElement('div');
+    o.className = 'obstacle ' + type.name;
+    o.style.left = x + 'px';
+    o.dataset.x = String(x);
+    o.dataset.h = String(type.h);
+    return o;
+  }
+
+  // ── Donkey-Kong multi-level terrain constants ────────────────────────────
+  const GROUND_BOTTOM = 94;                        // top of grass = walkable floor at level 0
+  const STEP_HEIGHT = 60;                          // each level adds this many pixels of climb
+  const PLAY_AREA_TOP = Math.max(220, window.innerHeight * 0.30); // 30% from screen bottom
+  const MAX_LEVEL = Math.max(1, Math.floor((PLAY_AREA_TOP - GROUND_BOTTOM) / STEP_HEIGHT)); // typically 2-3
+  let lastFloor = GROUND_BOTTOM;   // tracks floor level to detect transitions and trigger jumps
+
+  // Deterministic gap-level pattern (0 = flat, 1 = one level up, 2 = two levels up)
+  function gapLevel(i) {
+    const r = (i * 7 + 3) % 9;
+    let lvl = 0;
+    if (r === 2 || r === 5) lvl = 1;
+    if (r === 7) lvl = 2;
+    return Math.min(lvl, MAX_LEVEL);
+  }
+
+  // signLevel(i): the elevation level the sign at index i sits at.
+  // 0 = ground, 1 = on a single tower (level-1 platform), 2 = on a level-2 platform.
+  function signLevel(i) {
+    const m = ORDERED[i];
+    if (m && m.type === 'ecosystem') return 1;
+    if (i % 9 === 5) return 1;
+    return 0;
+  }
+
+  // Binary floor: ground level (94px) OR full platform-top level (94 + level*STEP_HEIGHT).
+  // No intermediate stair tier — the mascot jumps straight up to the platform edge.
+  function floorAt(x) {
+    // Sign-platform zones first — within ±80 of any elevated sign, mascot is on its podium.
+    for (let i = 0; i < ORDERED.length; i++) {
+      const signX = SIGN_FIRST_X + i * SIGN_SPACING;
+      if (Math.abs(x - signX) <= 80) {
+        const sl = signLevel(i);
+        if (sl > 0) return GROUND_BOTTOM + sl * STEP_HEIGHT;
+        return GROUND_BOTTOM;
+      }
+    }
+    // Then gap-platform zones — middle of an elevated gap.
+    for (let i = 0; i < ORDERED.length - 1; i++) {
+      const xA = SIGN_FIRST_X + i * SIGN_SPACING;
+      const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
+      if (x < xA || x > xB) continue;
+      const level = gapLevel(i);
+      if (level === 0) return GROUND_BOTTOM;
+      // CHANGE 2: wider edge buffer (0.22 → 0.32) gives ground-level signs more breathing room.
+      const platStart = xA + SIGN_SPACING * 0.32;
+      const platEnd   = xB - SIGN_SPACING * 0.32;
+      if (x >= platStart && x <= platEnd) {
+        return GROUND_BOTTOM + level * STEP_HEIGHT;
+      }
+      return GROUND_BOTTOM;
+    }
+    return GROUND_BOTTOM;
+  }
+
+  const panel = document.getElementById('panel');
+  const panelV = document.getElementById('panel-v');
+  const panelDate = document.getElementById('panel-date');
+  const panelTitle = document.getElementById('panel-title');
+  const panelBullets = document.getElementById('panel-bullets');
+  const scoreValue = document.getElementById('score-value');
+
+  const reached = new Set();
+  let score = 0;
+  let activeIdx = -1;
+
+  // Stable chronological sort by ISO date. Within the same date, preserves
+  // MILESTONES order so the 1.0.x / 1.1.x / 2.0.x same-day clusters keep a
+  // consistent line ordering.
+  const ORDERED = MILESTONES.slice().sort((a, b) => a.date.localeCompare(b.date));
+
+  // Render all sign-posts into #world, in chronological order, spaced evenly.
+  function renderSigns() {
+    ORDERED.forEach((m, i) => {
+      const sign = document.createElement('div');
+      sign.className = 'sign' + (m.type === 'ecosystem' ? ' eco' : '');
+      sign.dataset.idx = String(i);
+      const x = SIGN_FIRST_X + i * SIGN_SPACING;
+      sign.style.left = x + 'px';
+      sign.dataset.x = String(x);
+      const board = document.createElement('div');
+      board.className = 'board';
+      const label = m.version || m.title.split(' ')[0];
+      const badge = m.badge ? `<br>${m.badge}` : '';
+      // Every sign shows its YYYY-MM so the timeline reads chronologically at a glance.
+      const dateStamp = m.date ? `<br><span class="sign-date">${m.date.slice(0, 7)}</span>` : '';
+      board.innerHTML = `${label}${dateStamp}${badge}`;
+      const post = document.createElement('div');
+      post.className = 'post';
+      sign.appendChild(board);
+      sign.appendChild(post);
+      // Sign-on-platform: elevated signs get a multi-level tower and a small deck.
+      const sl = signLevel(i);
+      if (sl > 0) {
+        // Build a tower of `sl` obstacles directly under the sign so the post stands on top.
+        for (let j = 0; j < sl; j++) {
+          const t = (j === sl - 1) ? obstacleType(i) : OBSTACLE_TYPES[1]; // top is varied, lower is stone
+          const o = makeObstacle(x, t);
+          o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+          world.appendChild(o);
+        }
+        // Small platform deck so the player has a visible surface under the sign post (±80px).
+        const deck = document.createElement('div');
+        deck.className = 'platform';
+        deck.style.left = (x - 80) + 'px';
+        deck.style.width = '160px';
+        deck.style.bottom = (GROUND_BOTTOM + sl * STEP_HEIGHT) + 'px';
+        world.appendChild(deck);
+        // Lift the sign post itself so it stands on the deck top.
+        sign.style.bottom = (90 + sl * STEP_HEIGHT) + 'px';
+      } else {
+        // Ground-level sign: keep the existing single-obstacle podium variety on every 4th sign
+        const onBox = (i % 4 === 3);
+        if (onBox) {
+          const ptype = obstacleType(i + 2);
+          world.appendChild(makeObstacle(x, ptype));
+          sign.style.bottom = (90 + ptype.h) + 'px';
+        }
+      }
+      world.appendChild(sign);
+    });
+  }
+
+  // Place obstacles between consecutive signs — flat gaps get one obstacle,
+  // elevated gaps get stair+tower+stair+platform (Donkey-Kong style).
+  function renderObstacles() {
+    for (let i = 0; i < ORDERED.length - 1; i++) {
+      const xA = SIGN_FIRST_X + i * SIGN_SPACING;
+      const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
+      const x = (xA + xB) / 2;
+      const level = gapLevel(i);
+
+      if (level === 0) {
+        // Flat gap: single obstacle in the middle, like before
+        world.appendChild(makeObstacle(x, obstacleType(i)));
+        continue;
+      }
+
+      // Elevated gap: two support towers (at deck edges) + optional center column + platform deck
+      const baseType = obstacleType(i);
+
+      // Support tower under the LEFT edge of the platform deck
+      const leftTowerX = xA + SIGN_SPACING * 0.32;
+      for (let j = 0; j < level; j++) {
+        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+        const o = makeObstacle(leftTowerX, t);
+        o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+        world.appendChild(o);
+      }
+
+      // Support tower under the RIGHT edge of the platform deck
+      const rightTowerX = xB - SIGN_SPACING * 0.32;
+      for (let j = 0; j < level; j++) {
+        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+        const o = makeObstacle(rightTowerX, t);
+        o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+        world.appendChild(o);
+      }
+
+      // Optional: a center column for tall stacks (level ≥ 2) so the deck doesn't appear to float
+      if (level >= 2) {
+        for (let j = 0; j < level; j++) {
+          const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+          const o = makeObstacle(x, t);
+          o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+          world.appendChild(o);
+        }
+      }
+
+      // Platform deck spanning between the two support towers
+      const deck = document.createElement('div');
+      deck.className = 'platform';
+      deck.style.left = leftTowerX + 'px';
+      deck.style.width = (rightTowerX - leftTowerX) + 'px';
+      deck.style.bottom = (GROUND_BOTTOM + level * STEP_HEIGHT) + 'px';
+      world.appendChild(deck);
+    }
+  }
+
+  // Render the goal portal at the end of the timeline
+  function renderGoal() {
+    // Goal sits ~600px past the last sign, well before WORLD_END.
+    const lastSignX = SIGN_FIRST_X + (ORDERED.length - 1) * SIGN_SPACING;
+    const goalX = lastSignX + 600;
+    const goal = document.createElement('div');
+    goal.className = 'goal';
+    goal.id = 'goal';
+    goal.style.left = goalX + 'px';
+    goal.dataset.x = String(goalX);
+    goal.innerHTML =
+      `<div class="goal-flag"></div>` +
+      `<div class="banner">GOAL<div class="banner-sub">AGENTIC APP</div></div>` +
+      `<svg class="robot" viewBox="0 0 44 44"><use href="#robot-head"/></svg>` +
+      `<div class="door"></div>`;
+    world.appendChild(goal);
+    return goalX;
+  }
+
+  // Find the sign closest to current worldX within ACTIVE_RANGE; -1 if none.
+  function findActiveIdx() {
+    let best = -1;
+    let bestDist = ACTIVE_RANGE + 1;
+    for (let i = 0; i < ORDERED.length; i++) {
+      const x = SIGN_FIRST_X + i * SIGN_SPACING;
+      const d = Math.abs(x - worldX);
+      if (d <= ACTIVE_RANGE && d < bestDist) {
+        best = i;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  function openPanel(idx) {
+    const m = ORDERED[idx];
+    panel.classList.remove('eco');
+    if (m.type === 'ecosystem') panel.classList.add('eco');
+    panelV.textContent = '▌ ' + (m.version || m.title);
+    panelDate.textContent = m.date + (m.badge ? '  ★ ' + m.badge : '');
+    panelTitle.textContent = m.title;
+    panelBullets.innerHTML = '';
+    m.bullets.forEach(b => {
+      const li = document.createElement('li');
+      li.textContent = b;
+      panelBullets.appendChild(li);
+    });
+    const hint = panel.querySelector('.hint');
+    if (hint) hint.textContent = '▶ KEEP WALKING';
+    panel.classList.add('open');
+  }
+
+  function closePanel() {
+    panel.classList.remove('open');
+  }
+
+  // After every move, refresh sign classes (active/passed) and panel visibility.
+  function refreshScene() {
+    const idx = findActiveIdx();
+    const signs = world.querySelectorAll('.sign');
+    signs.forEach((s, i) => {
+      const x = parseInt(s.dataset.x, 10);
+      s.classList.toggle('active', i === idx);
+      s.classList.toggle('passed', i !== idx && x < worldX - 20);
+    });
+    if (idx !== activeIdx) {
+      activeIdx = idx;
+      if (idx >= 0) {
+        openPanel(idx);
+        triggerJump();
+        if (!reached.has(idx)) {
+          reached.add(idx);
+          score += 1;
+          scoreValue.textContent = String(score);
+          const y = ORDERED[idx].date.slice(0, 4);
+          if (lastReachedYear !== y) {
+            lastReachedYear = y;
+            yearValue.textContent = 'YEAR ' + y;
+            if (worldX > 200) yearDisplay.classList.add('visible');
+          }
+        }
+      } else {
+        closePanel();
+      }
+    }
+  }
+
+  // Wrap move() to also refresh the scene
+  const _move = move;
+  move = function(d) { _move(d); refreshScene(); };
+
+  // Render once MILESTONES is populated
+  renderSigns();
+  renderObstacles();
+  goalX = renderGoal();
+  refreshScene();
+
+  // Initial paint
+  applyWorld();
+})();
+</script>
+
+</body>
+</html>

@@ -87,7 +87,7 @@ graph TD
 | `ChatClient.Builder` | `o.s.ai.chat.client.ChatClient.Builder` | Builds ChatClient with tools, options, advisors |
 | `ChatOptions` | `o.s.ai.chat.prompt.ChatOptions` | Provider-agnostic interface — injected into `Agent` so the loop code doesn't care whether it's OpenAI or Ollama |
 | `MessageChatMemoryAdvisor` | `o.s.ai.chat.client.advisor.MessageChatMemoryAdvisor` | Injects full conversation history into prompts |
-| `MessageChatMemoryAdvisor.Builder.conversationId(String)` | same | Pins the advisor to a specific conversation key — used to isolate memory per-agent (see [Per-Agent Memory](#per-agent-memory-conversationid)) |
+| `ChatMemory.CONVERSATION_ID` | `o.s.ai.chat.memory.ChatMemory` | Context key (`"chat_memory_conversation_id"`) — supplies the per-agent conversation id at request time. **Spring AI 2.0.0-M6** removed `Builder.conversationId(String)` (see [Per-Agent Memory](#per-agent-memory-conversationid)) |
 | `MessageWindowChatMemory` | `o.s.ai.chat.memory.MessageWindowChatMemory` | Sliding-window conversation memory |
 | `InMemoryChatMemoryRepository` | `o.s.ai.chat.memory.InMemoryChatMemoryRepository` | In-memory storage for conversation history |
 | `OpenAiChatOptions` | `o.s.ai.openai.OpenAiChatOptions` | OpenAI-specific options including `toolChoice("required")` |
@@ -103,19 +103,38 @@ graph TD
 
 ## Per-Agent Memory (conversationId)
 
-`MessageChatMemoryAdvisor` stores each message under a **conversation id**. Its default is the literal string `"default"`. If you build one `MessageWindowChatMemory` and share it across several `Agent` instances in the same JVM — which is tempting because memory is a bean — every agent ends up reading and writing the **same** thread of messages. Alice's chat bleeds into Bob's next turn.
+`MessageChatMemoryAdvisor` stores each message under a **conversation id**. If you build one `MessageWindowChatMemory` and share it across several `Agent` instances in the same JVM — which is tempting because memory is a bean — every agent ends up reading and writing the **same** thread of messages. Alice's chat bleeds into Bob's next turn.
 
-The fix is one line on the advisor: pin the conversation id to the agent's unique id.
+The fix is to pin the conversation id to the agent's unique id. **Spring AI 2.0.0-M6** removed `MessageChatMemoryAdvisor.Builder.conversationId(String)` — the id is now passed at request time via the `ChatMemory.CONVERSATION_ID` context key. Wiring it as a default advisor param on the `ChatClient.Builder` makes every call from the agent's client carry the id automatically:
 
 ```java
 // agentic-system/02-model-directed-loop/model-directed-loop-agent/src/main/java/
-// com/example/agentic/model_directed_loop/Agent.java, line 70
-var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).conversationId(id).build();
+// com/example/agentic/model_directed_loop/Agent.java
+var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
+
+this.chatClient = builder.clone()
+    .defaultOptions(options)
+    .defaultTools(new AgentTools())
+    .defaultSystem(this.effectiveSystemPrompt)
+    .defaultAdvisors(spec -> spec.advisors(chatMemoryAdvisor)
+        .param(ChatMemory.CONVERSATION_ID, id))
+    .build();
 ```
 
-> `Agent.java` in demo 01 does the same on its line 48. Both agents also isolate their memory backing stores — each `Agent` owns its own `MessageWindowChatMemory` + `InMemoryChatMemoryRepository` — but the `conversationId(id)` is what keeps the advisor from ever falling back to the shared default key.
+> `Agent.java` in demo 01 does the same. Both agents also isolate their memory backing stores — each `Agent` owns its own `MessageWindowChatMemory` + `InMemoryChatMemoryRepository` — but the `ChatMemory.CONVERSATION_ID` param is what keeps the advisor from ever resolving an ambiguous id at runtime (M6's `BaseChatMemoryAdvisor.getConversationId(...)` asserts the id is present, with no implicit default).
 
 `resetMemory()` and `getLog()` call `memory.clear(id)` / `memory.get(id)` with the same key, so cross-agent reset and log retrieval stay scoped too.
+
+> **M5 → M6 delta:**
+> ```diff
+> -var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).conversationId(id).build();
+> -...
+> -.defaultAdvisors(chatMemoryAdvisor)
+> +var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
+> +...
+> +.defaultAdvisors(spec -> spec.advisors(chatMemoryAdvisor)
+> +    .param(ChatMemory.CONVERSATION_ID, id))
+> ```
 
 ---
 
@@ -174,7 +193,7 @@ Both `spring-ai-openai` and `spring-ai-starter-model-ollama` are on the classpat
 @Configuration("modelDirectedLoopAgentOptionsConfig")
 public class AgentOptionsConfig {
 
-  // Spring AI 2.0.0-M5: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
+  // Spring AI 2.0.0-M6: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
   // (so the chat client can merge with its own defaults). Beans return the builder, not a built instance.
 
   @Bean
@@ -292,7 +311,7 @@ public Agent(ChatClient.Builder builder, String id, ChatOptions options) {
   this(builder, id, options, null);                       // backwards-compatible
 }
 
-// Spring AI 2.0.0-M5: parameter type is ChatOptions.Builder (not ChatOptions).
+// Spring AI 2.0.0-M6: parameter type is ChatOptions.Builder (not ChatOptions).
 public Agent(ChatClient.Builder builder, String id, ChatOptions.Builder options, String userContext) {
   // ...
   String effectiveSystemPrompt = SYSTEM_PROMPT;
@@ -423,7 +442,7 @@ The agent always responds through a `send_message` tool with two fields: `messag
 
 ### Spring AI Components
 
-- `ChatClient` — built with `defaultTools`, `defaultOptions` (Spring AI 2.0.0-M5: takes a `ChatOptions.Builder`), `defaultSystem`, `defaultAdvisors`
+- `ChatClient` — built with `defaultTools`, `defaultOptions` (Spring AI 2.0.0-M6: takes a `ChatOptions.Builder`), `defaultSystem`, `defaultAdvisors`
 - `OpenAiChatOptions.toolChoice("required")` — forces the model to always call a tool
 - `@Tool(returnDirect = true)` — tool result becomes the response content
 - `MessageChatMemoryAdvisor` — persists conversation across requests
@@ -499,11 +518,14 @@ public Agent(String id, ChatClient.Builder chatClientBuilder) {
     var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
 
     this.chatClient = chatClientBuilder.clone()
-        // Spring AI 2.0.0-M5: defaultOptions() takes a ChatOptions.Builder — drop the trailing .build()
+        // Spring AI 2.0.0-M6: defaultOptions() takes a ChatOptions.Builder — drop the trailing .build()
         .defaultOptions(OpenAiChatOptions.builder().toolChoice("required"))
         .defaultTools(new AgentTools())
         .defaultSystem(SYSTEM_PROMPT)
-        .defaultAdvisors(chatMemoryAdvisor)
+        // Spring AI 2.0.0-M6: pass the conversation id via the ChatMemory.CONVERSATION_ID
+        // context key — the builder's conversationId(String) was removed.
+        .defaultAdvisors(spec -> spec.advisors(chatMemoryAdvisor)
+            .param(ChatMemory.CONVERSATION_ID, id))
         .build();
 }
 ```
@@ -813,13 +835,13 @@ The gateway route `/ollama/**` already exists (`applications/gateway/src/main/ja
 ### Pattern 1: Forced Tool Calling
 
 ```java
-// Spring AI 2.0.0-M5 — pass the Builder to ChatClient.Builder.defaultOptions(...)
+// Spring AI 2.0.0-M6 — pass the Builder to ChatClient.Builder.defaultOptions(...)
 OpenAiChatOptions.builder().toolChoice("required")
 ```
 
 ```diff
 - OpenAiChatOptions.builder().toolChoice("required").build()   // Spring AI 2.0.0-M4
-+ OpenAiChatOptions.builder().toolChoice("required")           // Spring AI 2.0.0-M5
++ OpenAiChatOptions.builder().toolChoice("required")           // Spring AI 2.0.0-M6
 ```
 
 Forces the model to always call a tool instead of responding with free-form text. This ensures:

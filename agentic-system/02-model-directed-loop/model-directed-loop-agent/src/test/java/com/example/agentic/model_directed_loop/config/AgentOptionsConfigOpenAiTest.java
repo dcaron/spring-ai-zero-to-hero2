@@ -13,7 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("openai")
 class AgentOptionsConfigOpenAiTest {
 
-  // Spring AI 2.0.0-M5: bean exposes a ChatOptions.Builder so the chat client can merge defaults.
+  // Spring AI 2.0.0-M6: bean exposes a ChatOptions.Builder so the chat client can merge defaults.
   @Autowired ChatOptions.Builder chatOptionsBuilder;
 
   @Test

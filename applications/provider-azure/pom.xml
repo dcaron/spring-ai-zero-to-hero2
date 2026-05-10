@@ -80,7 +80,7 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 		<!--
-		  Spring AI 2.0.0-M5 removed `spring-ai-azure-openai`.
+		  Spring AI 2.0.0-M6 removed `spring-ai-azure-openai`.
 		  Azure OpenAI ("Microsoft Foundry") is now served via the unified `spring-ai-openai` module:
 		  Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com`
 		  (or `cognitiveservices.azure.com`), or when `deployment-name` is set.

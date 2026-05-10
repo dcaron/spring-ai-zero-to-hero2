@@ -167,7 +167,7 @@ spring:
 
 Supports chat, embeddings, tool calling. Requires Standard SKU (not GlobalStandard).
 
-> **Spring AI 2.0.0-M5 note** — `spring-ai-azure-openai` was removed in M5. Azure OpenAI is now served by the unified `spring-ai-openai` module under the **Microsoft Foundry** label. Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. Config keys moved from `spring.ai.azure.openai.*` → `spring.ai.openai.*`. See `migration/SPRING_AI_M4_TO_M5_MIGRATION.md` for the full migration record.
+> **Spring AI 2.0.0-M6 note** — `spring-ai-azure-openai` was removed in M5. Azure OpenAI is now served by the unified `spring-ai-openai` module under the **Microsoft Foundry** label. Foundry mode is auto-detected when `spring.ai.openai.base-url` ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. Config keys moved from `spring.ai.azure.openai.*` → `spring.ai.openai.*`. See `migration/SPRING_AI_M4_TO_M5_MIGRATION.md` for the full migration record.
 
 Azure has more setup nuance than the other providers. The bullet points below capture every gotcha we hit during the M4 → M5 migration; if you skim only one section in this file, this is the one.
 

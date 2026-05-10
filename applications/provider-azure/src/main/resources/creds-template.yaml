@@ -1,6 +1,6 @@
 # Copy this file to creds.yaml and fill in your Azure OpenAI credentials.
 #
-# Spring AI 2.0.0-M5 removed `spring-ai-azure-openai`. Azure OpenAI ("Microsoft Foundry")
+# Spring AI 2.0.0-M6 removed `spring-ai-azure-openai`. Azure OpenAI ("Microsoft Foundry")
 # is now configured via the unified OpenAI module: set `base-url` to your Azure endpoint
 # and a `deployment-name`, and Foundry mode is auto-detected.
 #
