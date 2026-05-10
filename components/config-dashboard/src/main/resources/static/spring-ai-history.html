@@ -9,7 +9,7 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{width:100%;height:100%;overflow:hidden;background:#0d1a0d;color:#cfeac0;font-family:'Press Start 2P',monospace;}
 
-    #stage{position:relative;width:100vw;height:100vh;background:linear-gradient(180deg,#1a2818 0%,#0d1a0d 70%);overflow:hidden;image-rendering:pixelated;}
+    #stage{position:relative;width:100vw;height:100vh;background:linear-gradient(180deg,#1a2818 0%,#0d1a0d 70%);overflow:hidden;image-rendering:pixelated;isolation:isolate;}
     #stage::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.04) 1px,transparent 1px);background-size:6px 6px;pointer-events:none;}
 
     /* World container — translates horizontally for scroll */
@@ -636,12 +636,12 @@
   // Background mountain range — slow parallax, varied sizes, semi-transparent
   const mountainLayer = document.getElementById('mountain-layer');
   const MOUNTAIN_PARALLAX = 0.05;     // slower than clouds (0.25) and bg-decor (0.10) — looks far
-  const MOUNTAIN_COUNT = 14;
+  const MOUNTAIN_COUNT = 24;
   for (let i = 0; i < MOUNTAIN_COUNT; i++) {
-    const wx = (i / MOUNTAIN_COUNT) * (WORLD_END * 1.0) + (Math.random() - 0.5) * 600;
-    const w  = 240 + Math.random() * 280;            // 240..520
-    const h  = 130 + Math.random() * 150;            // 130..280
-    const op = 0.25 + Math.random() * 0.30;          // 0.25..0.55 (transparent)
+    const wx = (i / MOUNTAIN_COUNT) * (WORLD_END * 1.05) + (Math.random() - 0.5) * 700;
+    const w  = 200 + Math.random() * 440;            // 200..640 — wider size range
+    const h  = 100 + Math.random() * 220;            // 100..320 — taller range
+    const op = 0.15 + Math.random() * 0.27;          // 0.15..0.42 — more transparent
     const tier = i % 3;                              // 0 far, 1 mid, 2 default mid-green
     const m = document.createElement('div');
     m.className = 'bg-mountain' + (tier === 0 ? ' far' : tier === 1 ? ' mid' : '');
