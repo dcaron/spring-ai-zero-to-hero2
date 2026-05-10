@@ -823,18 +823,37 @@
     return Math.min(lvl, MAX_LEVEL);
   }
 
+  // signLevel(i): the elevation level the sign at index i sits at.
+  // 0 = ground, 1 = on a single tower (level-1 platform), 2 = on a level-2 platform.
+  function signLevel(i) {
+    const m = ORDERED[i];
+    if (m && m.type === 'ecosystem') return 1;
+    if (i % 9 === 5) return 1;
+    return 0;
+  }
+
   // Binary floor: ground level (94px) OR full platform-top level (94 + level*STEP_HEIGHT).
   // No intermediate stair tier — the mascot jumps straight up to the platform edge.
   function floorAt(x) {
+    // Sign-platform zones first — within ±80 of any elevated sign, mascot is on its podium.
+    for (let i = 0; i < ORDERED.length; i++) {
+      const signX = SIGN_FIRST_X + i * SIGN_SPACING;
+      if (Math.abs(x - signX) <= 80) {
+        const sl = signLevel(i);
+        if (sl > 0) return GROUND_BOTTOM + sl * STEP_HEIGHT;
+        return GROUND_BOTTOM;
+      }
+    }
+    // Then gap-platform zones — middle of an elevated gap.
     for (let i = 0; i < ORDERED.length - 1; i++) {
       const xA = SIGN_FIRST_X + i * SIGN_SPACING;
       const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
       if (x < xA || x > xB) continue;
       const level = gapLevel(i);
       if (level === 0) return GROUND_BOTTOM;
-      // Platform spans the middle 60% of the gap; signs at xA and xB stay at ground level.
-      const platStart = xA + SIGN_SPACING * 0.22;   // ~80px from left sign
-      const platEnd   = xB - SIGN_SPACING * 0.22;   // ~80px from right sign
+      // CHANGE 2: wider edge buffer (0.22 → 0.32) gives ground-level signs more breathing room.
+      const platStart = xA + SIGN_SPACING * 0.32;
+      const platEnd   = xB - SIGN_SPACING * 0.32;
       if (x >= platStart && x <= platEnd) {
         return GROUND_BOTTOM + level * STEP_HEIGHT;
       }
@@ -879,14 +898,33 @@
       post.className = 'post';
       sign.appendChild(board);
       sign.appendChild(post);
-      // Every 4th sign (offset so first isn't on a box) stands on a podium obstacle
-      const onBox = (i % 4 === 3);
-      if (onBox) {
-        // Pick a podium variant (offset by sign index so the rotation isn't all wood).
-        const ptype = obstacleType(i + 2);
-        world.appendChild(makeObstacle(x, ptype));
-        // Lift sign so its post bottom rests on the podium TOP (bottom + height).
-        sign.style.bottom = (90 + ptype.h) + 'px';
+      // Sign-on-platform: elevated signs get a multi-level tower and a small deck.
+      const sl = signLevel(i);
+      if (sl > 0) {
+        // Build a tower of `sl` obstacles directly under the sign so the post stands on top.
+        for (let j = 0; j < sl; j++) {
+          const t = (j === sl - 1) ? obstacleType(i) : OBSTACLE_TYPES[1]; // top is varied, lower is stone
+          const o = makeObstacle(x, t);
+          o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+          world.appendChild(o);
+        }
+        // Small platform deck so the player has a visible surface under the sign post (±80px).
+        const deck = document.createElement('div');
+        deck.className = 'platform';
+        deck.style.left = (x - 80) + 'px';
+        deck.style.width = '160px';
+        deck.style.bottom = (GROUND_BOTTOM + sl * STEP_HEIGHT) + 'px';
+        world.appendChild(deck);
+        // Lift the sign post itself so it stands on the deck top.
+        sign.style.bottom = (90 + sl * STEP_HEIGHT) + 'px';
+      } else {
+        // Ground-level sign: keep the existing single-obstacle podium variety on every 4th sign
+        const onBox = (i % 4 === 3);
+        if (onBox) {
+          const ptype = obstacleType(i + 2);
+          world.appendChild(makeObstacle(x, ptype));
+          sign.style.bottom = (90 + ptype.h) + 'px';
+        }
       }
       world.appendChild(sign);
     });
@@ -911,7 +949,7 @@
       const baseType = obstacleType(i);
 
       // Support tower under the LEFT edge of the platform deck
-      const leftTowerX = xA + SIGN_SPACING * 0.22;
+      const leftTowerX = xA + SIGN_SPACING * 0.32;
       for (let j = 0; j < level; j++) {
         const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
         const o = makeObstacle(leftTowerX, t);
@@ -920,7 +958,7 @@
       }
 
       // Support tower under the RIGHT edge of the platform deck
-      const rightTowerX = xB - SIGN_SPACING * 0.22;
+      const rightTowerX = xB - SIGN_SPACING * 0.32;
       for (let j = 0; j < level; j++) {
         const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
         const o = makeObstacle(rightTowerX, t);
