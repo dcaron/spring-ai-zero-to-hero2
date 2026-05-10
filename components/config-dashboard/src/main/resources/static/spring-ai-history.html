@@ -89,7 +89,9 @@
     .sign.active .board{background:#9be068;color:#1a3a16;border-color:#6db33f;font-weight:bold;box-shadow:3px 3px 0 #1a3a16,0 0 0 4px rgba(155,224,104,0.25);}
     .sign.active::before{content:"★";position:absolute;top:-14px;left:50%;transform:translateX(-50%);color:#ffd84a;font-size:16px;text-shadow:2px 2px 0 #1a3a16;}
 
-    .sign-date{display:inline-block;margin-top:2px;font-size:10px;color:#ffd2e0;opacity:0.85;letter-spacing:1px;}
+    .sign-date{display:inline-block;margin-top:2px;font-size:10px;opacity:0.85;letter-spacing:1px;color:#f5e6c8;}
+    .sign.eco .sign-date{color:#ffd2e0;}
+    .sign.active .sign-date{color:#1a3a16;}
 
     /* Bush decoration (screen-fixed, anchored to start scene) */
     #start-bush{position:absolute;bottom:88px;right:80px;width:60px;height:24px;z-index:6;}
@@ -511,9 +513,14 @@
   let score = 0;
   let activeIdx = -1;
 
-  // Render all sign-posts into #world, in MILESTONES order, spaced evenly.
+  // Stable chronological sort by ISO date. Within the same date, preserves
+  // MILESTONES order so the 1.0.x / 1.1.x / 2.0.x same-day clusters keep a
+  // consistent line ordering.
+  const ORDERED = MILESTONES.slice().sort((a, b) => a.date.localeCompare(b.date));
+
+  // Render all sign-posts into #world, in chronological order, spaced evenly.
   function renderSigns() {
-    MILESTONES.forEach((m, i) => {
+    ORDERED.forEach((m, i) => {
       const sign = document.createElement('div');
       sign.className = 'sign' + (m.type === 'ecosystem' ? ' eco' : '');
       sign.dataset.idx = String(i);
@@ -524,9 +531,9 @@
       board.className = 'board';
       const label = m.version || m.title.split(' ')[0];
       const badge = m.badge ? `<br>${m.badge}` : '';
-      // Ecosystem signs include YYYY-MM on the board so the timeline reads chronologically at a glance.
-      const ecoDate = m.type === 'ecosystem' && m.date ? `<br><span class="sign-date">${m.date.slice(0, 7)}</span>` : '';
-      board.innerHTML = `${label}${ecoDate}${badge}`;
+      // Every sign shows its YYYY-MM so the timeline reads chronologically at a glance.
+      const dateStamp = m.date ? `<br><span class="sign-date">${m.date.slice(0, 7)}</span>` : '';
+      board.innerHTML = `${label}${dateStamp}${badge}`;
       const post = document.createElement('div');
       post.className = 'post';
       sign.appendChild(board);
@@ -539,7 +546,7 @@
   function findActiveIdx() {
     let best = -1;
     let bestDist = ACTIVE_RANGE + 1;
-    for (let i = 0; i < MILESTONES.length; i++) {
+    for (let i = 0; i < ORDERED.length; i++) {
       const x = SIGN_FIRST_X + i * SIGN_SPACING;
       const d = Math.abs(x - worldX);
       if (d <= ACTIVE_RANGE && d < bestDist) {
@@ -551,7 +558,7 @@
   }
 
   function openPanel(idx) {
-    const m = MILESTONES[idx];
+    const m = ORDERED[idx];
     panel.classList.remove('eco');
     if (m.type === 'ecosystem') panel.classList.add('eco');
     panelV.textContent = '▌ ' + (m.version || m.title);
@@ -583,7 +590,7 @@
       activeIdx = idx;
       if (idx >= 0) {
         openPanel(idx);
-        if (MILESTONES[idx].type === 'ecosystem') {
+        if (ORDERED[idx].type === 'ecosystem') {
           triggerJump();
         }
         if (!reached.has(idx)) {
