@@ -70,6 +70,15 @@
       100%{transform:translateX(-50%) translateY(0);}
     }
 
+    /* Jump animation — fires when mascot passes an ecosystem event. Overrides bobbing while running. */
+    #mascot.jumping{animation:mascot-jump 0.55s ease-out;}
+    @keyframes mascot-jump{
+      0%{transform:translateX(-50%) translateY(0);}
+      30%{transform:translateX(-50%) translateY(-48px);}
+      55%{transform:translateX(-50%) translateY(-48px);}
+      100%{transform:translateX(-50%) translateY(0);}
+    }
+
     /* Sign post (lives in #world, positioned via inline left:Xpx) */
     .sign{position:absolute;bottom:90px;width:140px;text-align:center;font-size:13px;line-height:1.6;color:#f5e6c8;z-index:6;transition:opacity 0.3s ease;}
     .sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
@@ -428,6 +437,18 @@
     mascot.classList.toggle('bobbing', moving);
   }, STEP_FRAME_MS);
 
+  // Jump animation — restart-on-demand by removing/forcing-reflow/re-adding the class
+  function triggerJump() {
+    mascot.classList.remove('jumping');
+    void mascot.offsetWidth;          // force reflow so the animation restarts on re-entry
+    mascot.classList.add('jumping');
+  }
+  mascot.addEventListener('animationend', (e) => {
+    if (e.animationName === 'mascot-jump') {
+      mascot.classList.remove('jumping');
+    }
+  });
+
   // Mouse wheel — vertical wheel maps to horizontal world motion
   window.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -562,6 +583,9 @@
       activeIdx = idx;
       if (idx >= 0) {
         openPanel(idx);
+        if (MILESTONES[idx].type === 'ecosystem') {
+          triggerJump();
+        }
         if (!reached.has(idx)) {
           reached.add(idx);
           score += 1;
