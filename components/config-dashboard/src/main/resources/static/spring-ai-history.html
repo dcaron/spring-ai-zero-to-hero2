@@ -749,14 +749,14 @@
       }
     });
 
-    // Goal proximity — celebrate once
+    // Goal proximity — celebrate every time the player arrives, re-arm when they leave.
     const goalEl = document.getElementById('goal');
-    if (goalEl && !goalEl.classList.contains('reached') && goalX !== null) {
+    if (goalEl && goalX !== null) {
       const dx = Math.abs(goalX - worldX);
-      if (dx <= 60) {
+      if (dx <= 60 && !goalEl.classList.contains('reached')) {
         goalEl.classList.add('reached');
         triggerJump();
-        // Brief celebratory panel takeover
+        // Celebratory panel takeover
         panelV.textContent = '★ GOAL ★';
         panelDate.textContent = 'YOU MADE IT';
         panelTitle.textContent = 'Build the next agentic app with Spring AI';
@@ -768,6 +768,9 @@
         panel.classList.add('open');
         const hint = panel.querySelector('.hint');
         if (hint) hint.textContent = '★ END';
+      } else if (dx > 200 && goalEl.classList.contains('reached')) {
+        // Re-arm so walking back into the goal area triggers the takeover again
+        goalEl.classList.remove('reached');
       }
     }
   }, STEP_FRAME_MS);
