@@ -159,9 +159,97 @@
 </div>
 
 <script>
+(() => {
+  'use strict';
+
   // Milestone data — Task 6 fills this with all 37 Spring AI tags + 7 ecosystem events.
   // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..], link?}
   const MILESTONES = [];
+
+  // World state
+  const WORLD_START = 0;
+  const WORLD_END = 16000;            // total walkable distance; tuned in Task 6
+  const SCROLL_SENSITIVITY = 1.4;     // wheel delta multiplier
+  const KEY_STEP = 80;                // arrow-key step size
+  const STEP_FRAME_MS = 140;          // walk animation tempo
+
+  let worldX = WORLD_START;
+  let lastMoveAt = 0;
+  let stepFlip = false;
+
+  const world = document.getElementById('world');
+  const mascotFrame = document.getElementById('mascot-frame');
+  const title = document.getElementById('title');
+  const startSign = document.getElementById('start-sign');
+  const startBush = document.getElementById('start-bush');
+  const cloud1 = document.querySelector('.cloud-1');
+  const cloud2 = document.querySelector('.cloud-2');
+
+  // Center the world so the mascot (which is at left:50%) sits at world-x = 0 initially.
+  function applyWorld() {
+    const screenCenter = window.innerWidth / 2;
+    // World shifts LEFT by worldX so worldX=0 puts world-origin under the mascot.
+    world.style.transform = `translateX(${screenCenter - worldX}px)`;
+    // Slow parallax for clouds — drift opposite to motion at 15%
+    const cloudShift = -worldX * 0.15;
+    cloud1.style.transform = `translateX(${cloudShift}px)`;
+    cloud2.style.transform = `translateX(${cloudShift}px)`;
+  }
+
+  function move(delta) {
+    const next = Math.max(WORLD_START, Math.min(WORLD_END, worldX + delta));
+    if (next === worldX) return;
+    worldX = next;
+    applyWorld();
+    lastMoveAt = performance.now();
+    // Hide start-scene-only elements once the user has moved past 200px
+    if (worldX > 200) {
+      title.style.opacity = '0';
+      startSign.style.opacity = '0';
+      startBush.style.opacity = '0';
+    } else {
+      title.style.opacity = '1';
+      startSign.style.opacity = '1';
+      startBush.style.opacity = '1';
+    }
+  }
+
+  // Walk animation tick
+  setInterval(() => {
+    const moving = (performance.now() - lastMoveAt) < 200;
+    stepFlip = moving ? !stepFlip : false;
+    mascotFrame.setAttribute('href', stepFlip ? '#mascot-step' : '#mascot-idle');
+  }, STEP_FRAME_MS);
+
+  // Mouse wheel — vertical wheel maps to horizontal world motion
+  window.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    move(e.deltaY * SCROLL_SENSITIVITY);
+  }, { passive: false });
+
+  // Arrow keys
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); move(KEY_STEP); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-KEY_STEP); }
+  });
+
+  // Touch swipe
+  let touchX = null;
+  window.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (touchX == null) return;
+    const dx = touchX - e.touches[0].clientX;
+    touchX = e.touches[0].clientX;
+    move(dx);
+  }, { passive: true });
+  window.addEventListener('touchend', () => { touchX = null; });
+
+  // Resize re-centers
+  window.addEventListener('resize', applyWorld);
+
+  // Initial paint
+  applyWorld();
+})();
 </script>
 
 </body>
