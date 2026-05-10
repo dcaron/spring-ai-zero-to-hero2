@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spring AI · A Brief History</title>
+  <link rel="stylesheet" href="/vendor/press-start-2p/press-start-2p.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{width:100%;height:100%;overflow:hidden;background:#0d1a0d;color:#cfeac0;font-family:'Press Start 2P',monospace;}
+
+    #stage{position:relative;width:100vw;height:100vh;background:linear-gradient(180deg,#1a2818 0%,#0d1a0d 70%);overflow:hidden;image-rendering:pixelated;}
+    #stage::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.04) 1px,transparent 1px);background-size:6px 6px;pointer-events:none;}
+
+    /* World container — translates horizontally for scroll */
+    #world{position:absolute;left:0;bottom:0;width:1px;height:100%;will-change:transform;}
+
+    /* Foreground baselines (screen-fixed, not in #world) */
+    .ground{position:absolute;left:0;right:0;bottom:0;height:80px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;}
+    .grass{position:absolute;left:0;right:0;bottom:80px;height:14px;background:#6db33f;background-image:repeating-linear-gradient(90deg,#6db33f 0,#6db33f 6px,#5a9e2f 6px,#5a9e2f 12px);z-index:5;}
+
+    /* Score HUD (screen-fixed) */
+    #score{position:absolute;top:18px;right:24px;font-size:14px;color:#fff;text-align:right;line-height:1.6;z-index:10;text-shadow:2px 2px 0 #1a3a16;}
+    #score b{display:block;font-size:18px;margin-top:4px;}
+
+    /* Title (start scene only — fades out once user starts walking) */
+    #title{position:absolute;top:14vh;left:50%;transform:translateX(-50%);font-size:48px;color:#9be068;text-shadow:4px 4px 0 #2a5a26,8px 8px 0 #1a3a16;text-align:center;line-height:1.2;letter-spacing:2px;z-index:3;transition:opacity 0.4s ease-out;}
+
+    /* Hill (lives in world, anchored at world-x = 0) */
+    .hill{position:absolute;left:0;bottom:80px;width:520px;height:300px;clip-path:polygon(0 100%,52% 0,100% 100%);background:#4a8a3a;background-image:radial-gradient(circle at 30% 70%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 60% 80%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 70% 50%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 45% 40%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 55% 25%,#1a3a16 6px,transparent 7px);}
+
+    /* Clouds (screen-fixed, slow parallax handled in Task 4) */
+    .cloud{position:absolute;background:#fff;}
+    .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;}
+    .cloud-1{top:60px;left:8vw;width:60px;height:18px;}
+    .cloud-1::before{width:30px;height:18px;top:-12px;left:14px;}
+    .cloud-1::after{width:24px;height:14px;top:-22px;left:24px;}
+    .cloud-2{top:100px;right:10vw;width:80px;height:20px;}
+    .cloud-2::before{width:36px;height:20px;top:-14px;left:18px;}
+    .cloud-2::after{width:24px;height:14px;top:-24px;left:30px;}
+
+    /* Branding (screen-fixed, matches reference) */
+    .springlogo{position:absolute;bottom:14px;left:18px;color:#6db33f;font-size:11px;display:flex;align-items:center;gap:8px;z-index:10;}
+    .springlogo .leaf{width:18px;height:18px;background:#6db33f;border-radius:50% 0 50% 50%;transform:rotate(-30deg);}
+    .vmware{position:absolute;bottom:14px;right:18px;color:#5a7a4a;font-size:9px;z-index:10;}
+
+    /* Instruction sign at start (screen-fixed in start scene) */
+    #start-sign{position:absolute;bottom:140px;left:80px;width:120px;text-align:center;color:#f5e6c8;font-size:9px;line-height:1.6;z-index:6;transition:opacity 0.4s ease-out;}
+    #start-sign .post{width:6px;height:50px;background:#6b3e1f;margin:0 auto;}
+    #start-sign .board{background:#8a5230;border:3px solid #5a3520;padding:8px 4px;box-shadow:3px 3px 0 #2a1810;}
+  </style>
+</head>
+<body>
+
+<!-- Inline SVG sprite library — Task 3 will populate this -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs></defs>
+</svg>
+
+<div id="stage">
+
+  <!-- Background clouds (screen-fixed, parallax in Task 4) -->
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+
+  <!-- World layer (scrolls horizontally, contains hill + sign-posts) -->
+  <div id="world">
+    <div class="hill"></div>
+    <!-- sign posts injected by JS in Task 5 -->
+  </div>
+
+  <!-- Foreground baselines (screen-fixed, render on top of world) -->
+  <div class="grass"></div>
+  <div class="ground"></div>
+
+  <!-- HUD (screen-fixed) -->
+  <h1 id="title">THE HISTORY<br>OF SPRING AI</h1>
+  <div id="score">Score<b id="score-value">0</b></div>
+
+  <!-- Start instruction sign -->
+  <div id="start-sign">
+    <div class="board">SCROLL<br>OR ARROWS<br>▶</div>
+    <div class="post"></div>
+  </div>
+
+  <!-- Branding -->
+  <div class="springlogo"><span class="leaf"></span>spring</div>
+  <div class="vmware">vmware</div>
+
+</div>
+
+<script>
+  // Milestone data — Task 6 fills this with all 37 Spring AI tags + 7 ecosystem events.
+  // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..], link?}
+  const MILESTONES = [];
+</script>
+
+</body>
+</html>
