@@ -217,7 +217,6 @@
   const WORLD_START = 0;
   const WORLD_END = 16000;            // total walkable distance; tuned in Task 6
   const SCROLL_SENSITIVITY = 1.4;     // wheel delta multiplier
-  const KEY_STEP = 80;                // arrow-key step size
   const STEP_FRAME_MS = 140;          // walk animation tempo
 
   let worldX = WORLD_START;
@@ -272,11 +271,30 @@
     move(e.deltaY * SCROLL_SENSITIVITY);
   }, { passive: false });
 
-  // Arrow keys
+  // Arrow keys — track held state, advance smoothly via rAF (matches wheel feel)
+  const heldKeys = { ArrowLeft: false, ArrowRight: false };
+  const KEY_VELOCITY = 8;  // pixels per frame ≈ 480 px/sec at 60fps
+
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') { e.preventDefault(); move(KEY_STEP); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); move(-KEY_STEP); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      heldKeys[e.key] = true;
+    }
   });
+  window.addEventListener('keyup', (e) => {
+    if (e.key in heldKeys) heldKeys[e.key] = false;
+  });
+  window.addEventListener('blur', () => {
+    heldKeys.ArrowLeft = false;
+    heldKeys.ArrowRight = false;
+  });
+
+  function arrowTick() {
+    if (heldKeys.ArrowRight) move(KEY_VELOCITY);
+    if (heldKeys.ArrowLeft) move(-KEY_VELOCITY);
+    requestAnimationFrame(arrowTick);
+  }
+  requestAnimationFrame(arrowTick);
 
   // Touch swipe
   let touchX = null;
