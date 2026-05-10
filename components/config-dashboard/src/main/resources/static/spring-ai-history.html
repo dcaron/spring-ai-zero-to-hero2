@@ -185,7 +185,7 @@
     .platform{position:absolute;height:14px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;border:2px solid #2a1810;border-bottom:none;box-shadow:0 -3px 0 #6db33f inset;}
 
     /* Mascot — screen-fixed, centered horizontally */
-    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:pixelated;transition:transform 0.1s, bottom 0.25s cubic-bezier(.5,0,.5,1);}
+    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:pixelated;transition:transform 0.1s, bottom 0.18s ease-out;}
     #mascot.bobbing{animation:mascot-bob 0.28s steps(2) infinite;}
     @keyframes mascot-bob{
       0%{transform:translateX(-50%) translateY(0);}
@@ -654,7 +654,12 @@
     paintClouds();
     paintBgDecor();
     // Mascot follows terrain (Donkey-Kong-style multi-level)
-    mascot.style.bottom = (floorAt(worldX) - 4) + 'px';   // -4 so mascot feet land flush on top
+    const f = floorAt(worldX);
+    if (f !== lastFloor) {
+      triggerJump();
+      lastFloor = f;
+    }
+    mascot.style.bottom = (f - 4) + 'px';   // -4 so mascot feet land flush on top
   }
 
   function move(delta) {
@@ -807,6 +812,7 @@
   const STEP_HEIGHT = 60;                          // each level adds this many pixels of climb
   const PLAY_AREA_TOP = Math.max(220, window.innerHeight * 0.30); // 30% from screen bottom
   const MAX_LEVEL = Math.max(1, Math.floor((PLAY_AREA_TOP - GROUND_BOTTOM) / STEP_HEIGHT)); // typically 2-3
+  let lastFloor = GROUND_BOTTOM;   // tracks floor level to detect transitions and trigger jumps
 
   // Deterministic gap-level pattern (0 = flat, 1 = one level up, 2 = two levels up)
   function gapLevel(i) {
@@ -817,22 +823,22 @@
     return Math.min(lvl, MAX_LEVEL);
   }
 
-  // Returns the floor height (bottom px) at a given worldX position.
+  // Binary floor: ground level (94px) OR full platform-top level (94 + level*STEP_HEIGHT).
+  // No intermediate stair tier — the mascot jumps straight up to the platform edge.
   function floorAt(x) {
     for (let i = 0; i < ORDERED.length - 1; i++) {
       const xA = SIGN_FIRST_X + i * SIGN_SPACING;
       const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
-      if (x < xA - 30 || x > xB + 30) continue;
+      if (x < xA || x > xB) continue;
       const level = gapLevel(i);
       if (level === 0) return GROUND_BOTTOM;
-      // Within ±80 of a sign, drop to ground so the player reads the sign at its base
-      if (Math.abs(x - xA) < 80 || Math.abs(x - xB) < 80) return GROUND_BOTTOM;
-      // Approach stair zone (left side)
-      if (x < xA + 150) return GROUND_BOTTOM + (level - 1) * STEP_HEIGHT;
-      // Descent stair zone (right side)
-      if (x > xB - 150) return GROUND_BOTTOM + (level - 1) * STEP_HEIGHT;
-      // Middle platform at full level
-      return GROUND_BOTTOM + level * STEP_HEIGHT;
+      // Platform spans the middle 60% of the gap; signs at xA and xB stay at ground level.
+      const platStart = xA + SIGN_SPACING * 0.22;   // ~80px from left sign
+      const platEnd   = xB - SIGN_SPACING * 0.22;   // ~80px from right sign
+      if (x >= platStart && x <= platEnd) {
+        return GROUND_BOTTOM + level * STEP_HEIGHT;
+      }
+      return GROUND_BOTTOM;
     }
     return GROUND_BOTTOM;
   }
@@ -901,32 +907,42 @@
         continue;
       }
 
-      // Elevated gap: approach stair (left), tower (center), descent stair (right), platform deck
+      // Elevated gap: two support towers (at deck edges) + optional center column + platform deck
       const baseType = obstacleType(i);
 
-      // Approach stair (left) — wood crate, at level-1 height
-      const stairLeft = makeObstacle(xA + 110, OBSTACLE_TYPES[0]);
-      stairLeft.style.bottom = (GROUND_BOTTOM + (level - 1) * STEP_HEIGHT) + 'px';
-      world.appendChild(stairLeft);
-
-      // Center tower — `level` obstacles stacked; lower blocks are stone, top is the variant
+      // Support tower under the LEFT edge of the platform deck
+      const leftTowerX = xA + SIGN_SPACING * 0.22;
       for (let j = 0; j < level; j++) {
-        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1]; // stone for lower, variant for top
-        const o = makeObstacle(x, t);
+        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+        const o = makeObstacle(leftTowerX, t);
         o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
         world.appendChild(o);
       }
 
-      // Descent stair (right) — wood crate, at level-1 height
-      const stairRight = makeObstacle(xB - 110, OBSTACLE_TYPES[0]);
-      stairRight.style.bottom = (GROUND_BOTTOM + (level - 1) * STEP_HEIGHT) + 'px';
-      world.appendChild(stairRight);
+      // Support tower under the RIGHT edge of the platform deck
+      const rightTowerX = xB - SIGN_SPACING * 0.22;
+      for (let j = 0; j < level; j++) {
+        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+        const o = makeObstacle(rightTowerX, t);
+        o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+        world.appendChild(o);
+      }
 
-      // Platform deck spanning the elevated walking surface (between the stair-obstacle bases)
+      // Optional: a center column for tall stacks (level ≥ 2) so the deck doesn't appear to float
+      if (level >= 2) {
+        for (let j = 0; j < level; j++) {
+          const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1];
+          const o = makeObstacle(x, t);
+          o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+          world.appendChild(o);
+        }
+      }
+
+      // Platform deck spanning between the two support towers
       const deck = document.createElement('div');
       deck.className = 'platform';
-      deck.style.left = (xA + 80) + 'px';
-      deck.style.width = ((xB - 80) - (xA + 80)) + 'px';
+      deck.style.left = leftTowerX + 'px';
+      deck.style.width = (rightTowerX - leftTowerX) + 'px';
       deck.style.bottom = (GROUND_BOTTOM + level * STEP_HEIGHT) + 'px';
       world.appendChild(deck);
     }
