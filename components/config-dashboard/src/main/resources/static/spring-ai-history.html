@@ -181,8 +181,11 @@
     .lime-mouth{fill:none;stroke:#173900;stroke-width:4;stroke-linecap:round;}
     .lime-pixel{shape-rendering:crispEdges;}
 
+    /* Elevated platform — visible "floor" the mascot walks on between stair obstacles */
+    .platform{position:absolute;height:14px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;border:2px solid #2a1810;border-bottom:none;box-shadow:0 -3px 0 #6db33f inset;}
+
     /* Mascot — screen-fixed, centered horizontally */
-    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:pixelated;transition:transform 0.1s;}
+    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:pixelated;transition:transform 0.1s, bottom 0.25s cubic-bezier(.5,0,.5,1);}
     #mascot.bobbing{animation:mascot-bob 0.28s steps(2) infinite;}
     @keyframes mascot-bob{
       0%{transform:translateX(-50%) translateY(0);}
@@ -650,6 +653,8 @@
     cloud2.style.transform = `translateX(${cloudShift}px)`;
     paintClouds();
     paintBgDecor();
+    // Mascot follows terrain (Donkey-Kong-style multi-level)
+    mascot.style.bottom = (floorAt(worldX) - 4) + 'px';   // -4 so mascot feet land flush on top
   }
 
   function move(delta) {
@@ -797,6 +802,41 @@
     return o;
   }
 
+  // ── Donkey-Kong multi-level terrain constants ────────────────────────────
+  const GROUND_BOTTOM = 94;                        // top of grass = walkable floor at level 0
+  const STEP_HEIGHT = 60;                          // each level adds this many pixels of climb
+  const PLAY_AREA_TOP = Math.max(220, window.innerHeight * 0.30); // 30% from screen bottom
+  const MAX_LEVEL = Math.max(1, Math.floor((PLAY_AREA_TOP - GROUND_BOTTOM) / STEP_HEIGHT)); // typically 2-3
+
+  // Deterministic gap-level pattern (0 = flat, 1 = one level up, 2 = two levels up)
+  function gapLevel(i) {
+    const r = (i * 7 + 3) % 9;
+    let lvl = 0;
+    if (r === 2 || r === 5) lvl = 1;
+    if (r === 7) lvl = 2;
+    return Math.min(lvl, MAX_LEVEL);
+  }
+
+  // Returns the floor height (bottom px) at a given worldX position.
+  function floorAt(x) {
+    for (let i = 0; i < ORDERED.length - 1; i++) {
+      const xA = SIGN_FIRST_X + i * SIGN_SPACING;
+      const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
+      if (x < xA - 30 || x > xB + 30) continue;
+      const level = gapLevel(i);
+      if (level === 0) return GROUND_BOTTOM;
+      // Within ±80 of a sign, drop to ground so the player reads the sign at its base
+      if (Math.abs(x - xA) < 80 || Math.abs(x - xB) < 80) return GROUND_BOTTOM;
+      // Approach stair zone (left side)
+      if (x < xA + 150) return GROUND_BOTTOM + (level - 1) * STEP_HEIGHT;
+      // Descent stair zone (right side)
+      if (x > xB - 150) return GROUND_BOTTOM + (level - 1) * STEP_HEIGHT;
+      // Middle platform at full level
+      return GROUND_BOTTOM + level * STEP_HEIGHT;
+    }
+    return GROUND_BOTTOM;
+  }
+
   const panel = document.getElementById('panel');
   const panelV = document.getElementById('panel-v');
   const panelDate = document.getElementById('panel-date');
@@ -846,14 +886,49 @@
     });
   }
 
-  // Place a free-standing obstacle box halfway between consecutive signs.
+  // Place obstacles between consecutive signs — flat gaps get one obstacle,
+  // elevated gaps get stair+tower+stair+platform (Donkey-Kong style).
   function renderObstacles() {
-    // Between every two adjacent signs, drop one obstacle. Variant cycles through wood/stone/pipe/server.
     for (let i = 0; i < ORDERED.length - 1; i++) {
       const xA = SIGN_FIRST_X + i * SIGN_SPACING;
       const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
       const x = (xA + xB) / 2;
-      world.appendChild(makeObstacle(x, obstacleType(i)));
+      const level = gapLevel(i);
+
+      if (level === 0) {
+        // Flat gap: single obstacle in the middle, like before
+        world.appendChild(makeObstacle(x, obstacleType(i)));
+        continue;
+      }
+
+      // Elevated gap: approach stair (left), tower (center), descent stair (right), platform deck
+      const baseType = obstacleType(i);
+
+      // Approach stair (left) — wood crate, at level-1 height
+      const stairLeft = makeObstacle(xA + 110, OBSTACLE_TYPES[0]);
+      stairLeft.style.bottom = (GROUND_BOTTOM + (level - 1) * STEP_HEIGHT) + 'px';
+      world.appendChild(stairLeft);
+
+      // Center tower — `level` obstacles stacked; lower blocks are stone, top is the variant
+      for (let j = 0; j < level; j++) {
+        const t = (j === level - 1) ? baseType : OBSTACLE_TYPES[1]; // stone for lower, variant for top
+        const o = makeObstacle(x, t);
+        o.style.bottom = (GROUND_BOTTOM + j * STEP_HEIGHT) + 'px';
+        world.appendChild(o);
+      }
+
+      // Descent stair (right) — wood crate, at level-1 height
+      const stairRight = makeObstacle(xB - 110, OBSTACLE_TYPES[0]);
+      stairRight.style.bottom = (GROUND_BOTTOM + (level - 1) * STEP_HEIGHT) + 'px';
+      world.appendChild(stairRight);
+
+      // Platform deck spanning the elevated walking surface (between the stair-obstacle bases)
+      const deck = document.createElement('div');
+      deck.className = 'platform';
+      deck.style.left = (xA + 80) + 'px';
+      deck.style.width = ((xB - 80) - (xA + 80)) + 'px';
+      deck.style.bottom = (GROUND_BOTTOM + level * STEP_HEIGHT) + 'px';
+      world.appendChild(deck);
     }
   }
 
