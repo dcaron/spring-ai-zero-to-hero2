@@ -219,23 +219,166 @@
 (() => {
   'use strict';
 
-  // Milestone data — Task 6 fills this with all 37 Spring AI tags + 7 ecosystem events.
-  // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..], link?}
+  // Milestone data — 36 entries: 4 origin + 4 ecosystem prelude + 1 MCP + 8 GA line +
+  // 12 1.1 line + 1 Boot 4 + 6 2.0 line
+  // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..]}
   const MILESTONES = [
-    { id:'v1.0.0', date:'2025-05-19', type:'spring-ai', version:'v1.0.0', badge:'GA',
-      title:'Spring AI 1.0 — General Availability',
-      bullets:['ChatClient stable API','Advisors + RAG','VectorStore (20+ providers)'] },
+
+    // ── Chapter 1: Origin ────────────────────────────────────────────────────
+    { id:'v0.8.0', date:'2024-05-21', type:'spring-ai', version:'v0.8.0', badge:'M',
+      title:'First public preview',
+      bullets:['First public preview release','OpenAI + Azure chat models','Embedding clients — the seed of an idea'] },
+
+    { id:'v0.8.1', date:'2024-06-20', type:'spring-ai', version:'v0.8.1', badge:'M',
+      title:'Early iteration',
+      bullets:['Stabilisation of the 0.8.x line','Additional vector store adapters','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.0-Mx-early', date:'2024-11-15', type:'spring-ai', version:'v1.0.0', badge:'M1-M4',
+      title:'API shaping (M1 → M4)',
+      bullets:['Function calling lands','Advisors arrive','VectorStore grows from 1 to 20+ providers'] },
+
+    { id:'v1.0.0-Mx-late', date:'2025-04-09', type:'spring-ai', version:'v1.0.0', badge:'M5-M8',
+      title:'API stabilising (M5 → M8)',
+      bullets:['Ollama integration matures','RAG advisor lands','API surface freezing for GA'] },
+
+    // ── Ecosystem prelude (interleaved into the narrative) ───────────────────
+    { id:'chatgpt', date:'2022-11-30', type:'ecosystem', version:'★ AI', badge:'BOOM',
+      title:'ChatGPT public launch',
+      bullets:['AI suddenly matters to every developer','Python ecosystem (LangChain) takes the lead','JVM is left at the gate'] },
+
+    { id:'gpt4', date:'2023-03-14', type:'ecosystem', version:'★ GPT', badge:'4',
+      title:'OpenAI GPT-4 release',
+      bullets:['Quality leap that justifies enterprise adoption','Function/tool calling reshapes API design'] },
+
+    { id:'llama2', date:'2023-07-18', type:'ecosystem', version:'★ Llama', badge:'2',
+      title:'Llama 2 open-weighted (Meta)',
+      bullets:['First credible open-weight LLM','Local inference becomes viable','Sets up Ollama on the laptop'] },
+
+    { id:'claude3', date:'2024-03-04', type:'ecosystem', version:'★ Claude', badge:'3',
+      title:'Anthropic Claude 3 family',
+      bullets:['Frontier-class alternative to GPT-4','Vision + long context','Spring AI gains a third major provider'] },
+
+    // ── Ecosystem trigger for Chapter 3 ─────────────────────────────────────
     { id:'mcp-open', date:'2024-11-25', type:'ecosystem', version:'★ MCP', badge:'OPEN',
       title:'Anthropic open-sources MCP',
       bullets:['Model Context Protocol becomes an open standard','Foundation for Spring AI Stage 6','Tool/resource/prompt unification'] },
+
+    // ── Chapter 2: GA line (v1.0.0 → v1.0.7) ────────────────────────────────
+    { id:'v1.0.0', date:'2025-05-19', type:'spring-ai', version:'v1.0.0', badge:'GA',
+      title:'Spring AI 1.0 — General Availability',
+      bullets:['ChatClient stable API','Advisors + RAG','VectorStore (20+ providers)'] },
+
+    { id:'v1.0.1', date:'2025-08-08', type:'spring-ai', version:'v1.0.1', badge:null,
+      title:'Claude Opus/Sonnet 4 + tool fixes',
+      bullets:['claude-opus-4 & claude-sonnet-4 support','Improved @Tool annotation handling','Elasticsearch VectorStore integration'] },
+
+    { id:'v1.0.2', date:'2025-09-17', type:'spring-ai', version:'v1.0.2', badge:null,
+      title:'GPT-5 + Kotlin schema support',
+      bullets:['GPT-5 model support','Kotlin data class JSON schema fix','MariaDB VectorStore similarity scores'] },
+
+    { id:'v1.0.3', date:'2025-10-01', type:'spring-ai', version:'v1.0.3', badge:null,
+      title:'GraalVM native + AWS enhancements',
+      bullets:['GraalVM native image improvements','GemFireVectorStore metadata filtering','AWS BedrockChatOptions added'] },
+
+    { id:'v1.0.4', date:'2026-03-17', type:'spring-ai', version:'v1.0.4', badge:null,
+      title:'Claude 4.6 models + vector fixes',
+      bullets:['claude-opus-4-6 & claude-sonnet-4-6','Enhanced VectorStore filter expressions','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.5', date:'2026-03-26', type:'spring-ai', version:'v1.0.5', badge:null,
+      title:'AWS streaming + vector store fixes',
+      bullets:['AWS Bedrock streaming finishReason fix','Filter fixes for Redis, Neo4j, PgVector','Bug fixes & dependency updates'] },
+
+    { id:'v1.0.6', date:'2026-04-27', type:'spring-ai', version:'v1.0.6', badge:null,
+      title:'Security hardening',
+      bullets:['PDF parsing DoS vulnerability patched','Transformer cache permissions tightened','Chat memory scoping fixes'] },
+
+    { id:'v1.0.7', date:'2026-05-08', type:'spring-ai', version:'v1.0.7', badge:null,
+      title:'Chat memory security + MCP SDK bump',
+      bullets:['Explicit conversation IDs required','MCP SDK 0.10.0 → 0.18.2 upgrade','Bug fixes & dependency updates'] },
+
+    // ── Chapter 3: 1.1 line (M1 → RC1 → GA → patches) ──────────────────────
+    { id:'v1.1.0-M1', date:'2025-09-09', type:'spring-ai', version:'v1.1.0', badge:'M1',
+      title:'Google GenAI + MCP annotations',
+      bullets:['Unified Google GenAI SDK integration','Audio transcription standardised','MCP annotation-based config'] },
+
+    { id:'v1.1.0-M2', date:'2025-09-22', type:'spring-ai', version:'v1.1.0', badge:'M2',
+      title:'Mistral OCR + Gemini structured output',
+      bullets:['Mistral AI OCR document extraction','Vertex AI Gemini structured outputs','Anthropic cache management'] },
+
+    { id:'v1.1.0-M3', date:'2025-10-15', type:'spring-ai', version:'v1.1.0', badge:'M3',
+      title:'Cosmos DB memory + MCP SDK bump',
+      bullets:['Azure Cosmos DB chat memory','MCP Java SDK 0.14.0 upgrade','Latest Claude model names added'] },
+
+    { id:'v1.1.0-M4', date:'2025-11-03', type:'spring-ai', version:'v1.1.0', badge:'M4',
+      title:'Anthropic Citations + File API',
+      bullets:['Anthropic Citations API support','Recursive advisor chaining','OpenAI File API integration'] },
+
+    { id:'v1.1.0-RC1', date:'2025-11-08', type:'spring-ai', version:'v1.1.0', badge:'RC1',
+      title:'MongoDB memory + Ollama thinking',
+      bullets:['MongoDB chat memory persistence','Ollama thinking/reasoning mode','Auto-retry for network exceptions'] },
+
+    { id:'v1.1.0', date:'2025-11-12', type:'spring-ai', version:'v1.1.0', badge:'GA',
+      title:'Spring AI 1.1 — MCP integration',
+      bullets:['First-class MCP client + server','Pluggable chat memory (Redis/Mongo/JDBC)','Mature RAG advisors'] },
+
+    { id:'v1.1.1', date:'2025-12-05', type:'spring-ai', version:'v1.1.1', badge:null,
+      title:'Native OpenAI SDK + Claude Skills',
+      bullets:['Native OpenAI Java SDK integration','Structured output via ChatClient','Claude Skills API + Files support'] },
+
+    { id:'v1.1.2', date:'2025-12-09', type:'spring-ai', version:'v1.1.2', badge:null,
+      title:'Security patch + Kotlin compat',
+      bullets:['CVE-2024-7254 protobuf fix (Milvus)','ToolCallAdvisor finalisation hook','Kotlin 1.9.x compatibility restored'] },
+
+    // ── Ecosystem trigger for Chapter 4 ─────────────────────────────────────
+    { id:'spring-boot-4', date:'2025-11-20', type:'ecosystem', version:'★ Boot', badge:'4',
+      title:'Spring Boot 4 GA',
+      bullets:['Spring Framework 7 baseline','Java 17 minimum, Java 25 ready','Sets the stage for Spring AI 2.0'] },
+
+    { id:'v1.1.3', date:'2026-03-17', type:'spring-ai', version:'v1.1.3', badge:null,
+      title:'Anthropic Skills + streaming tools',
+      bullets:['Anthropic Skills API unified helper','ToolCallAdvisor streaming tool calls','Mistral + Ollama structured outputs'] },
+
+    { id:'v1.1.4', date:'2026-03-26', type:'spring-ai', version:'v1.1.4', badge:null,
+      title:'Dynamic structured output control',
+      bullets:['Toggle native structured output at runtime','VectorStore filter fixes (Oracle, PgVector)','Anthropic prompt caching fix'] },
+
+    { id:'v1.1.5', date:'2026-04-27', type:'spring-ai', version:'v1.1.5', badge:null,
+      title:'Security hardening (1.1 line)',
+      bullets:['CosmosDB SQL injection prevention','PDF parsing DoS vulnerability patched','Transformer cache permissions tightened'] },
+
+    { id:'v1.1.6', date:'2026-05-08', type:'spring-ai', version:'v1.1.6', badge:null,
+      title:'Explicit conversation IDs (1.1)',
+      bullets:['Chat memory requires explicit conv IDs','MCP auto-config override support','Milvus deletion + MistralAI fixes'] },
+
+    // ── Chapter 4: 2.0 line (M1 → M6) ───────────────────────────────────────
+    { id:'v2.0.0-M1', date:'2025-12-11', type:'spring-ai', version:'v2.0.0', badge:'M1',
+      title:'Spring Boot 4 + Spring 7 foundation',
+      bullets:['Spring Boot 4.0 / Framework 7.0 upgrade','Native OpenAI Java SDK integration','Redis-based chat memory, Claude Skills + Files API'] },
+
+    { id:'v2.0.0-M2', date:'2026-01-23', type:'spring-ai', version:'v2.0.0', badge:'M2',
+      title:'S3, Infinispan + Redis semantic cache',
+      bullets:['Amazon S3 + Infinispan VectorStores','Redis semantic caching for AI queries','Mistral + Ollama structured output'] },
+
+    { id:'v2.0.0-M3', date:'2026-03-17', type:'spring-ai', version:'v2.0.0', badge:'M3',
+      title:'MCP built-in + fluent builders',
+      bullets:['MCP annotations built into core','Fluent builder across all providers','Claude 4.6 models, Claude 3 removed'] },
+
+    { id:'v2.0.0-M4', date:'2026-03-26', type:'spring-ai', version:'v2.0.0', badge:'M4',
+      title:'Gemini Google Search + deprecations',
+      bullets:['Gemini: Google Search + custom tools','Dynamic structured output control','Vertex AI / OCI GenAI deprecated'] },
+
+    { id:'v2.0.0-M5', date:'2026-04-27', type:'spring-ai', version:'v2.0.0', badge:'M5',
+      title:'OpenAI SDK native + cache metrics',
+      bullets:['openai-java SDK replaces internals','Anthropic web search + thinking UI','Unified cache hit/miss statistics'] },
+
     { id:'v2.0.0-M6', date:'2026-05-08', type:'spring-ai', version:'v2.0.0', badge:'M6',
-      title:'Spring AI 2.0.0-M6',
-      bullets:['Enhanced observability for chat models','Immutable builders across providers','Explicit chat-memory conversation IDs'] },
+      title:'Where we are today',
+      bullets:['Enhanced observability across chat + tool calling','Immutable builders everywhere','Explicit chat-memory conversation IDs'] },
   ];
 
   // World state
   const WORLD_START = 0;
-  const WORLD_END = 16000;            // total walkable distance; tuned in Task 6
+  const WORLD_END = 14480;            // 720 + 36 entries × 360 + 800; tuned in Task 6
   const SCROLL_SENSITIVITY = 1.4;     // wheel delta multiplier
   const STEP_FRAME_MS = 140;          // walk animation tempo
 
