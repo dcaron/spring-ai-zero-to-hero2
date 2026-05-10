@@ -45,7 +45,7 @@
     .vmware{position:absolute;bottom:14px;right:18px;color:#5a7a4a;font-size:13px;z-index:10;}
 
     /* Instruction sign at start (screen-fixed in start scene) */
-    #start-sign{position:absolute;bottom:170px;left:80px;width:170px;text-align:center;color:#f5e6c8;font-size:14px;line-height:1.6;z-index:6;transition:opacity 0.4s ease-out;}
+    #start-sign{position:absolute;bottom:90px;left:80px;width:170px;text-align:center;color:#f5e6c8;font-size:14px;line-height:1.6;z-index:6;transition:opacity 0.4s ease-out;}
     #start-sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
     #start-sign .board{background:#8a5230;border:3px solid #5a3520;padding:8px 4px;box-shadow:3px 3px 0 #2a1810;}
 
@@ -79,6 +79,8 @@
     .sign.passed{opacity:0.45;}
     .sign.active .board{background:#9be068;color:#1a3a16;border-color:#6db33f;font-weight:bold;box-shadow:3px 3px 0 #1a3a16,0 0 0 4px rgba(155,224,104,0.25);}
     .sign.active::before{content:"★";position:absolute;top:-14px;left:50%;transform:translateX(-50%);color:#ffd84a;font-size:16px;text-shadow:2px 2px 0 #1a3a16;}
+
+    .sign-date{display:inline-block;margin-top:2px;font-size:10px;color:#ffd2e0;opacity:0.85;letter-spacing:1px;}
 
     /* Bush decoration (screen-fixed, anchored to start scene) */
     #start-bush{position:absolute;bottom:88px;right:80px;width:60px;height:24px;z-index:6;}
@@ -358,7 +360,9 @@
       board.className = 'board';
       const label = m.version || m.title.split(' ')[0];
       const badge = m.badge ? `<br>${m.badge}` : '';
-      board.innerHTML = `${label}${badge}`;
+      // Ecosystem signs include YYYY-MM on the board so the timeline reads chronologically at a glance.
+      const ecoDate = m.type === 'ecosystem' && m.date ? `<br><span class="sign-date">${m.date.slice(0, 7)}</span>` : '';
+      board.innerHTML = `${label}${ecoDate}${badge}`;
       const post = document.createElement('div');
       post.className = 'post';
       sign.appendChild(board);
