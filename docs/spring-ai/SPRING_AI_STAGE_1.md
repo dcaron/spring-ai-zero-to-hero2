@@ -4,7 +4,7 @@
 **Maven Artifact:** `spring-ai-client-chat`
 **Package Base:** `com.example.chat_01` through `com.example.chat_08`
 
-> **⚠ Spring AI 2.0.0-M5 note (relevant to Demo 07 — Multimodal):** `ChatClientRequestSpec.options(...)` now takes a `ChatOptions.Builder` instead of a built `ChatOptions`. The Demo 07 code below shows the M4↔M5 delta. Full migration: **[SPRING_AI_M4_TO_M5_MIGRATION.md](../../SPRING_AI_M4_TO_M5_MIGRATION.md)**.
+> **⚠ Spring AI 2.0.0-M6 note (relevant to Demo 07 — Multimodal):** `ChatClientRequestSpec.options(...)` now takes a `ChatOptions.Builder` instead of a built `ChatOptions`. The Demo 07 code below shows the M4↔M5 delta. Full migration: **[SPRING_AI_M4_TO_M5_MIGRATION.md](../../SPRING_AI_M4_TO_M5_MIGRATION.md)**.
 
 ---
 
@@ -784,7 +784,7 @@ sequenceDiagram
 
     alt Ollama provider
         Controller->>ChatClient: .options(ChatOptions.builder().model("llava"))
-        Note over ChatClient: Override model to vision-capable "llava" (Spring AI 2.0.0-M5: pass Builder, not built)
+        Note over ChatClient: Override model to vision-capable "llava" (Spring AI 2.0.0-M6: pass Builder, not built)
     end
 
     Controller->>ChatClient: .user(u → u.text("Explain what you see").media(IMAGE_PNG, image))
@@ -826,7 +826,7 @@ public String explain() throws IOException {
 + prompt = prompt.options(ChatOptions.builder().model("llava"));           // M5 — pass the Builder itself
 ```
 
-> **Takeaway:** `.media(mimeType, resource)` attaches binary content to a user message. The same API works across providers (OpenAI, Anthropic, Google), but each provider has different vision-capable models. Use `ChatOptions.builder().model()` to switch models at runtime — and in **Spring AI 2.0.0-M5**, pass the **builder** to `.options(...)` (don't call `.build()` first); the chat client now combines its own defaults with your builder.
+> **Takeaway:** `.media(mimeType, resource)` attaches binary content to a user message. The same API works across providers (OpenAI, Anthropic, Google), but each provider has different vision-capable models. Use `ChatOptions.builder().model()` to switch models at runtime — and in **Spring AI 2.0.0-M6**, pass the **builder** to `.options(...)` (don't call `.build()` first); the chat client now combines its own defaults with your builder.
 
 ---
 

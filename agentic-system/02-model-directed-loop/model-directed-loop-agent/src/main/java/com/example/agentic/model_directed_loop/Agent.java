@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -77,7 +78,10 @@ You may now begin acting as a thoughtful, tool-using agent.
         MessageWindowChatMemory.builder()
             .chatMemoryRepository(new InMemoryChatMemoryRepository())
             .build();
-    this.chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).conversationId(id).build();
+    // Spring AI 2.0.0-M6: MessageChatMemoryAdvisor.Builder no longer has conversationId(...).
+    // The conversation ID must be supplied at request time via the ChatMemory.CONVERSATION_ID
+    // context key — wired below as a default advisor param so every call uses this agent's id.
+    this.chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
 
     rebuildChatClient(userContext);
   }
@@ -105,7 +109,8 @@ You may now begin acting as a thoughtful, tool-using agent.
             .defaultOptions(options)
             .defaultTools(new AgentTools())
             .defaultSystem(this.effectiveSystemPrompt)
-            .defaultAdvisors(chatMemoryAdvisor)
+            .defaultAdvisors(
+                spec -> spec.advisors(chatMemoryAdvisor).param(ChatMemory.CONVERSATION_ID, id))
             .build();
   }
 

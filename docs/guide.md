@@ -2,7 +2,7 @@
 
 Complete walkthrough of all 8 stages for self-paced learners. Covers every demo, the concepts behind it, and the code to look at.
 
-**Tech stack:** Spring Boot 4.0.6 | Spring AI 2.0.0-M5 | Java 25 | Spring Framework 7
+**Tech stack:** Spring Boot 4.0.6 | Spring AI 2.0.0-M6 | Java 25 | Spring Framework 7
 
 ---
 
@@ -272,7 +272,7 @@ Always call `/load` before `/query`. The vector store must contain data before q
 | mem_02 hello | `GET /mem/02/hello?message=Hi+I+am+Alice` | Send a message with memory |
 | mem_02 name | `GET /mem/02/name` | Ask "What's my name?" — AI recalls from context |
 
-The demo uses `MessageChatMemoryAdvisor` (adds history as a message list) and `PromptChatMemoryAdvisor` (injects history into the prompt text). Try the two endpoints in sequence with the same conversation ID.
+The demo uses `MessageChatMemoryAdvisor`, which adds history as a message list. The conversation id is supplied at request time via the `ChatMemory.CONVERSATION_ID` context key (Spring AI 2.0.0-M6 removed `PromptChatMemoryAdvisor` and the `Builder.conversationId(String)` setter). Try the two endpoints in sequence with the same conversation ID.
 
 **Code:** `components/patterns/chat-memory/src/main/java/`
 

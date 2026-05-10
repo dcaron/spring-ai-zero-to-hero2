@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.prompt.ChatOptions;
@@ -45,7 +46,10 @@ public class Agent {
         MessageWindowChatMemory.builder()
             .chatMemoryRepository(new InMemoryChatMemoryRepository())
             .build();
-    var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).conversationId(id).build();
+    // Spring AI 2.0.0-M6: MessageChatMemoryAdvisor.Builder no longer has conversationId(...).
+    // The conversation ID must be supplied at request time via the ChatMemory.CONVERSATION_ID
+    // context key — wired here as a default advisor param so every call uses this agent's id.
+    var chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
 
     this.chatClient =
         builder
@@ -53,7 +57,8 @@ public class Agent {
             .defaultOptions(options)
             .defaultTools(new AgentTools())
             .defaultSystem(SYSTEM_PROMPT)
-            .defaultAdvisors(chatMemoryAdvisor)
+            .defaultAdvisors(
+                spec -> spec.advisors(chatMemoryAdvisor).param(ChatMemory.CONVERSATION_ID, id))
             .build();
   }
 

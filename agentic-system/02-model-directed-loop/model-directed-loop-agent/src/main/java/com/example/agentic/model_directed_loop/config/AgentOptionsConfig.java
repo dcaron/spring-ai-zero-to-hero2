@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Profile;
 @Configuration("modelDirectedLoopAgentOptionsConfig")
 public class AgentOptionsConfig {
 
-  // Spring AI 2.0.0-M5: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
+  // Spring AI 2.0.0-M6: ChatClient.Builder.defaultOptions() now takes a ChatOptions.Builder
   // (so the chat client can merge with its own defaults). Beans return the builder, not a built
   // instance.
 

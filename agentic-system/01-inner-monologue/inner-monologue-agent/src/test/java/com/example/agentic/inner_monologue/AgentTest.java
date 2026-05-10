@@ -25,8 +25,11 @@ class AgentTest {
     when(clone.defaultOptions(any(ChatOptions.Builder.class))).thenReturn(clone);
     when(clone.defaultTools(any(Object[].class))).thenReturn(clone);
     when(clone.defaultSystem(any(String.class))).thenReturn(clone);
+    // Spring AI 2.0.0-M6: Agent now wires the chat-memory advisor via the Consumer<AdvisorSpec>
+    // overload (so it can also set the ChatMemory.CONVERSATION_ID param). Stub both overloads.
     when(clone.defaultAdvisors(any(org.springframework.ai.chat.client.advisor.api.Advisor.class)))
         .thenReturn(clone);
+    when(clone.defaultAdvisors(any(java.util.function.Consumer.class))).thenReturn(clone);
     when(clone.build()).thenReturn(client);
     when(client.prompt()).thenReturn(req);
     when(req.user(any(String.class))).thenReturn(req);

@@ -1,6 +1,6 @@
 # Spring AI Introduction
 
-**Spring AI Version:** 2.0.0-M5
+**Spring AI Version:** 2.0.0-M6
 **Spring Boot Version:** 4.0.6
 **Java Version:** 25
 
@@ -102,7 +102,7 @@ spring:                         Reads properties → creates:
         model: gpt-4o-mini
 ```
 
-Each provider has its own Spring Boot starter that auto-configures the correct implementation. The table below uses the **Spring AI 2.0.0-M5** artifact names; if you see older names like `spring-ai-<provider>-spring-boot-starter` floating around the web, those are the pre-2.0 convention.
+Each provider has its own Spring Boot starter that auto-configures the correct implementation. The table below uses the **Spring AI 2.0.0-M6** artifact names; if you see older names like `spring-ai-<provider>-spring-boot-starter` floating around the web, those are the pre-2.0 convention.
 
 | Provider | Maven Starter (M5) | ChatModel Implementation |
 |----------|--------------------|--------------------------|
@@ -113,8 +113,8 @@ Each provider has its own Spring Boot starter that auto-configures the correct i
 | AWS Bedrock | `spring-ai-starter-model-bedrock-converse` | `BedrockProxyChatModel` |
 | Ollama | `spring-ai-starter-model-ollama` | `OllamaChatModel` |
 
-¹ **Spring AI 2.0.0-M5 change:** the dedicated `spring-ai-starter-model-azure-openai` module was removed; Azure OpenAI is now served by the unified OpenAI starter, which auto-detects "Microsoft Foundry" mode when the base URL host ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. M4 users: the chat-model class is now `OpenAiChatModel` (not `AzureOpenAiChatModel`), and config keys move from `spring.ai.azure.openai.*` to `spring.ai.openai.*`. See `docs/providers.md` and `SPRING_AI_M4_TO_M5_MIGRATION.md`.
-² **Spring AI 2.0.0-M5 change:** the Vertex-AI-Gemini chat module (`spring-ai-vertex-ai-gemini-spring-boot-starter`) was removed; only the embedding submodule remains under `spring-ai-vertex-ai-embedding`. The current Gemini chat path goes through the **Google GenAI** starter, which uses an API-key flow (or Vertex AI service account if configured).
+¹ **Spring AI 2.0.0-M6 change:** the dedicated `spring-ai-starter-model-azure-openai` module was removed; Azure OpenAI is now served by the unified OpenAI starter, which auto-detects "Microsoft Foundry" mode when the base URL host ends with `openai.azure.com` (or `cognitiveservices.azure.com`), or when a `deployment-name` is set. M4 users: the chat-model class is now `OpenAiChatModel` (not `AzureOpenAiChatModel`), and config keys move from `spring.ai.azure.openai.*` to `spring.ai.openai.*`. See `docs/providers.md` and `SPRING_AI_M4_TO_M5_MIGRATION.md`.
+² **Spring AI 2.0.0-M6 change:** the Vertex-AI-Gemini chat module (`spring-ai-vertex-ai-gemini-spring-boot-starter`) was removed; only the embedding submodule remains under `spring-ai-vertex-ai-embedding`. The current Gemini chat path goes through the **Google GenAI** starter, which uses an API-key flow (or Vertex AI service account if configured).
 
 > **Workshop pattern:** The `components/` modules depend only on `spring-ai-client-chat` (the abstraction). The `applications/provider-*` modules add the provider-specific starter. Same code, different provider.
 
@@ -180,6 +180,27 @@ chatClient.prompt()
 ```
 
 Templates use the StringTemplate (ST4) engine. Variables are safely substituted at runtime — no string concatenation needed.
+
+### Advisors and Request Context
+
+**Advisors** are interceptors that sit between the `ChatClient` and the model. They can mutate the prompt before it goes out (inject memory, RAG context, safety guards) and inspect the response after it comes back. You attach them either per call (`.advisors(...)`) or at the builder level (`ChatClient.Builder.defaultAdvisors(...)`), and you pass per-request data into them through an **advisor context** — a `Map<String, Object>` carried alongside the prompt and read by each advisor's `before` / `after` hooks.
+
+> **Spring AI 2.0.0-M6 callout — chat-memory advisor changed shape.** `PromptChatMemoryAdvisor` was removed. The remaining `MessageChatMemoryAdvisor` no longer accepts the conversation id on its builder — `Builder.conversationId(String)` is gone, and `BaseChatMemoryAdvisor#getConversationId(Map)` now **asserts** the id is present in the request context (no implicit `"default"` fallback). Wire it through the context key instead:
+>
+> ```java
+> // M5 (no longer compiles in M6)
+> var advisor = MessageChatMemoryAdvisor.builder(memory).conversationId(id).build();
+> ...
+> .defaultAdvisors(advisor)
+>
+> // M6
+> var advisor = MessageChatMemoryAdvisor.builder(memory).build();
+> ...
+> .defaultAdvisors(spec -> spec.advisors(advisor)
+>     .param(ChatMemory.CONVERSATION_ID, id))
+> ```
+>
+> The same pattern applies to any advisor that reads from the context — set `.param(KEY, value)` on the `AdvisorSpec` either per call (`chatClient.prompt().advisors(spec -> spec.param(...))`) or as a default on the `ChatClient.Builder`. Stage 4 (chat memory) and Stage 7 (per-agent memory in the agentic system) walk through this in depth.
 
 ---
 
@@ -344,7 +365,7 @@ This requires the model to reliably produce valid JSON. Larger models (GPT-4o, C
 
 ### Supported Providers in This Workshop
 
-Artifact names are the **Spring AI 2.0.0-M5** ones. See note ¹ above on Azure and ² on Google.
+Artifact names are the **Spring AI 2.0.0-M6** ones. See note ¹ above on Azure and ² on Google.
 
 | Provider | Starter Dependency (M5) | Default Model | Local/Cloud |
 |----------|-------------------------|---------------|-------------|

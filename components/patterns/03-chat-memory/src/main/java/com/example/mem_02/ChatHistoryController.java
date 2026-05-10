@@ -8,7 +8,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,8 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/mem/02")
 public class ChatHistoryController {
 
+  private static final String CONVERSATION_ID = "mem-02-default";
+
   private final ChatClient chatClient;
-  private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
+  private final MessageChatMemoryAdvisor chatMemoryAdvisor;
 
   @Autowired
   public ChatHistoryController(ChatClient.Builder builder) {
@@ -34,7 +37,7 @@ public class ChatHistoryController {
         MessageWindowChatMemory.builder()
             .chatMemoryRepository(new InMemoryChatMemoryRepository())
             .build();
-    this.promptChatMemoryAdvisor = PromptChatMemoryAdvisor.builder(memory).build();
+    this.chatMemoryAdvisor = MessageChatMemoryAdvisor.builder(memory).build();
   }
 
   @Operation(
@@ -58,7 +61,9 @@ public class ChatHistoryController {
 
     return this.chatClient
         .prompt()
-        .advisors(promptChatMemoryAdvisor)
+        .advisors(
+            spec ->
+                spec.advisors(chatMemoryAdvisor).param(ChatMemory.CONVERSATION_ID, CONVERSATION_ID))
         .user(message)
         .call()
         .content();
@@ -77,7 +82,9 @@ public class ChatHistoryController {
   public String name() {
     return this.chatClient
         .prompt()
-        .advisors(promptChatMemoryAdvisor)
+        .advisors(
+            spec ->
+                spec.advisors(chatMemoryAdvisor).param(ChatMemory.CONVERSATION_ID, CONVERSATION_ID))
         .user("What is my name?")
         .call()
         .content();

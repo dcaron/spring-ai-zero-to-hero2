@@ -1,5 +1,20 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.5] - 2026-05-10
+
+### Added
+- Interactive pixel-art **Spring AI History** page at `/spring-ai-history.html`, linked from the dashboard sidebar (Tools → History). Scroll-driven walk through ~30 Spring AI release tags (`v0.8.0` → `v2.0.0-M6`) interleaved with 6 ecosystem events (ChatGPT, GPT-4, Llama 2, Claude 3, MCP open-sourcing, Spring Boot 4 GA) in strict chronological order. Lime-character mascot with bobbing walk cycle and a hop animation when passing ecosystem events; sign-post side panel reveals release headlines and bullets. Press Start 2P pixel font vendored locally under `static/vendor/press-start-2p/` so the page works airgapped.
+
+### Changed
+- Bumped Spring AI from `2.0.0-M5` → `2.0.0-M6` across the parent POM, workshop docs, dashboard, slides, Grafana dashboard, `workshop.sh` banners, and all provider/component readmes.
+
+### Migrated (M6 breaking changes)
+- **`PromptChatMemoryAdvisor` removed.** `components/patterns/03-chat-memory/.../mem_02/ChatHistoryController.java` migrated to `MessageChatMemoryAdvisor`.
+- **`MessageChatMemoryAdvisor.Builder.conversationId(String)` removed.** The conversation id is now supplied at request time via the `ChatMemory.CONVERSATION_ID` context key (`BaseChatMemoryAdvisor#getConversationId(Map)` asserts it is present, with no implicit default). Both agentic-system `Agent` classes (`01-inner-monologue`, `02-model-directed-loop`) now wire the id through `ChatClient.Builder.defaultAdvisors(spec -> spec.advisors(...).param(ChatMemory.CONVERSATION_ID, id))`. Both `AgentTest` mock setups gained a `defaultAdvisors(Consumer)` stub to match.
+- **Chat-memory docs updated.** `docs/spring-ai/SPRING_AI_STAGE_4.md` and `docs/spring-ai/SPRING_AI_STAGE_7.md` rewritten to use `MessageChatMemoryAdvisor` and the M6 context-key pattern; the per-agent memory section in Stage 7 now shows the M5 → M6 delta.
+- **MCP modules** — all 5 `mcp/` submodules compile and pass tests on M6 without code changes.
+- **Other release-notes items not relevant here:** OpenAI options class refactor (we don't subclass `AbstractOpenAiOptions` or call setters), `OpenAiConnectionProperties` → `OpenAiCommonProperties` rename (we don't reference it), `OpenAiEmbeddingOptions#encodingFormat` enum (we don't set it), removed `spring-ai-hanadb-store` / `spring-ai-infinispan-store` (not used), `ModelOptionsUtils` method removals (not used).
+
 ## [2.3.4] - 2026-04-28
 
 ### Changed
