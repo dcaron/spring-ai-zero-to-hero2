@@ -189,13 +189,13 @@
     .lime-eye{fill:#fff;}
     .lime-pupil{fill:#101010;}
     .lime-mouth{fill:none;stroke:#173900;stroke-width:4;stroke-linecap:round;}
-    .lime-pixel{shape-rendering:crispEdges;}
+    .lime-pixel{shape-rendering:geometricPrecision;}
 
     /* Elevated platform — visible "floor" the mascot walks on between stair obstacles */
     .platform{position:absolute;height:14px;background:#5a3520;background-image:repeating-linear-gradient(90deg,#5a3520 0,#5a3520 8px,#6b3e1f 8px,#6b3e1f 16px);z-index:5;border:2px solid #2a1810;border-bottom:none;box-shadow:0 -3px 0 #6db33f inset;}
 
     /* Mascot — screen-fixed, centered horizontally */
-    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:pixelated;transition:transform 0.1s, bottom 0.18s ease-out;}
+    #mascot{position:absolute;left:50%;bottom:90px;width:96px;height:96px;transform:translateX(-50%);z-index:7;image-rendering:auto;transition:transform 0.1s, bottom 0.18s ease-out;}
     #mascot.bobbing{animation:mascot-bob 0.28s steps(2) infinite;}
     @keyframes mascot-bob{
       0%{transform:translateX(-50%) translateY(0);}
