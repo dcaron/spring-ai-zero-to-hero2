@@ -23,21 +23,38 @@
     #score{position:absolute;top:18px;right:24px;font-size:22px;color:#fff;text-align:right;line-height:1.6;z-index:10;text-shadow:2px 2px 0 #1a3a16;}
     #score b{display:block;font-size:30px;margin-top:4px;}
 
-    /* Title (start scene only — fades out once user starts walking) */
-    #title{position:absolute;top:14vh;left:50%;transform:translateX(-50%);font-size:72px;color:#9be068;text-shadow:4px 4px 0 #2a5a26,8px 8px 0 #1a3a16;text-align:center;line-height:1.2;letter-spacing:2px;z-index:3;transition:opacity 0.4s ease-out;}
+    /* Title — shrinks to compact bar once user starts walking */
+    #title{position:absolute;top:14vh;left:50%;transform:translate(-50%,0) scale(1);font-size:72px;color:#9be068;text-shadow:4px 4px 0 #2a5a26,8px 8px 0 #1a3a16;text-align:center;line-height:1.2;letter-spacing:2px;z-index:3;transition:transform 0.4s ease-out, top 0.4s ease-out, font-size 0.4s ease-out;transform-origin:50% 0;}
+    #title.compact{top:18px;font-size:36px;text-shadow:2px 2px 0 #2a5a26,4px 4px 0 #1a3a16;}
+
+    #year-display{position:absolute;top:80px;left:50%;transform:translateX(-50%);font-family:'Press Start 2P',monospace;font-size:18px;color:#fff;text-shadow:2px 2px 0 #1a3a16;letter-spacing:3px;z-index:3;opacity:0;transition:opacity 0.4s ease-out;}
+    #year-display.visible{opacity:1;}
 
     /* Hill (lives in world, anchored at world-x = 0) */
-    .hill{position:absolute;left:0;bottom:80px;width:680px;height:380px;clip-path:polygon(0 100%,52% 0,100% 100%);background:#4a8a3a;background-image:radial-gradient(circle at 30% 70%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 60% 80%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 70% 50%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 45% 40%,#1a3a16 8px,transparent 9px),radial-gradient(circle at 55% 25%,#1a3a16 6px,transparent 7px);}
+    .hill{position:absolute;left:0;bottom:80px;width:760px;height:400px;background:#4a8a3a;background-image:radial-gradient(circle at 30% 70%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 60% 80%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 70% 55%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 45% 45%,#1a3a16 10px,transparent 11px),radial-gradient(circle at 55% 30%,#1a3a16 8px,transparent 9px);clip-path:polygon(0% 100%,8% 88%,15% 76%,22% 64%,28% 52%,34% 42%,40% 32%,45% 24%,48% 18%,50% 14%,52% 12%,55% 12%,58% 14%,60% 18%,63% 24%,68% 32%,74% 42%,80% 52%,86% 64%,92% 76%,97% 88%,100% 100%);box-shadow:inset -8px 0 0 #3d7a1c;}
 
     /* Clouds (screen-fixed, slow parallax handled in Task 4) */
     .cloud{position:absolute;background:#fff;}
     .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;}
-    .cloud-1{top:60px;left:8vw;width:90px;height:26px;}
-    .cloud-1::before{width:46px;height:26px;top:-12px;left:14px;}
-    .cloud-1::after{width:36px;height:20px;top:-22px;left:24px;}
-    .cloud-2{top:100px;right:10vw;width:120px;height:30px;}
-    .cloud-2::before{width:54px;height:30px;top:-14px;left:18px;}
-    .cloud-2::after{width:36px;height:20px;top:-24px;left:30px;}
+    .cloud-1{top:80px;left:6vw;width:140px;height:40px;}
+    .cloud-1::before{width:72px;height:40px;top:-20px;left:24px;}
+    .cloud-1::after{width:56px;height:30px;top:-36px;left:38px;}
+    .cloud-2{top:140px;right:8vw;width:180px;height:46px;}
+    .cloud-2::before{width:84px;height:46px;top:-22px;left:30px;}
+    .cloud-2::after{width:54px;height:30px;top:-38px;left:46px;}
+
+    /* Procedural background cloud layer */
+    #cloud-layer{position:absolute;inset:0;pointer-events:none;z-index:1;will-change:transform;}
+    .cloud-bg{position:absolute;background:#fff;}
+    .cloud-bg::before,.cloud-bg::after{content:"";position:absolute;background:#fff;}
+
+    /* Background AI symbols, slow parallax */
+    #bg-decor{position:absolute;inset:0;pointer-events:none;z-index:0;}
+    .bg-symbol{position:absolute;opacity:0.25;color:#9be068;font-family:'Press Start 2P',monospace;}
+    .bg-symbol svg{display:block;}
+
+    /* Obstacle boxes */
+    .obstacle{position:absolute;bottom:94px;width:48px;height:48px;background:#caa15a;border:3px solid #6b3e1f;box-shadow:inset -4px -4px 0 #8a6f3a,4px 4px 0 #2a1810;color:#6b3e1f;font-size:24px;font-family:'Press Start 2P',monospace;text-align:center;line-height:48px;z-index:6;}
 
     /* Branding (screen-fixed, matches reference) */
     .springlogo{position:absolute;bottom:14px;left:18px;color:#6db33f;font-size:16px;display:flex;align-items:center;gap:8px;z-index:10;}
@@ -182,7 +199,13 @@
 
 <div id="stage">
 
-  <!-- Background clouds (screen-fixed, parallax in Task 4) -->
+  <!-- Background AI symbols, slow-parallax (looks far away) -->
+  <div id="bg-decor"></div>
+
+  <!-- Procedural background clouds — populated by JS, parallax-scrolled -->
+  <div id="cloud-layer"></div>
+
+  <!-- Background clouds (screen-fixed, slow parallax) -->
   <div class="cloud cloud-1"></div>
   <div class="cloud cloud-2"></div>
 
@@ -206,6 +229,8 @@
 
   <!-- HUD (screen-fixed) -->
   <h1 id="title">THE HISTORY<br>OF SPRING AI</h1>
+  <!-- Year of the most recently reached milestone — updated by JS -->
+  <div id="year-display"><span id="year-value">—</span></div>
   <div id="score">Score<b id="score-value">0</b></div>
 
   <!-- Start instruction sign -->
@@ -403,16 +428,85 @@
   const startBush = document.getElementById('start-bush');
   const cloud1 = document.querySelector('.cloud-1');
   const cloud2 = document.querySelector('.cloud-2');
+  const cloudLayer = document.getElementById('cloud-layer');
+  const bgDecor = document.getElementById('bg-decor');
+  const yearDisplay = document.getElementById('year-display');
+  const yearValue = document.getElementById('year-value');
+  let lastReachedYear = null;
+
+  // Spawn ~14 clouds spread across the world distance with random sizes/heights.
+  // They live in a parallax layer that drifts at ~25% of worldX for "near-distance" feel.
+  const CLOUD_PARALLAX = 0.25;
+  const CLOUD_COUNT = 14;
+  for (let i = 0; i < CLOUD_COUNT; i++) {
+    const wx = (i / CLOUD_COUNT) * (WORLD_END * 0.9) + Math.random() * 600;
+    const top = 30 + Math.random() * 180;        // skyish band
+    const scale = 0.7 + Math.random() * 0.9;     // 0.7..1.6
+    const c = document.createElement('div');
+    c.className = 'cloud-bg';
+    c.style.top = top + 'px';
+    c.style.width = (90 * scale) + 'px';
+    c.style.height = (26 * scale) + 'px';
+    c.innerHTML =
+      `<div style="position:absolute;background:#fff;width:${48*scale}px;height:${26*scale}px;top:${-12*scale}px;left:${15*scale}px;"></div>` +
+      `<div style="position:absolute;background:#fff;width:${36*scale}px;height:${18*scale}px;top:${-24*scale}px;left:${24*scale}px;"></div>`;
+    c.dataset.wx = String(wx);
+    cloudLayer.appendChild(c);
+  }
+
+  function paintClouds() {
+    const screenCenter = window.innerWidth / 2;
+    cloudLayer.querySelectorAll('.cloud-bg').forEach(c => {
+      const wx = parseFloat(c.dataset.wx);
+      const x = screenCenter + (wx - worldX) * CLOUD_PARALLAX;
+      c.style.transform = `translateX(${x}px)`;
+    });
+  }
+
+  // Simple inline SVG icons rendered as background motifs along the world.
+  const BG_SYMBOLS = [
+    // Brain glyph
+    '<svg width="64" height="64" viewBox="0 0 64 64"><g fill="none" stroke="#6db33f" stroke-width="3"><path d="M20 20q-8 8 0 18 q-6 8 4 12 q-2 8 8 8 q4 6 12 2 q10-2 8-12 q8-8 0-16 q4-10-8-12 q-4-8-14-4 q-8-2-10 4z"/><path d="M32 20v32 M22 30q5 4 10 0 M40 28q-5 4-8 0"/></g></svg>',
+    // CPU/chip glyph
+    '<svg width="56" height="56" viewBox="0 0 56 56"><g fill="none" stroke="#6db33f" stroke-width="3"><rect x="14" y="14" width="28" height="28"/><rect x="22" y="22" width="12" height="12" fill="#6db33f"/></g><g fill="#6db33f"><rect x="6" y="20" width="6" height="3"/><rect x="6" y="28" width="6" height="3"/><rect x="6" y="36" width="6" height="3"/><rect x="44" y="20" width="6" height="3"/><rect x="44" y="28" width="6" height="3"/><rect x="44" y="36" width="6" height="3"/><rect x="20" y="6" width="3" height="6"/><rect x="28" y="6" width="3" height="6"/><rect x="36" y="6" width="3" height="6"/><rect x="20" y="44" width="3" height="6"/><rect x="28" y="44" width="3" height="6"/><rect x="36" y="44" width="3" height="6"/></g></svg>',
+    // Neural network glyph
+    '<svg width="72" height="56" viewBox="0 0 72 56"><g fill="#6db33f"><circle cx="10" cy="14" r="4"/><circle cx="10" cy="28" r="4"/><circle cx="10" cy="42" r="4"/><circle cx="36" cy="20" r="4"/><circle cx="36" cy="36" r="4"/><circle cx="62" cy="28" r="4"/></g><g stroke="#6db33f" stroke-width="2" fill="none"><line x1="10" y1="14" x2="36" y2="20"/><line x1="10" y1="14" x2="36" y2="36"/><line x1="10" y1="28" x2="36" y2="20"/><line x1="10" y1="28" x2="36" y2="36"/><line x1="10" y1="42" x2="36" y2="20"/><line x1="10" y1="42" x2="36" y2="36"/><line x1="36" y1="20" x2="62" y2="28"/><line x1="36" y1="36" x2="62" y2="28"/></g></svg>',
+  ];
+
+  const BG_PARALLAX = 0.10;   // very slow — far in the distance
+  const BG_COUNT = 18;
+  for (let i = 0; i < BG_COUNT; i++) {
+    const wx = (i / BG_COUNT) * (WORLD_END * 0.95) + Math.random() * 800;
+    const top = 60 + Math.random() * 280;
+    const sym = BG_SYMBOLS[i % BG_SYMBOLS.length];
+    const el = document.createElement('div');
+    el.className = 'bg-symbol';
+    el.style.top = top + 'px';
+    el.dataset.wx = String(wx);
+    el.innerHTML = sym;
+    bgDecor.appendChild(el);
+  }
+
+  function paintBgDecor() {
+    const screenCenter = window.innerWidth / 2;
+    bgDecor.querySelectorAll('.bg-symbol').forEach((el) => {
+      const wx = parseFloat(el.dataset.wx);
+      const x = screenCenter + (wx - worldX) * BG_PARALLAX;
+      el.style.transform = `translateX(${x}px)`;
+    });
+  }
 
   // Center the world so the mascot (which is at left:50%) sits at world-x = 0 initially.
   function applyWorld() {
     const screenCenter = window.innerWidth / 2;
     // World shifts LEFT by worldX so worldX=0 puts world-origin under the mascot.
     world.style.transform = `translateX(${screenCenter - worldX}px)`;
-    // Slow parallax for clouds — drift opposite to motion at 15%
+    // Slow parallax for foreground clouds — drift opposite to motion at 15%
     const cloudShift = -worldX * 0.15;
     cloud1.style.transform = `translateX(${cloudShift}px)`;
     cloud2.style.transform = `translateX(${cloudShift}px)`;
+    paintClouds();
+    paintBgDecor();
   }
 
   function move(delta) {
@@ -421,22 +515,39 @@
     worldX = next;
     applyWorld();
     lastMoveAt = performance.now();
-    // Hide start-scene-only elements once the user has moved past 200px
+    // Compact title + year display once the user has moved past 200px
     if (worldX > 200) {
-      title.style.opacity = '0';
+      title.classList.add('compact');
       startSign.style.opacity = '0';
       startBush.style.opacity = '0';
+      if (lastReachedYear) yearDisplay.classList.add('visible');
     } else {
-      title.style.opacity = '1';
+      title.classList.remove('compact');
       startSign.style.opacity = '1';
       startBush.style.opacity = '1';
+      yearDisplay.classList.remove('visible');
     }
   }
 
-  // Walk animation tick
+  // Walk animation tick + obstacle auto-jump
+  const passedObstacles = new Set();
   setInterval(() => {
     const moving = (performance.now() - lastMoveAt) < 200;
     mascot.classList.toggle('bobbing', moving);
+
+    // Auto-jump when the mascot is within ±50px of an obstacle (one fire per obstacle per pass).
+    const obstacles = world.querySelectorAll('.obstacle');
+    obstacles.forEach((o) => {
+      const ox = parseFloat(o.dataset.x);
+      const dx = Math.abs(ox - worldX);
+      const key = String(ox);
+      if (dx <= 50 && !passedObstacles.has(key)) {
+        passedObstacles.add(key);
+        triggerJump();
+      } else if (dx > 200 && passedObstacles.has(key)) {
+        passedObstacles.delete(key);  // re-arm when far from the box
+      }
+    });
   }, STEP_FRAME_MS);
 
   // Jump animation — restart-on-demand by removing/forcing-reflow/re-adding the class
@@ -538,8 +649,36 @@
       post.className = 'post';
       sign.appendChild(board);
       sign.appendChild(post);
+      // Every 4th sign (offset so first isn't on a box) stands on a podium obstacle
+      const onBox = (i % 4 === 3);
+      if (onBox) {
+        const podium = document.createElement('div');
+        podium.className = 'obstacle';
+        podium.style.left = x + 'px';
+        podium.dataset.x = String(x);
+        podium.textContent = '?';
+        world.appendChild(podium);
+        sign.style.bottom = (90 + 48) + 'px';   // lift sign onto podium (box height = 48px)
+      }
       world.appendChild(sign);
     });
+  }
+
+  // Place a free-standing obstacle box halfway between consecutive signs.
+  function renderObstacles() {
+    for (let i = 0; i < ORDERED.length - 1; i++) {
+      const xA = SIGN_FIRST_X + i * SIGN_SPACING;
+      const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
+      const x = (xA + xB) / 2;
+      // Skip positions that coincide with a podium box (i % 4 === 3 puts podium at xB)
+      // No collision concern — they're at different x coords so both are fine.
+      const box = document.createElement('div');
+      box.className = 'obstacle';
+      box.style.left = x + 'px';
+      box.dataset.x = String(x);
+      box.textContent = '?';
+      world.appendChild(box);
+    }
   }
 
   // Find the sign closest to current worldX within ACTIVE_RANGE; -1 if none.
@@ -590,13 +729,17 @@
       activeIdx = idx;
       if (idx >= 0) {
         openPanel(idx);
-        if (ORDERED[idx].type === 'ecosystem') {
-          triggerJump();
-        }
+        triggerJump();
         if (!reached.has(idx)) {
           reached.add(idx);
           score += 1;
           scoreValue.textContent = String(score);
+          const y = ORDERED[idx].date.slice(0, 4);
+          if (lastReachedYear !== y) {
+            lastReachedYear = y;
+            yearValue.textContent = 'YEAR ' + y;
+            if (worldX > 200) yearDisplay.classList.add('visible');
+          }
         }
       } else {
         closePanel();
@@ -610,6 +753,7 @@
 
   // Render once MILESTONES is populated
   renderSigns();
+  renderObstacles();
   refreshScene();
 
   // Initial paint
