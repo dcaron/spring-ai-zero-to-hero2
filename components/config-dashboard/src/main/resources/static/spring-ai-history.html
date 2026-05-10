@@ -82,6 +82,18 @@
 
     /* Bush decoration (screen-fixed, anchored to start scene) */
     #start-bush{position:absolute;bottom:88px;right:80px;width:60px;height:24px;z-index:6;}
+
+    /* Side panel — slides in from right when a sign is active (sizes bumped to match scaled-up UI) */
+    #panel{position:absolute;top:50%;right:-440px;transform:translateY(-50%);width:380px;background:#0a0d0a;border:3px solid #6db33f;padding:20px 22px;color:#cfeac0;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.7;box-shadow:6px 6px 0 #1a3a16;z-index:9;transition:right 0.4s ease-out;}
+    #panel.open{right:32px;}
+    #panel.eco{border-color:#c062a0;box-shadow:6px 6px 0 #2a1830;}
+    #panel .v{color:#9be068;font-size:14px;}
+    #panel.eco .v{color:#ffd2e0;}
+    #panel .date{color:#9ab89a;font-size:10px;letter-spacing:1px;margin-top:6px;}
+    #panel .h{color:#fff;font-size:14px;margin:14px 0;line-height:1.5;}
+    #panel ul{margin:0;padding-left:16px;font-size:11px;line-height:1.9;color:#cfeac0;}
+    #panel ul li{margin-bottom:5px;}
+    #panel .hint{color:#6db33f;font-size:10px;margin-top:14px;text-align:right;letter-spacing:1px;}
   </style>
 </head>
 <body>
@@ -164,20 +176,16 @@
   <!-- World layer (scrolls horizontally, contains hill + sign-posts) -->
   <div id="world">
     <div class="hill"></div>
-    <!-- Placeholder signs for visual check; Task 5 replaces with data-driven render -->
-    <div class="sign" style="left:600px;">
-      <div class="board">v1.0.0<br>2025-05-19</div>
-      <div class="post"></div>
-    </div>
-    <div class="sign active" style="left:900px;">
-      <div class="board">v1.0.1<br>★ ACTIVE</div>
-      <div class="post"></div>
-    </div>
-    <div class="sign eco" style="left:1200px;">
-      <div class="board">★ MCP<br>OPEN<br>STANDARD</div>
-      <div class="post"></div>
-    </div>
   </div>
+
+  <!-- Side panel — content updated by JS when the active milestone changes -->
+  <aside id="panel" aria-live="polite">
+    <div class="v" id="panel-v">v0.0.0</div>
+    <div class="date" id="panel-date">YYYY-MM-DD</div>
+    <h2 class="h" id="panel-title">Title</h2>
+    <ul id="panel-bullets"></ul>
+    <div class="hint">▶ KEEP WALKING</div>
+  </aside>
 
   <!-- Foreground baselines (screen-fixed, render on top of world) -->
   <div class="grass"></div>
@@ -211,7 +219,17 @@
 
   // Milestone data — Task 6 fills this with all 37 Spring AI tags + 7 ecosystem events.
   // Schema: {id, date, type:'spring-ai'|'ecosystem', version, badge, title, bullets:[..], link?}
-  const MILESTONES = [];
+  const MILESTONES = [
+    { id:'v1.0.0', date:'2025-05-19', type:'spring-ai', version:'v1.0.0', badge:'GA',
+      title:'Spring AI 1.0 — General Availability',
+      bullets:['ChatClient stable API','Advisors + RAG','VectorStore (20+ providers)'] },
+    { id:'mcp-open', date:'2024-11-25', type:'ecosystem', version:'★ MCP', badge:'OPEN',
+      title:'Anthropic open-sources MCP',
+      bullets:['Model Context Protocol becomes an open standard','Foundation for Spring AI Stage 6','Tool/resource/prompt unification'] },
+    { id:'v2.0.0-M6', date:'2026-05-08', type:'spring-ai', version:'v2.0.0', badge:'M6',
+      title:'Spring AI 2.0.0-M6',
+      bullets:['Enhanced observability for chat models','Immutable builders across providers','Explicit chat-memory conversation IDs'] },
+  ];
 
   // World state
   const WORLD_START = 0;
@@ -309,6 +327,112 @@
 
   // Resize re-centers
   window.addEventListener('resize', applyWorld);
+
+  // === Milestone rendering, active detection, score ===
+
+  const SIGN_SPACING = 360;        // horizontal pixels between adjacent signs
+  const SIGN_FIRST_X = 720;        // first sign starts beyond the start-scene assets
+  const ACTIVE_RANGE = 80;         // ± px from sign for "active"
+
+  const panel = document.getElementById('panel');
+  const panelV = document.getElementById('panel-v');
+  const panelDate = document.getElementById('panel-date');
+  const panelTitle = document.getElementById('panel-title');
+  const panelBullets = document.getElementById('panel-bullets');
+  const scoreValue = document.getElementById('score-value');
+
+  const reached = new Set();
+  let score = 0;
+  let activeIdx = -1;
+
+  // Render all sign-posts into #world, in MILESTONES order, spaced evenly.
+  function renderSigns() {
+    MILESTONES.forEach((m, i) => {
+      const sign = document.createElement('div');
+      sign.className = 'sign' + (m.type === 'ecosystem' ? ' eco' : '');
+      sign.dataset.idx = String(i);
+      const x = SIGN_FIRST_X + i * SIGN_SPACING;
+      sign.style.left = x + 'px';
+      sign.dataset.x = String(x);
+      const board = document.createElement('div');
+      board.className = 'board';
+      const label = m.version || m.title.split(' ')[0];
+      const badge = m.badge ? `<br>${m.badge}` : '';
+      board.innerHTML = `${label}${badge}`;
+      const post = document.createElement('div');
+      post.className = 'post';
+      sign.appendChild(board);
+      sign.appendChild(post);
+      world.appendChild(sign);
+    });
+  }
+
+  // Find the sign closest to current worldX within ACTIVE_RANGE; -1 if none.
+  function findActiveIdx() {
+    let best = -1;
+    let bestDist = ACTIVE_RANGE + 1;
+    for (let i = 0; i < MILESTONES.length; i++) {
+      const x = SIGN_FIRST_X + i * SIGN_SPACING;
+      const d = Math.abs(x - worldX);
+      if (d <= ACTIVE_RANGE && d < bestDist) {
+        best = i;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  function openPanel(idx) {
+    const m = MILESTONES[idx];
+    panel.classList.remove('eco');
+    if (m.type === 'ecosystem') panel.classList.add('eco');
+    panelV.textContent = '▌ ' + (m.version || m.title);
+    panelDate.textContent = m.date + (m.badge ? '  ★ ' + m.badge : '');
+    panelTitle.textContent = m.title;
+    panelBullets.innerHTML = '';
+    m.bullets.forEach(b => {
+      const li = document.createElement('li');
+      li.textContent = b;
+      panelBullets.appendChild(li);
+    });
+    panel.classList.add('open');
+  }
+
+  function closePanel() {
+    panel.classList.remove('open');
+  }
+
+  // After every move, refresh sign classes (active/passed) and panel visibility.
+  function refreshScene() {
+    const idx = findActiveIdx();
+    const signs = world.querySelectorAll('.sign');
+    signs.forEach((s, i) => {
+      const x = parseInt(s.dataset.x, 10);
+      s.classList.toggle('active', i === idx);
+      s.classList.toggle('passed', i !== idx && x < worldX - 20);
+    });
+    if (idx !== activeIdx) {
+      activeIdx = idx;
+      if (idx >= 0) {
+        openPanel(idx);
+        if (!reached.has(idx)) {
+          reached.add(idx);
+          score += 1;
+          scoreValue.textContent = String(score);
+        }
+      } else {
+        closePanel();
+      }
+    }
+  }
+
+  // Wrap move() to also refresh the scene
+  const _move = move;
+  move = function(d) { _move(d); refreshScene(); };
+
+  // Render once MILESTONES is populated
+  renderSigns();
+  refreshScene();
 
   // Initial paint
   applyWorld();
