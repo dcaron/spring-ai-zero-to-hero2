@@ -53,8 +53,33 @@
     .bg-symbol{position:absolute;opacity:0.25;color:#9be068;font-family:'Press Start 2P',monospace;}
     .bg-symbol svg{display:block;}
 
-    /* Obstacle boxes */
-    .obstacle{position:absolute;bottom:94px;width:48px;height:48px;background:#caa15a;border:3px solid #6b3e1f;box-shadow:inset -4px -4px 0 #8a6f3a,4px 4px 0 #2a1810;color:#6b3e1f;font-size:24px;font-family:'Press Start 2P',monospace;text-align:center;line-height:48px;z-index:6;}
+    /* Obstacles — placed so left:x is the CENTER (transform:translateX(-50%)). */
+    .obstacle{position:absolute;bottom:94px;transform:translateX(-50%);z-index:6;font-family:'Press Start 2P',monospace;}
+
+    /* Wood crate — 56×52 */
+    .obstacle.wood{width:56px;height:52px;background:#a87437;border:3px solid #5a3520;box-shadow:inset 0 -8px 0 #7a4f22,inset 0 8px 0 #c08c50,4px 4px 0 #2a1810;}
+    .obstacle.wood::before,.obstacle.wood::after{content:"";position:absolute;background:#5a3520;}
+    .obstacle.wood::before{top:6px;left:4px;width:6px;height:6px;box-shadow:38px 0 0 #5a3520;}
+    .obstacle.wood::after{bottom:6px;left:4px;width:6px;height:6px;box-shadow:38px 0 0 #5a3520;}
+
+    /* Stone block — 68×46, wider and shorter */
+    .obstacle.stone{width:68px;height:46px;background:#8c8f95;border:3px solid #3a3f44;box-shadow:inset -4px -4px 0 #6b6e74,inset 4px 4px 0 #adb1b8,4px 4px 0 #1a1d20;}
+    .obstacle.stone::before,.obstacle.stone::after{content:"";position:absolute;background:#5a5d63;border-radius:50%;}
+    .obstacle.stone::before{top:10px;left:14px;width:6px;height:6px;box-shadow:24px 8px 0 #5a5d63,12px 18px 0 #5a5d63;}
+    .obstacle.stone::after{top:8px;right:12px;width:5px;height:5px;box-shadow:-8px 22px 0 #5a5d63;}
+
+    /* Green pipe — 56×70, tall with a lip on top */
+    .obstacle.pipe{width:56px;height:70px;background:#3d7a1c;border:3px solid #1a3a16;box-shadow:inset -6px 0 0 #2a5a16,inset 6px 0 0 #5a9e2f,4px 4px 0 #0a1a0a;}
+    .obstacle.pipe::before{content:"";position:absolute;top:-8px;left:-8px;width:68px;height:18px;background:#3d7a1c;border:3px solid #1a3a16;box-shadow:inset 0 -4px 0 #2a5a16;}
+
+    /* AI server rack — 60×50, dark with green blinkenlights */
+    .obstacle.server{width:60px;height:50px;background:#2a2f33;border:3px solid #5a5d63;box-shadow:inset 0 -6px 0 #1a1d20,4px 4px 0 #0a0d10;}
+    .obstacle.server::before{content:"";position:absolute;top:8px;left:8px;width:6px;height:6px;background:#9be068;border-radius:50%;box-shadow:0 0 0 1px #1a3a16,12px 0 0 #9be068,12px 0 0 1px #1a3a16,24px 0 0 #ffd84a,24px 0 0 1px #5a4a10;animation:server-blink 1.4s steps(2) infinite;}
+    .obstacle.server::after{content:"";position:absolute;bottom:6px;left:8px;right:8px;height:8px;background:#1a1d20;box-shadow:inset 0 0 0 1px #5a5d63;}
+    @keyframes server-blink{
+      0%,100%{opacity:1;}
+      50%{opacity:0.5;}
+    }
 
     /* Branding (screen-fixed, matches reference) */
     .springlogo{position:absolute;bottom:14px;left:18px;color:#6db33f;font-size:16px;display:flex;align-items:center;gap:8px;z-index:10;}
@@ -97,7 +122,7 @@
     }
 
     /* Sign post (lives in #world, positioned via inline left:Xpx) */
-    .sign{position:absolute;bottom:90px;width:140px;text-align:center;font-size:13px;line-height:1.6;color:#f5e6c8;z-index:6;transition:opacity 0.3s ease;}
+    .sign{position:absolute;bottom:90px;width:140px;text-align:center;font-size:13px;line-height:1.6;color:#f5e6c8;z-index:6;transition:opacity 0.3s ease;transform:translateX(-50%);}
     .sign .post{width:6px;height:66px;background:#6b3e1f;margin:0 auto;}
     .sign .board{background:#8a5230;border:3px solid #5a3520;padding:6px 4px;box-shadow:3px 3px 0 #2a1810;}
     .sign.eco .board{background:#3a2030;border-color:#7a3a5a;color:#ffd2e0;}
@@ -681,6 +706,24 @@
   const SIGN_FIRST_X = 720;        // first sign starts beyond the start-scene assets
   const ACTIVE_RANGE = 80;         // ± px from sign for "active"
 
+  // Obstacle catalog — name, height (used for podium lift), width unused at JS level (CSS handles it)
+  const OBSTACLE_TYPES = [
+    { name: 'wood',   h: 52 },
+    { name: 'stone',  h: 46 },
+    { name: 'pipe',   h: 70 },
+    { name: 'server', h: 50 },
+  ];
+  function obstacleType(i) { return OBSTACLE_TYPES[i % OBSTACLE_TYPES.length]; }
+
+  function makeObstacle(x, type) {
+    const o = document.createElement('div');
+    o.className = 'obstacle ' + type.name;
+    o.style.left = x + 'px';
+    o.dataset.x = String(x);
+    o.dataset.h = String(type.h);
+    return o;
+  }
+
   const panel = document.getElementById('panel');
   const panelV = document.getElementById('panel-v');
   const panelDate = document.getElementById('panel-date');
@@ -720,13 +763,11 @@
       // Every 4th sign (offset so first isn't on a box) stands on a podium obstacle
       const onBox = (i % 4 === 3);
       if (onBox) {
-        const podium = document.createElement('div');
-        podium.className = 'obstacle';
-        podium.style.left = x + 'px';
-        podium.dataset.x = String(x);
-        podium.textContent = '?';
-        world.appendChild(podium);
-        sign.style.bottom = (90 + 48) + 'px';   // lift sign onto podium (box height = 48px)
+        // Pick a podium variant (offset by sign index so the rotation isn't all wood).
+        const ptype = obstacleType(i + 2);
+        world.appendChild(makeObstacle(x, ptype));
+        // Lift sign so its post bottom rests on the podium TOP (bottom + height).
+        sign.style.bottom = (90 + ptype.h) + 'px';
       }
       world.appendChild(sign);
     });
@@ -734,18 +775,12 @@
 
   // Place a free-standing obstacle box halfway between consecutive signs.
   function renderObstacles() {
+    // Between every two adjacent signs, drop one obstacle. Variant cycles through wood/stone/pipe/server.
     for (let i = 0; i < ORDERED.length - 1; i++) {
       const xA = SIGN_FIRST_X + i * SIGN_SPACING;
       const xB = SIGN_FIRST_X + (i + 1) * SIGN_SPACING;
       const x = (xA + xB) / 2;
-      // Skip positions that coincide with a podium box (i % 4 === 3 puts podium at xB)
-      // No collision concern — they're at different x coords so both are fine.
-      const box = document.createElement('div');
-      box.className = 'obstacle';
-      box.style.left = x + 'px';
-      box.dataset.x = String(x);
-      box.textContent = '?';
-      world.appendChild(box);
+      world.appendChild(makeObstacle(x, obstacleType(i)));
     }
   }
 
