@@ -1,5 +1,21 @@
 # Changelog — Spring AI Zero-to-Hero Workshop
 
+## [2.3.6] - 2026-05-27
+
+### Changed
+- Bumped Spring AI from `2.0.0-M6` → `2.0.0-M7` across the parent POM, workshop docs, dashboard, `workshop.sh` banners, Grafana dashboard, `prepare.sh` defaults, and all six provider readmes. A small housekeeping commit landed immediately before the bump (`chore: housekeeping ahead of Spring AI M7 bump`): deprecated `new TokenTextSplitter()` → `TokenTextSplitter.builder().build()` in five controllers, Jackson 3 `JsonNode.asText()` → `asString()` in `OpenApiSpecReader`, comment polish in two controllers.
+
+### Migrated (M7 audit)
+- **No Java changes required.** Every M7 breaking change targeted a module or API the workshop doesn't use. `./mvnw clean verify` was green on the first build after the property bump.
+- **`ChatOptions` setters removed** — the workshop already constructs every options instance via the per-provider `builder()` (work done in the M5→M6 bump).
+- **MCP SSE transport deprecated, Streamable HTTP becomes default** — all three MCP HTTP servers already pin `protocol: STREAMABLE` and the client smokes use `HttpClientStreamableHttpTransport`.
+- **CosmosDB module removed** — not used (vector store track is pgvector).
+- **`spring-ai-spring-cloud-bindings` removed** — not used (credential injection is `creds.yaml` + Spring Boot config import).
+- **`GEMINI_2_0_FLASH` → `GEMINI_2_5_FLASH` constant rename** — provider-google sets the Gemini model via `creds.yaml` string config, not the SDK enum; rename does not flow through.
+- **`ToolSpec` fluent API / `ToolCallAdvisor` becomes default / single-`ToolAdvisor` invariant** — additive or already aligned; no call-site changes needed.
+
+Full audit and per-provider checklist: **[SPRING_AI_M6_TO_M7_MIGRATION.md](SPRING_AI_M6_TO_M7_MIGRATION.md)**.
+
 ## [2.3.5] - 2026-05-10
 
 ### Added

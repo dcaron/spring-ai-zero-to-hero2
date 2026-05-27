@@ -4,11 +4,11 @@
   <img src="docs/assets/workshop.png" alt="Spring AI — From Zero To Hero" width="50%">
 </p>
 
-> **Spring Boot 4.0.6 | Spring AI 2.0.0-M6 | Java 25**
+> **Spring Boot 4.0.6 | Spring AI 2.0.0-M7 | Java 25**
 >
 > A hands-on workshop for building AI-powered applications with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
 
-> ⚠️ **Recently upgraded Spring AI 2.0.0-M5 → 2.0.0-M6.** The chat-memory advisor API changed: `PromptChatMemoryAdvisor` was removed in M6 and `MessageChatMemoryAdvisor.Builder.conversationId(String)` is gone — the conversation id is now passed at request time via the `ChatMemory.CONVERSATION_ID` context key. Affected `mem_02/ChatHistoryController` and both agentic-system `Agent` classes. Full breakdown with diffs and per-provider checklist: **[SPRING_AI_M5_TO_M6_MIGRATION.md](SPRING_AI_M5_TO_M6_MIGRATION.md)**. The prior M4→M5 record remains in **[SPRING_AI_M4_TO_M5_MIGRATION.md](SPRING_AI_M4_TO_M5_MIGRATION.md)**.
+> ⚠️ **Recently upgraded Spring AI 2.0.0-M6 → 2.0.0-M7.** No code changes were needed — the workshop's existing `ChatOptions.Builder` wiring (M5→M6 work) and Streamable HTTP MCP transports (M5) already match the M7 direction. The bump is a one-line property change in the parent POM. Full audit with per-provider checklist: **[SPRING_AI_M6_TO_M7_MIGRATION.md](SPRING_AI_M6_TO_M7_MIGRATION.md)**. Prior records: **[SPRING_AI_M5_TO_M6_MIGRATION.md](SPRING_AI_M5_TO_M6_MIGRATION.md)** · **[SPRING_AI_M4_TO_M5_MIGRATION.md](SPRING_AI_M4_TO_M5_MIGRATION.md)**.
 
 ## What You'll Learn — 8 Stages
 
