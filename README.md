@@ -4,11 +4,11 @@
   <img src="docs/assets/workshop.png" alt="Spring AI — From Zero To Hero" width="50%">
 </p>
 
-> **Spring Boot 4.0.6 | Spring AI 2.0.0-M7 | Java 25**
+> **Spring Boot 4.0.6 | Spring AI 2.0.0-M8 | Java 25**
 >
 > A hands-on workshop for building AI-powered applications with Spring AI. Covers chat, embeddings, vector stores, RAG, tool calling, MCP, agentic patterns, and observability — across 6 AI providers.
 
-> ⚠️ **Recently upgraded Spring AI 2.0.0-M6 → 2.0.0-M7.** No code changes were needed — the workshop's existing `ChatOptions.Builder` wiring (M5→M6 work) and Streamable HTTP MCP transports (M5) already match the M7 direction. The bump is a one-line property change in the parent POM. Full audit with per-provider checklist: **[SPRING_AI_M6_TO_M7_MIGRATION.md](SPRING_AI_M6_TO_M7_MIGRATION.md)**. Prior records: **[SPRING_AI_M5_TO_M6_MIGRATION.md](SPRING_AI_M5_TO_M6_MIGRATION.md)** · **[SPRING_AI_M4_TO_M5_MIGRATION.md](SPRING_AI_M4_TO_M5_MIGRATION.md)**.
+> ⚠️ **Recently upgraded Spring AI 2.0.0-M7 → 2.0.0-M8.** A fix-focused release — M8 #6138 restored the missing `spring-ai-autoconfigure-mcp-client-common` transitive dependency that broke every provider boot under M7, plus three regression fixes for pgvector (#6164), Google GenAI starter deps (#6171), and OpenAI session-auth (#6150). The workshop's M7 `spring.autoconfigure.exclude` workaround has been **removed**; providers boot cleanly on M8 with zero application-code changes. Full breakdown: **[SPRING_AI_M7_TO_M8_UPGRADE_PLAN.md](SPRING_AI_M7_TO_M8_UPGRADE_PLAN.md)**. Prior records: **[SPRING_AI_M6_TO_M7_UPGRADE_PLAN.md](SPRING_AI_M6_TO_M7_UPGRADE_PLAN.md)**, **[SPRING_AI_M5_TO_M6_MIGRATION.md](SPRING_AI_M5_TO_M6_MIGRATION.md)**, **[SPRING_AI_M4_TO_M5_MIGRATION.md](SPRING_AI_M4_TO_M5_MIGRATION.md)**.
 
 ## What You'll Learn — 8 Stages
 
